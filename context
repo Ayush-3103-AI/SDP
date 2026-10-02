@@ -1,0 +1,545 @@
+## CARR | CAIR FOCUS AREA 4
+
+### Explainable Quality Intelligence and Safe Corrective Recommendations
+
+**Topic 4.1.3 a mechanical engineering perspective**
+
+Dr. Vinod Kumar V Meti, Department of Automation and Robotics, CARR
+
+Owner level: Faculty Research
+
+---
+
+### Where 4.1.3 Sits
+
+
+
+**FA 4.1 Inline quality monitoring and process feedback**
+
+* **4.1.1:** Uncertainty-aware defect detection and severity (PhD)
+
+
+* **4.1.2:** Multimodal process-quality root-cause inference (PhD)
+
+
+* **4.1.3:** Explainable quality intelligence and safe corrective recommendations (Faculty + PG)
+
+
+* **4.1.4:** Human-in-the-loop adaptive quality alerting (Industry)
+
+
+* **4.1.5:** Adaptive vision inspection with closed-loop sorting (UG)
+
+
+
+> The only Faculty + PG slot in FA 4.1 designed for a faculty member with a running setup and a postgraduate student.
+> 
+> 
+
+---
+
+### The Topic and Its Hypothesis
+
+
+
+> *"Defect detection alone is insufficient - systems must quantify detection uncertainty, infer process-level root causes, and generate safe corrective recommendations, with human-in-the-loop validation."*
+> 
+
+FA 4.1 hypothesis: **4.1.3 owns the final clause**
+
+* **Explainable:** Decisions an engineer can audit - expressed in process variables, not only pixel heatmaps.
+
+
+* **Safe:** Corrections bounded by the machine's real operating envelope, with escalation instead of guessing.
+
+
+* **Corrective:** A recommendation that reaches an actuator in time to change the outcome.
+
+
+
+---
+
+### Why This Topic Needs a Mechanical Engineer
+
+
+
+The three open problems are physical, not algorithmic:
+
+1. **Envelope:** "Safe" means torque, speed, thermal and rate limits — machine data, not model data.
+
+
+2. **Actuation:** A recommendation is inert until a machine executes it within cycle time.
+
+
+3. **Causality:** Causes are physical: tool wear, clamping force, thermal drift, misalignment.
+
+
+4. **Validation:** Claims must survive a rig, with repeatability and ground truth.
+
+
+
+---
+
+### Current Work – A Closed Loop That Runs Today
+
+
+
+**REU 2025-26 closed-loop vision system for fused filament fabrication**
+
+```
+[ Camera sees the print ]  (RGB, nozzle + build area)
+          │
+          ▼
+[ Model detects ]  (7 defect classes | YOLO11-S, 32–36 ms)
+          │
+          ▼
+[ Confirms across several frames ]  (2–4 consecutive hits)
+          │
+          ▼
+〈 Critical defect? 〉  (clog · layer shift · spaghetti)
+   │               │
+  NO              YES
+   │               │
+   ▼               ▼
+[ Change the setpoints ]       [ Emergency stop ]
+(nozzle temp · flow · speed · bed)  (M112 — no correction attempted)
+(M104 · M221 · M220 · M140)
+   │
+   └──────► (next layers)
+
+```
+
+*End to end: 0.21 – 0.27 s from defect appearing to command reaching the printer*
+
+---
+
+### What Is Built
+
+
+
+**Consumer hardware, no firmware modification**
+
+| Layer | Implementation |
+| --- | --- |
+| **Sensing** | Raspberry Pi HQ camera, 16 mm telephoto lens, $1920\times1056,$ fixed view of nozzle and build area
+
+ |
+| **Detection** | YOLO11-S trained at $1088\times1088,$ 7 defect classes plus a no-defect class
+
+ |
+| **Dataset** | 6,454 annotated images, two printers, eight geometries, multi-label stratified split
+
+ |
+| **Confirmation** | Per-class multi-frame logic (2–4 consecutive detections) before any action
+
+ |
+| **Actuation** | OctoPrint REST API $\rightarrow$ M104 temperature, M220 speed, M221 flow, M140 bed
+
+ |
+| **Safety response** | Critical classes bypass correction and trigger M112 emergency stop
+
+ |
+| **Platforms** | Creality Ender 5 Plus and Anycubic Kobra 2 Neo; RTX 3050 laptop for inference
+
+ |
+
+---
+
+### Detection Performance
+
+
+
+**mAP50 by defect class - validation and test sets**
+
+* **Overall:** mAP50 0.809 validation, 0.828 test; mAP50-95 0.513 validation, 0.533 test.
+
+
+* **Class Performance (Validation / Test):**
+* **Clog:** $0.91 / 0.92$
+
+* **Layer shift:** $0.95 / 0.95$
+
+* **Over-extr.:** $0.81 / 0.84$
+
+* **Spaghetti:** $0.71 / 0.72$
+
+* **Stringing:** $0.93 / 0.92$
+
+* **Under-extr.:** $0.54 / 0.67$
+
+* **Warping:** $0.82 / 0.77$
+
+
+
+* **Weakest class:** Under-extrusion — thin, low-contrast, geometry-dependent. The acknowledged hard case in small-defect detection.
+
+
+
+---
+
+### Real-time Behaviour
+
+
+
+**Measured link by link, not end to end only**
+
+* **32–36 ms:** Model inference per frame
+
+
+* **21–26 FPS:** Continuous frame processing
+
+
+* **20–40 ms:** OctoPrint command dispatch
+
+
+* **0.21–0.27 s:** Defect appearing $\rightarrow$ command reaching the printer
+
+
+
+#### Why the latency budget matters for FA 4
+
+
+
+> Closed-loop quality control is a control problem before it is an AI problem. A correction that arrives after the next layer is deposited has no effect. This budget is the discipline FA 4.2.4 will need at line scale, demonstrated here at machine scale.
+> 
+> 
+
+---
+
+### Corrective Actions Implemented
+
+
+
+**Each command targets the physical cause of the defect**
+
+| Defect | Commands issued | Physical rationale |
+| --- | --- | --- |
+| **Over-extrusion** | `M104 S190`, `M220 S95`, `M221 S80` | Lower melt flow and volumetric delivery; stabilise deposition
+
+ |
+| **Under-extrusion** | `M104 S205`, `M220 S80`, `M221 S110` | Reduce melt viscosity, give the extruder more time, raise multiplier
+
+ |
+| **Stringing** | `M104 S190`, `M220 S80`, `M221 S95` | Limit oozing and filament pressure during travel moves
+
+ |
+| **Warping** | `M140 S65` | Raise bed temperature to restore adhesion and reduce contraction
+
+ |
+| **Clog / Layer shift / Spaghetti** | `M112` emergency stop | Further printing risks damage; correction is not attempted
+
+ |
+
+> A severity-dependent action policy already exists. What it lacks is a stated envelope and a justification.
+> 
+> 
+
+---
+
+### Transferable Contributions
+
+
+
+**Findings that apply beyond 3D printing**
+
+* **Label refinement for small defects:** Merging same-class boxes within 15 px and enlarging boxes below 1% of frame area. (Boosts under-extrusion mAP50-95 test metric from 0.108 to 0.366).
+
+
+* **Model-versus-hardware study:** Documented comparison of YOLOv8-N, YOLO11-N, YOLO11-M, and YOLO11-S at 640 and 1088 on a 4 GB GPU where VRAM limits, batch collapse, and optimiser choice break training. Directly reusable for edge-deployment decisions in FA 4.2.5.
+
+
+* **Ground truth by construction:** Defects are induced deliberately — temperature, flow, speed, bed adhesion, and alignment changed on schedule, across eight geometries with controlled multi-defect co-occurrence. The causal ground truth that plant datasets cannot provide.
+
+
+
+---
+
+### Against the Topic Title, Clause by Clause
+
+
+
+**An honest audit of the current system**
+
+| Clause | Status | Gap to close |
+| --- | --- | --- |
+| **Quality intelligence** | Present | Severity is binary; no link to part-level quality outcome
+
+ |
+| **Corrective** | Present | Fixed recipes, not scaled to the magnitude of the deviation
+
+ |
+| **Safe** | Partial | No stated envelope, rate limits or confidence gate on the action
+
+ |
+| **Recommendations** | Absent | The system acts; it does not propose and await judgement
+
+ |
+| **Explainable** | Absent | No attribution, no counterfactual, no process-variable reasoning
+
+ |
+| **Human-in-the-loop** | Minimal | Manual termination only; no feedback capture or learning
+
+ |
+
+> The gaps are the research content of 4.1.3 — they are not incidental weaknesses.
+> 
+> 
+
+---
+
+### Literature Gap 1
+
+
+
+**Detection is saturating, trust is not**
+
+*From the FA 4 survey: ~120 reviews and studies, 2021–2026*
+
+* **What the field has:** Mature CNN, YOLO and memory-bank detectors; dozens of reviews since 2021; benchmarks separated by fractions of a percent.
+
+
+* **What it lacks:** Calibrated confidence, severity in engineering units, and robustness to lighting and pose shift.
+
+
+* *Evidenter AD 2 (2025):* State-of-the-art methods stay below 60% AU-PRO under lighting shift and tiny defects.
+
+
+* Deep ensembles calibrate far better than MC dropout in ultrasonic crack sizing (Pyle et al., 2022).
+
+
+* Interval models with an explicit failure-probability threshold cut steel sampling to 5.33% while catching all failing samples (Song et al., 2024).
+
+
+
+---
+
+### Literature Gap 2
+
+
+
+**Correction is the missing half of the loop**
+
+*Very few published systems reach an actuator*
+
+| Closest published analogues | What they show | Limitation |
+| --- | --- | --- |
+| **In-mould vision feeding injection moulding** (Zhang et al., 2022, CIRP Annals) | A quality signal returned to the process | Single process, no explanation layer
+
+ |
+| **Uncertainty-aware RL for extrusion AM** (Li et al., 2025) | Flow and temperature adjusted from vision with uncertainty | Simulation-heavy; no stated safety envelope
+
+ |
+| **SHAP-driven decision support in semiconductors** (Senoner et al., 2021) | 21.7% yield-loss reduction in a field experiment | Advisory only; no machine actuation
+
+ |
+| **Digital-twin self-learning on a FANUC cell** (Mo et al., 2025) | 74.79% energy cut with delayed, validated deployment | Energy objective, not quality correction
+
+ |
+
+> **CARR's position:** The FFF rig already actuates — a platform for the 4.1.3 question, not merely an instance of it.
+> 
+> 
+
+---
+
+### Literature Gaps 3 and 4 – "Safe" and "Explainable" Are Undefined
+
+
+
+**Both are open, and both are mechanical problems first**
+
+#### "Safe" is asserted, not specified
+
+
+
+* Reviews find almost no study stating setpoint bounds, rate limits, or interlocks around an AI recommendation.
+
+
+* The control literature has the formalism — constraint taxonomies in safe RL, control barrier and Lyapunov-barrier functions, Gaussian-process chance constraints — but it is rarely applied to quality correction.
+
+
+* A beverage clean-in-place deployment reports six months of production with zero safety violations using constrained action projection (González-Potes et al., 2026).
+
+
+
+#### Explanations are not actionable
+
+
+
+* XAI in visual quality assurance remains rare compared with pure detection, and is dominated by pixel heatmaps that say *where*, never *why* in process terms.
+
+
+* Whether explanations align with physical defect mechanisms is itself an open question (Ahangar et al., 2026).
+
+
+* *Reference effect size:* Explanations raised factory inspectors' accuracy by 7.7 percentage points in a preregistered study (Senoner et al., 2024).
+
+
+
+---
+
+### The Mechanical Proposal – A Four-Layer Safety Gate
+
+
+
+**Turning one emergency stop into a stated operating envelope**
+
+```
+[ AI recommendation ]
+(Δ setpoint + explanation)
+         │
+         ▼
+[ L1 Physical limits ] ───► Motor, heater and drive limits from machine's spec
+ (torque · speed · temp · pressure)
+         │
+         ▼
+[ L2 Rate and step limits ] ───► Maximum change per cycle (prevents overshoot/oscillation)
+ (maximum Δ per cycle)
+         │
+         ▼
+[ L3 Process window ] ───► Region actually characterised by design of experiments
+ (region actually characterised)
+         │
+         ▼
+[ L4 Confidence gate ] ───► Act only when uncertainty is below threshold; else escalate
+ (uncertainty below threshold)
+         │
+         ▼
+〈 All four passed? 〉
+  │              │
+ PASS           FAIL
+  │              │
+  ▼              ▼
+[ Apply, or propose ]   [ Hold and escalate ]
+[   to operator     ]   [    to a human     ]
+
+```
+
+> Same logic as CARR's actuation-authority work on legged robots, applied to process setpoints.
+> 
+> 
+
+---
+
+### Proposed Research Plan
+
+
+
+**Three work packages, 18 months, on the existing rig**
+
+* **WP1 (Months 0–6) — Bounded, magnitude-aware correction:**
+
+* DOE sweep of temperature, speed, and flow to map the validated process window; implement the four-layer gate; scale correction to defect magnitude.
+
+
+* *Deliverable:* Zero constraint violations; measured reduction in overshoot versus fixed recipes.
+
+
+
+
+* **WP2 (Months 4–12) — The explanation layer:**
+
+* Visual attribution plus counterfactuals expressed in process variables, checked against the deliberately induced cause.
+
+
+* *Deliverable:* An explanation-fidelity metric (rare in the literature because ground truth is rare).
+
+
+
+
+* **WP3 (Months 10–18) — Human-in-the-loop and adaptive correction:**
+
+* Recommend-then-act mode; learn from operator overrides; small operator study with and without explanations.
+
+
+* *Deliverable:* Measured operator accuracy, workload, and trust.
+
+
+
+
+
+> One paper is submittable now from existing results: small-defect label refinement and high-resolution training.
+> 
+> 
+
+---
+
+### Assets on the Table, and the Division of Work
+
+
+
+#### What CARR Brings
+
+
+
+* A closed loop running today, not in procurement
+
+
+* 6,454-image dataset with induced-cause labels
+
+
+* A repeatable defect-induction protocol
+
+
+* Two printers, dozens of trials at low cost
+
+
+* A measured, link-by-link latency budget
+
+
+* Process physics, envelopes, and constraints
+
+
+* CARR fabric: SCARA, Viper, TM5C, OptiTrack for pose ground truth
+
+
+
+#### What CARR Asks of CAIR
+
+
+
+* Calibrated confidence method (conformal prediction with a stated risk level is our suggestion)
+
+
+* Attribution plus counterfactual generation methods
+
+
+* A strategy for the under-extrusion small-defect case
+
+
+* Adaptive policy learning that respects our constraint layer
+
+
+* A protocol for testing transfer to unseen geometries
+
+
+* Compute and deployment target: laptop GPU, embedded, or gateway
+
+
+
+---
+
+### SUMMARY
+
+
+
+**A working loop, an honest gap, and a plan to close it**
+
+**Topic 4.1.3 CARR $\times$ CAIR**
+
+* The correction loop exists and is measured: 0.809 / 0.828 mAP50, 0.21–0.27 s to actuation.
+
+
+* The explanation layer and the safety envelope do not exist yet — that is the proposed research.
+
+
+* Deliberate defect induction gives causal ground truth the published literature lacks.
+
+
+* Under-extrusion is offered to the collaboration as a shared small-defect benchmark.
+
+
+
+**Presenter:** Dr. Vinod Kumar V Meti (CARR)
+
+**Student Contribution:** Varshini C Horakeri (01FE22BAR011), REU 17EARE490, 2025-26
