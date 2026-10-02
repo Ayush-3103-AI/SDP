@@ -13,6 +13,8 @@ OPEN:     week plan assumes a ~14-week semester starting 2026-10-05 (STATE Q1).
 
 # Board
 
+**GitHub:** issue #N = ticket T-000N at https://github.com/Ayush-3103-AI/SDP/issues. Milestones = PLAN-4W phases.
+
 ## Lanes
 | Lane | Tickets | Needs |
 |---|---|---|

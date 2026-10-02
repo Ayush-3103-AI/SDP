@@ -9,7 +9,7 @@ This repo implements a UG-scale piece of CARR Topic 4.1.3 (deck: `context`). The
 4. Owner HUMAN → don't execute it; tell the user what they need to do. Owner PAIR → do the CODE part, then hand the human their part with exact commands.
 5. Build test-first: write the ticket's `Test:` first, see it fail, then implement.
 6. Run `uv run pytest` (default markers exclude gpu/hw/slow) and `uv run ruff check .`. Done means the ticket's `Done when:` is observably true. "Mostly working" is not done.
-7. Append a LOGBOOK.md entry (BUILT / RESULT / SURPRISE / BROKE / NEXT). Fully rewrite STATE.md (< 200 lines). Update the ticket's row in BOARD.md. Commit with message `T-00NN: <title>`.
+7. Append a LOGBOOK.md entry (BUILT / RESULT / SURPRISE / BROKE / NEXT). Fully rewrite STATE.md (< 200 lines). Update the ticket's row in BOARD.md. Commit with message `T-00NN: <title> (closes #NN)` and push. GitHub issue #NN is ticket T-00NN in github.com/Ayush-3103-AI/SDP. For HUMAN/PAIR tickets, comment progress on the issue with `gh issue comment NN`.
 8. Stop. Report the outcome and name the next ticket per BOARD.md "Recommended execution order". Do not start it.
 
 ## Hard rules
