@@ -2,15 +2,17 @@
 
 PHASE:        4 — TICKET (Phases 0–3 compressed into one session; awaiting gate approval)
 LAST SESSION: 2026-10-03 — wrote 00–10, ADR-0001..0007, 52 tickets + BOARD, CLAUDE.md
-NEXT ACTION:  Human: approve the gate, answer Q1–Q4, start T-0002. Claude Code: execute T-0001.
+NEXT ACTION:  SEQUENCE.md step 1 = T-0002 (human: request the REU hand-over today). Step 2 = T-0001 (Claude Code).
 
 ## Load for next session
 - project-context/STATE.md (this file)
+- project-context/11-tickets/SEQUENCE.md (canonical order)
 - project-context/11-tickets/T-0001.md
 - project-context/09-interfaces.md §Repo layout
 Nothing else.
 
 ## Settled — do not relitigate
+- Implementation order = 11-tickets/SEQUENCE.md, 52 steps; changes need user approval + scripts/check_sequence.py OK
 - New standalone `xqi` package; REU code is reference only — ADR-0001
 - Image-only learned cause model; telemetry never a model input — ADR-0002 (one-way for eval validity)
 - Split-conformal LAC sets, α = 0.10 — ADR-0003

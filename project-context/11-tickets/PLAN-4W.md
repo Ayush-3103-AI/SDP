@@ -3,7 +3,7 @@ FILE:     11-tickets/PLAN-4W.md
 PHASE:    5 — EXECUTE (implementation plan)
 UPDATED:  2026-10-03
 STATUS:   draft
-SUMMARY:  Implementation-only plan: 7 phases over 4 weeks (20 working days), 42 tickets.
+SUMMARY:  Implementation-only plan: 7 phases over 4 weeks (20 working days), 41 tickets. Step-by-step order: SEQUENCE.md.
           The 2-week cut line is the full software loop running end-to-end on replay frames + FakePrinter
           with a stub cause model. Weeks 3–4 add the real data/model and the rig integration.
           Out of scope here: the induced-defect campaign, the operator study, the report, and COULD tickets.
@@ -95,7 +95,8 @@ OPEN:     Phase 4 needs the REU hand-over (T-0002) in hand by Day 6.
 | T-0036 | latency + VRAM report |
 | T-0039 | dry run on the Ender 5 Plus (advisory + auto) |
 | T-0040 | campaign matrix script |
-| T-0042 | rig-results eval script (`--selftest`) |
+
+T-0042 (rig-results eval) depends on the campaign (T-0041), so it's step 46 in SEQUENCE.md, after this plan.
 
 **Exit:** the real model runs on the real printer with 0 violations; latency is measured against 0.30 s.
 

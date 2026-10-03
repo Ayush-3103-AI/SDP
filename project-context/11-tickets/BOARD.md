@@ -45,12 +45,8 @@ L14 0047[P]
 ```
 C = Claude Code; P = Claude + human; H = human only.
 
-## Recommended execution order for Claude Code
-Data-lane tickets preempt whenever they're unblocked.
-1. **Now (no data needed):** 0001 → 0003 → 0004 → 0021 → 0022 → 0014 → 0016 → 0019 → 0023 → 0011 → 0026 → 0027 → 0029 → 0032 → 0031 → 0035 → 0030 → 0018 → 0020 → 0033 → 0034 → 0051 → 0052 → 0037 → 0038
-2. **When T-0002 lands:** 0005 → 0006 (**K1 kill check**) → 0007 → 0008 → 0024 → 0009 → 0010 → 0012 → 0013 (**K2 kill check**) → 0015 → 0017
-3. **Rig:** 0025 (human) → 0028 → 0036 → 0040 → 0039 (**K3 check**) → 0041 (human) → 0042
-4. **Study + close:** 0043 → 0044 → 0045 (human) → 0046 → 0047
+## Execution order
+The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-checked by `scripts/check_sequence.py`). Don't keep a second order here.
 
 ## Week plan (assumed: 14 weeks from 2026-10-05)
 | Week | Target |
