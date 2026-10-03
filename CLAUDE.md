@@ -12,6 +12,21 @@ This repo implements a UG-scale piece of CARR Topic 4.1.3 (deck: `context`). The
 7. Append a LOGBOOK.md entry (BUILT / RESULT / SURPRISE / BROKE / NEXT). Fully rewrite STATE.md (< 200 lines). Update the ticket's row in BOARD.md. Commit with message `T-00NN: <title> (closes #NN)` and push. GitHub issue #NN is ticket T-00NN in github.com/Ayush-3103-AI/SDP. For HUMAN/PAIR tickets, comment progress on the issue with `gh issue comment NN`.
 8. Stop. Report the outcome and name the next step from SEQUENCE.md. Do not start it. Never reorder SEQUENCE.md without the user's approval.
 
+## GPU steps (standing instruction from the user)
+This dev machine has CPU-only torch. Whenever the next step needs a GPU (marked 🖥 in SEQUENCE.md, or any `Done when` that
+needs a CUDA run or `-m gpu`):
+1. **Build and test everything CPU-side first**: scripts, unit tests, and a `--limit`/`--epochs 1` CPU smoke run.
+2. **Write the runbook** `docs/gpu-runs/T-00NN.md` from the template in `docs/GPU_SETUP.md` §D. It needs exact commands
+   (including any data-prep commands), expected output, estimated time and VRAM, the success check, the exact files to send back,
+   and the known failure fixes. Say which other GPU steps could run in the same sitting.
+3. **Commit and push everything**: `T-00NN: ready for GPU run (refs #NN)` (use refs, not closes). Then post
+   `gh issue comment NN` with the runbook link. Mark the ticket's BOARD.md row `WAITING-GPU`.
+4. **Warn the user** at the very top of the reply:
+   `⚠ GPU REQUIRED — T-00NN (#NN): <what> · runbook: docs/gpu-runs/T-00NN.md · est. <time> · send back: <files>`
+5. Continue with the next non-GPU step per SEQUENCE.md rule 2. Never run the GPU part on this machine beyond the CPU smoke run.
+6. When the team says results are pushed: `git pull`, verify `Done when` against the pushed files, then close the ticket the
+   normal way (`closes #NN`). Bad or missing results → comment on the issue with what's wrong, then fix the code and push.
+
 ## Hard rules
 - **Never feed setpoints or telemetry into the cause model** (ADR-0002). `CauseModel.predict` takes only (crop, defect).
 - **Never send printer commands outside `gate()`**, except the critical-class estop/pause and baseline mode. The UI never talks to OctoPrint.
@@ -31,5 +46,5 @@ This repo implements a UG-scale piece of CARR Topic 4.1.3 (deck: `context`). The
 
 ## Environment
 - Dev machine: Windows 11, Python 3.11. The rig laptop has an RTX 3050 (4 GB VRAM).
-- Install torch on the rig laptop from the CUDA wheel index, e.g. `uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121`. Verify with `torch.cuda.is_available()`.
+- GPU laptops: `uv sync` installs CUDA torch (configured in pyproject by T-0001). Team setup and run procedure: `docs/GPU_SETUP.md`.
 - Large inherited files (`*.zip`, `AM_*_Model_*.pt/`) are old YOLOv8n models. They are not the deck's YOLO11-S; ignore them.
