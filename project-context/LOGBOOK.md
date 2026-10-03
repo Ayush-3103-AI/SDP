@@ -30,3 +30,15 @@ SURPRISE:  - T-0001 was revised mid-session (commit a8e9ad8: cu126 source + mode
              Synced with UV_CACHE_DIR=D:/uv-cache (per command, not persisted).
 BROKE:     Nothing.
 NEXT:      SEQUENCE step 3 = T-0003 (contracts module).
+
+## 2026-10-03 — Ticket edit: /ml-model-builder gates in the cause-model tickets (user request)
+BUILT:     A `Skill:` line plus gate-specific spec items in T-0006, 0007, 0009, 0010, 0011, 0012, 0013, 0015, 0017:
+           Gate 0 frame (cause_model.py docstring), Gate 1 near-duplicate audit + split check, Gate 2 ladder
+           (frozen-backbone linear probe vs fine-tune; fine-tune kept only if it beats the probe by > fold std),
+           Gate 3 overfit-20 check + reproducibility hashes + fold-local class weights, Gate 4 ECE / slices /
+           worst-error grid / staleness, Gate 5 self-describing final.pt + golden-crop artifact test.
+RESULT:    check_sequence.py OK (no dependency or order change). GitHub issue bodies synced.
+SURPRISE:  sklearn isn't installed, so the linear probe is the same torch model with the backbone frozen
+           (no new dependency, no API change to 09's build_model()).
+BROKE:     Nothing. 08-pseudocode P5 doesn't mention the probe rung yet (edit 06–09 only with approval).
+NEXT:      SEQUENCE step 3 = T-0003.
