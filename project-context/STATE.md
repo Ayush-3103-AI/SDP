@@ -1,14 +1,14 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice)
 
-PHASE:        4 — TICKET (Phases 0–3 compressed into one session; awaiting gate approval)
-LAST SESSION: 2026-10-03 — wrote 00–10, ADR-0001..0007, 52 tickets + BOARD, CLAUDE.md
-NEXT ACTION:  SEQUENCE.md step 1 = T-0002 (human: request the REU hand-over today). Step 2 = T-0001 (Claude Code).
+PHASE:        5 — EXECUTE
+LAST SESSION: 2026-10-03 — T-0001 DONE (repo scaffold: uv project, xqi package, pytest + ruff green)
+NEXT ACTION:  SEQUENCE.md step 3 = T-0003 (contracts module). T-0002 (HUMAN) is still open and must be running.
 
 ## Load for next session
 - project-context/STATE.md (this file)
 - project-context/11-tickets/SEQUENCE.md (canonical order)
-- project-context/11-tickets/T-0001.md
-- project-context/09-interfaces.md §Repo layout
+- project-context/11-tickets/T-0003.md
+- the sections its Context: line names (09-interfaces.md §Types / §Constants)
 Nothing else.
 
 ## Settled — do not relitigate
@@ -21,6 +21,7 @@ Nothing else.
 - Critical classes default M112 (deck parity) — ADR-0006
 - LOGO by trial is the frozen eval — ADR-0007 (frozen at T-0007)
 - Non-goals: RL, firmware changes, new sensors, new DOE, generative counterfactuals — 06-requirements §Non-goals
+- Tooling: uv + hatchling, Python pinned 3.11 (.python-version), torch/torchvision from the pytorch-cu126 index, pytest addopts skip gpu/hw/slow
 
 ## Open branches
 - B1 cause taxonomy → T-0007
@@ -37,10 +38,11 @@ Nothing else.
 ## Highest unretired risk
 A1 [unknown]: whether the REU induction log can be joined to individual boxes (K1, at the T-0006 audit).
 If it fails, the learned cause model (the core of the explanation layer) is replaced by the ADR-0002 fallback.
-T-0002 must start on day 1; it is the head of the critical path.
+T-0002 is the head of the critical path and is still open.
 
 ## Kill criteria watch
 - K1 at T-0006 · K2 at T-0013 · K3 at week 6 (T-0028 / T-0039)
 
 ## Deferred questions raised out of phase
-- None yet.
+- C: drive has < 1 GB free, so `uv sync` fails unpacking CUDA torch into the default uv cache. Free space on C:
+  or set UV_CACHE_DIR to a D: path permanently (this session used D:/uv-cache per command).

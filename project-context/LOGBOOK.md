@@ -14,3 +14,19 @@ SURPRISE:  - The model files in the repo root (AM_1/AM_2 .pt) are older YOLOv8n 
              limit; the recipe audit (T-0023) turns that into a result.
 BROKE:     Nothing (no code yet)
 NEXT:      Gate approval → T-0001 (Claude Code), T-0002 (human, day 1)
+
+## 2026-10-03 — T-0001 Scaffold the repo
+SKIP:      SEQUENCE step 1 (T-0002) is HUMAN-owned; skipped per rule 2. It still has to start on day 1.
+BUILT:     pyproject.toml (uv + hatchling, deps per ticket, dev group pytest/ruff, markers gpu/hw/slow,
+           addopts excludes them; torch/torchvision from the explicit pytorch-cu126 index), .python-version (3.11),
+           uv.lock (torch 2.14.1+cu126), xqi/__init__.py (__version__ 0.1.0), tests/test_smoke.py.
+           .gitignore += data/* (not data/splits/), runs/, models/* with the models/cause/{final.pt,qhat.json,
+           preds_*.npz} whitelist, graphify-out/, .graphify/; graphify-out untracked.
+RESULT:    `uv run pytest` → 1 passed; `uv run ruff check .` clean; check_sequence.py OK; check-ignore verified.
+SURPRISE:  - T-0001 was revised mid-session (commit a8e9ad8: cu126 source + models/cause whitelist). The first
+             pass built the old spec; /code-review caught both gaps and they were fixed before commit.
+           - Default ruff flags `re.M` in scripts/check_sequence.py (FURB167); fixed to re.MULTILINE.
+           - C: has < 1 GB free; the 2.4 GB CUDA torch wheel can't unpack into uv's default cache there.
+             Synced with UV_CACHE_DIR=D:/uv-cache (per command, not persisted).
+BROKE:     Nothing.
+NEXT:      SEQUENCE step 3 = T-0003 (contracts module).

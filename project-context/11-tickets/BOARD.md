@@ -67,7 +67,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 ## Status
 | Ticket | Owner | Pri | Status |
 |---|---|---|---|
-| T-0001 Scaffold repo | C | MUST | TODO |
+| T-0001 Scaffold repo | C | MUST | DONE |
 | T-0002 Inheritance package | H | MUST | TODO |
 | T-0003 Contracts module | C | MUST | TODO |
 | T-0004 Config loader | C | MUST | TODO |

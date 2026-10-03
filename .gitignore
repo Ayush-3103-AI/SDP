@@ -1,3 +1,14 @@
 __pycache__/
 .venv/
 *.sqlite
+data/*
+!data/splits/
+models/*
+!models/cause/
+models/cause/*
+!models/cause/final.pt
+!models/cause/qhat.json
+!models/cause/preds_*.npz
+runs/
+graphify-out/
+.graphify/

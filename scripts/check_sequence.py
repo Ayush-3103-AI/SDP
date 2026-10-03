@@ -11,7 +11,7 @@ def main() -> int:
     for f in TICKETS.glob("T-*.md"):
         text = f.read_text(encoding="utf-8")
         deps[f.stem] = re.findall(r"T-\d{4}", re.search(r"Depends on:\s*(.*)", text).group(1))
-    seq = re.findall(r"^\| \d+ \| \[#\d+\]\([^)]*\) (T-\d{4})", (TICKETS / "SEQUENCE.md").read_text(encoding="utf-8"), re.M)
+    seq = re.findall(r"^\| \d+ \| \[#\d+\]\([^)]*\) (T-\d{4})", (TICKETS / "SEQUENCE.md").read_text(encoding="utf-8"), re.MULTILINE)
     pos = {t: i for i, t in enumerate(seq)}
     errors = [f"missing from sequence: {t}" for t in sorted(set(deps) - set(pos))]
     errors += [f"listed twice: {t}" for t in sorted({t for t in seq if seq.count(t) > 1})]
