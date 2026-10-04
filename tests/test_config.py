@@ -112,3 +112,17 @@ def test_bad_critical_action_raises(tmp_path):
         match=r"critical\.clog",
     ):
         load(path)
+
+def test_causes_yaml_matches_type_defaults():
+    from xqi import types
+
+    with (ROOT / "config" / "causes.yaml").open("r", encoding="utf-8") as handle:
+        causes = yaml.safe_load(handle)
+
+    assert tuple(causes["causes"]) == types.CAUSES
+    assert {
+        k: None if v is None else tuple(v)
+        for k, v in causes["cause_action"].items()
+    } == types.CAUSE_ACTION
+    assert causes["cause_defects"] == types.CAUSE_DEFECTS
+    assert causes["deck_recipes"] == types.DECK_RECIPES

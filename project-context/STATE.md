@@ -1,15 +1,22 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice)
 
 PHASE:        5 — EXECUTE
-LAST SESSION: 2026-10-03 — T-0001 DONE (repo scaffold: uv project, xqi package, pytest + ruff green)
-NEXT ACTION:  SEQUENCE.md step 3 = T-0003 (contracts module). T-0002 (HUMAN) is still open and must be running.
+LAST SESSION: 2026-10-04 — reviewed the teammate's P1 (T-0003 contracts, T-0004 config, T-0032 store), all DONE.
+              Fixed: store SCHEMA_VERSION now imported from types; detections.ts was always 0.0.
+NEXT ACTION:  SEQUENCE.md step 6 = T-0021 (gate L1+L2). T-0002 (HUMAN) is still open and must be running.
 
 ## Load for next session
 - project-context/STATE.md (this file)
 - project-context/11-tickets/SEQUENCE.md (canonical order)
-- project-context/11-tickets/T-0003.md
-- the sections its Context: line names (09-interfaces.md §Types / §Constants)
+- project-context/11-tickets/T-0021.md
+- the sections its Context: line names
 Nothing else.
+
+## Built so far (P1 done except T-0002)
+- xqi/types.py: §Types dataclasses + §Constants defaults, SCHEMA_VERSION = 1
+- xqi/config.py: load(path) -> frozen Config; ConfigError("<dotted.key>: <why>"); config/default.yaml, causes.yaml
+- xqi/store.py: Store(path) WAL, busy_timeout 2000 ms; open_readonly + insert_decision for the UI;
+  write_detection(det, ts) is batched (25) and flushed on close
 
 ## Settled — do not relitigate
 - Implementation order = 11-tickets/SEQUENCE.md, 52 steps; changes need user approval + scripts/check_sequence.py OK
@@ -28,12 +35,15 @@ Nothing else.
 - B2 envelope numbers → T-0024 / T-0025
 - B3 clog: estop vs pause → T-0025 (Dr. Meti)
 - B4 leave-one-printer-out → T-0050 (COULD)
+- B5 nothing loads config/causes.yaml at runtime (09 lists only config.load). Needs a loader + 09 entry (DESCEND)
+  by T-0006/T-0007. Until then tests/test_config.py pins it equal to the types.py defaults.
 
 ## Questions for the human (answer at the gate; recommended answer in brackets)
 - Q1 Semester end date / demo date? [assume ~14 weeks from 2026-10-05; the week plan in BOARD.md uses that]
 - Q2 Team size and who is the HUMAN owner for T-0002, T-0025, T-0041, T-0045? [team lead owns 0002; two people for 0041]
 - Q3 Any KLE SDP rubric or CARR lab standard to follow (doctrine hook)? [none → this framework governs]
 - Q4 Does Dr. Meti accept the charter thresholds S1–S5? [accept as written; revisit at the T-0013 gate review]
+- Q5 Teammates: please update BOARD.md / STATE.md / LOGBOOK.md in the same PR as the ticket (CLAUDE.md step 7).
 
 ## Highest unretired risk
 A1 [unknown]: whether the REU induction log can be joined to individual boxes (K1, at the T-0006 audit).

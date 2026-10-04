@@ -69,8 +69,8 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 |---|---|---|---|
 | T-0001 Scaffold repo | C | MUST | DONE |
 | T-0002 Inheritance package | H | MUST | TODO |
-| T-0003 Contracts module | C | MUST | TODO |
-| T-0004 Config loader | C | MUST | TODO |
+| T-0003 Contracts module | C | MUST | DONE |
+| T-0004 Config loader | C | MUST | DONE |
 | T-0005 Induction adapter | C | MUST | BLOCKED (0002) |
 | T-0006 Data audit + K1 | C | MUST | BLOCKED |
 | T-0007 Freeze taxonomy + splits | P | MUST | BLOCKED |
@@ -98,7 +98,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0029 Frame sources | C | MUST | TODO |
 | T-0030 Detector wrapper | C | MUST | TODO |
 | T-0031 Confirmation tracker | C | MUST | TODO |
-| T-0032 Event store | C | MUST | TODO |
+| T-0032 Event store | C | MUST | DONE |
 | T-0033 Orchestrator baseline | C | MUST | TODO |
 | T-0034 Orchestrator modes | C | MUST | TODO |
 | T-0035 Outcome verifier | C | MUST | TODO |

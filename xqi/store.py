@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Self
 
 from xqi.types import (
+    SCHEMA_VERSION,
     CauseEstimate,
     CauseSet,
     ConfirmedDefect,
@@ -20,7 +21,6 @@ from xqi.types import (
     Proposal,
 )
 
-SCHEMA_VERSION = 1
 DETECTION_BATCH_SIZE = 25
 BUSY_TIMEOUT_MS = 2000
 
@@ -37,7 +37,7 @@ class Store:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
         self.run_id = self.path.parent.name
-        self._detection_buffer: list[Detection] = []
+        self._detection_buffer: list[tuple[Detection, float]] = []
         self._closed = False
 
         self._conn = self._connect(readonly=False)
@@ -291,8 +291,9 @@ class Store:
         )
         self._conn.commit()
 
-    def write_detection(self, obj: Detection) -> None:
-        self._detection_buffer.append(obj)
+    def write_detection(self, obj: Detection, ts: float) -> None:
+        """Buffer a detection; ``ts`` is its Frame.ts (Detection has none)."""
+        self._detection_buffer.append((obj, ts))
 
         if len(self._detection_buffer) >= DETECTION_BATCH_SIZE:
             self.flush_detections()
@@ -304,14 +305,14 @@ class Store:
         schema_version, run_id = self._base()
 
         rows = []
-        for obj in self._detection_buffer:
+        for obj, ts in self._detection_buffer:
             x1, y1, x2, y2 = obj.xyxy
             rows.append(
                 (
                     schema_version,
                     run_id,
                     obj.frame_id,
-                    0.0,
+                    ts,
                     obj.cls,
                     obj.conf,
                     x1,

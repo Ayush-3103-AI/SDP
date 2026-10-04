@@ -42,3 +42,21 @@ SURPRISE:  sklearn isn't installed, so the linear probe is the same torch model 
            (no new dependency, no API change to 09's build_model()).
 BROKE:     Nothing. 08-pseudocode P5 doesn't mention the probe rung yet (edit 06–09 only with approval).
 NEXT:      SEQUENCE step 3 = T-0003.
+
+## 2026-10-04 — Review of teammate's P1 (T-0003, T-0004, T-0032; PRs #53–#55)
+BUILT:     Review only, plus two fixes. xqi/store.py: SCHEMA_VERSION is now imported from xqi.types (the
+           duplicate copy would have silently diverged on a bump, which breaks the Versioning rule);
+           write_detection(obj, ts) now stores the frame's ts (before, every detections.ts was hard-coded 0.0).
+           tests: test_detection_keeps_frame_ts; test_causes_yaml_matches_type_defaults (causes.yaml vs types.py).
+           BOARD rows for T-0003/0004/0032 → DONE (the PRs closed the issues but left BOARD/STATE/LOGBOOK alone).
+RESULT:    Each Done-when checked against 09-interfaces: every type round-trips through JSON; default.yaml loads
+           and all 6 validation rules raise ConfigError naming the key; store round-trips every table with WAL and
+           the two-process decision insert works. `uv run pytest` → 40 passed; ruff clean.
+SURPRISE:  - Nothing reads config/causes.yaml at runtime yet. 09 §Module APIs only lists config.load(), so no loader
+             was added (that would be an API change). The drift test keeps it equal to the types.py defaults until
+             T-0007 edits it, and at that point a loader has to exist (DESCEND to add it to 09).
+           - Store detections are batched every 25 detections, not every 25 frames. That's harmless at this scale.
+           - Store.query()'s read-only check is a prefix match ("WITH … DELETE" would get through on the loop
+             connection). The UI side is safe because open_readonly uses mode=ro.
+BROKE:     Store.write_detection signature (ts now required). No callers yet.
+NEXT:      SEQUENCE step 6 = T-0021 (gate L1+L2). T-0002 (HUMAN) is still open.

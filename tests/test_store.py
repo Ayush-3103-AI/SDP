@@ -79,7 +79,8 @@ def test_detection_batching(tmp_path):
                 conf=0.9,
                 xyxy=(1.0, 2.0, 3.0, 4.0),
                 area_frac=0.1,
-            )
+            ),
+            ts=0.0,
         )
 
     assert store.query("SELECT COUNT(*) AS n FROM detections")[0]["n"] == 0
@@ -91,7 +92,8 @@ def test_detection_batching(tmp_path):
             conf=0.9,
             xyxy=(1.0, 2.0, 3.0, 4.0),
             area_frac=0.1,
-        )
+        ),
+        ts=0.0,
     )
 
     assert store.query("SELECT COUNT(*) AS n FROM detections")[0]["n"] == 25
@@ -109,7 +111,8 @@ def test_detection_flush_on_close(tmp_path):
             conf=0.95,
             xyxy=(1.0, 2.0, 3.0, 4.0),
             area_frac=0.2,
-        )
+        ),
+        ts=0.0,
     )
 
     store.close()
@@ -120,6 +123,26 @@ def test_detection_flush_on_close(tmp_path):
         ).fetchone()[0]
 
     assert count == 1
+
+
+def test_detection_keeps_frame_ts(tmp_path):
+    store = make_store(tmp_path)
+
+    store.write_detection(
+        Detection(
+            frame_id=7,
+            cls="clog",
+            conf=0.95,
+            xyxy=(1.0, 2.0, 3.0, 4.0),
+            area_frac=0.2,
+        ),
+        ts=123.5,
+    )
+    store.flush()
+
+    assert store.query("SELECT ts FROM detections")[0]["ts"] == 123.5
+
+    store.close()
 
 
 def test_telemetry_round_trip(tmp_path):
@@ -385,7 +408,8 @@ def test_concurrent_ui_decision_during_loop_write(tmp_path):
                 conf=0.95,
                 xyxy=(1.0, 2.0, 3.0, 4.0),
                 area_frac=0.2,
-            )
+            ),
+            ts=0.0,
         )
 
     process.start()
