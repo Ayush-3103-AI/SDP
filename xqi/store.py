@@ -292,10 +292,14 @@ class Store:
         self._conn.commit()
 
     def write_detection(self, obj: Detection, ts: float) -> None:
-        """Buffer a detection; ``ts`` is its Frame.ts (Detection has none)."""
+        """Buffer a detection; ``ts`` is its Frame.ts (Detection has none).
+
+        Flushes once the buffer spans DETECTION_BATCH_SIZE frames.
+        """
         self._detection_buffer.append((obj, ts))
 
-        if len(self._detection_buffer) >= DETECTION_BATCH_SIZE:
+        frames = {det.frame_id for det, _ in self._detection_buffer}
+        if len(frames) >= DETECTION_BATCH_SIZE:
             self.flush_detections()
 
     def flush_detections(self) -> None:
@@ -717,7 +721,16 @@ class Store:
         ):
             raise ValueError("Store.query() is read-only")
 
-        rows = self._conn.execute(sql, params).fetchall()
+        # The prefix check alone lets "WITH ... DELETE" through; query_only is enforced by SQLite.
+        self._conn.execute("PRAGMA query_only=ON")
+        try:
+            rows = self._conn.execute(sql, params).fetchall()
+        except sqlite3.OperationalError as exc:
+            if "readonly" in str(exc):
+                raise ValueError("Store.query() is read-only") from exc
+            raise
+        finally:
+            self._conn.execute("PRAGMA query_only=OFF")
         return [self._row_dict(row) for row in rows]
 
     def flush(self) -> None:

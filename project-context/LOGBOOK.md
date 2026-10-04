@@ -60,3 +60,16 @@ SURPRISE:  - Nothing reads config/causes.yaml at runtime yet. 09 §Module APIs o
              connection). The UI side is safe because open_readonly uses mode=ro.
 BROKE:     Store.write_detection signature (ts now required). No callers yet.
 NEXT:      SEQUENCE step 6 = T-0021 (gate L1+L2). T-0002 (HUMAN) is still open.
+
+## 2026-10-04 — DESCEND (user-approved): load_causes() + the remaining P1 review fixes
+BUILT:     09-interfaces §Module APIs: added `load_causes(path) -> Causes`. This is the DESCEND, approved by the
+           user ("fix the issues"). xqi/config.py: frozen Causes dataclass and load_causes(), which validate that
+           every cause_action/cause_defects key is in causes, each var is in Var, each direction is ±1, and every
+           defect is in DEFECTS. A violation raises ConfigError naming the key. xqi/store.py: detections are now
+           flushed every 25 distinct frames (the spec says frames, not detections); query() runs under
+           PRAGMA query_only, so "WITH … DELETE" can no longer write.
+RESULT:    `uv run pytest` → 45 passed (+5: 3 load_causes rejections, CTE write rejected, frame batching); ruff clean.
+           No SCHEMA_VERSION bump: the change is additive config API, not §Types/§Store/§Data.
+SURPRISE:  Nothing.
+BROKE:     Nothing.
+NEXT:      SEQUENCE step 6 = T-0021 (gate L1+L2). T-0002 (HUMAN) is still open.

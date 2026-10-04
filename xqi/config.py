@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import yaml
+
+from xqi.types import DEFECTS, Var
 
 
 class ConfigError(ValueError):
@@ -152,6 +154,16 @@ class Config:
     hitl: HitlConfig
     verify: VerifyConfig
     attribution: AttributionConfig
+
+
+@dataclass(frozen=True, slots=True)
+class Causes:
+    """Runtime cause taxonomy from config/causes.yaml (types.py holds the defaults)."""
+
+    causes: tuple[str, ...]
+    cause_action: dict[str, tuple[str, int] | None]
+    cause_defects: dict[str, tuple[str, ...]]
+    deck_recipes: dict[str, dict[str, float]]
 
 
 def _require(data: dict[str, Any], key: str) -> Any:
@@ -410,9 +422,59 @@ def _build_config(data: dict[str, Any]) -> Config:
     )
 
 
-def load(path: str | Path) -> Config:
-    """Load and validate a YAML configuration file."""
+def _build_causes(data: dict[str, Any]) -> Causes:
+    causes = tuple(str(c) for c in _require(data, "causes"))
+    known = set(causes)
 
+    cause_action = {}
+    for cause, action in _require(data, "cause_action").items():
+        key = f"cause_action.{cause}"
+        if cause not in known:
+            raise ConfigError(f"{key}: not in causes")
+        if action is None:
+            cause_action[cause] = None
+            continue
+        if (
+            not isinstance(action, list)
+            or len(action) != 2
+            or action[0] not in get_args(Var)
+            or action[1] not in (-1, 1)
+        ):
+            raise ConfigError(f"{key}: expected [<var>, -1 | 1] or null")
+        cause_action[cause] = (action[0], action[1])
+
+    missing = known - set(cause_action)
+    if missing:
+        raise ConfigError(f"cause_action.{min(missing)}: missing")
+
+    cause_defects = {}
+    for cause, defects in _require(data, "cause_defects").items():
+        key = f"cause_defects.{cause}"
+        if cause not in known:
+            raise ConfigError(f"{key}: not in causes")
+        unknown = set(defects) - set(DEFECTS)
+        if unknown:
+            raise ConfigError(f"{key}: unknown defect {min(unknown)}")
+        cause_defects[cause] = tuple(defects)
+
+    deck_recipes = {}
+    for defect, recipe in _require(data, "deck_recipes").items():
+        if defect not in DEFECTS:
+            raise ConfigError(f"deck_recipes.{defect}: unknown defect")
+        bad = set(recipe) - set(get_args(Var))
+        if bad:
+            raise ConfigError(f"deck_recipes.{defect}.{min(bad)}: unknown var")
+        deck_recipes[defect] = dict(recipe)
+
+    return Causes(
+        causes=causes,
+        cause_action=cause_action,
+        cause_defects=cause_defects,
+        deck_recipes=deck_recipes,
+    )
+
+
+def _read_yaml(path: str | Path) -> dict[str, Any]:
     config_path = Path(path)
 
     if not config_path.exists():
@@ -427,11 +489,25 @@ def load(path: str | Path) -> Config:
     if not isinstance(data, dict):
         raise ConfigError(f"{config_path}: top level must be a mapping")
 
-    return _build_config(data)
+    return data
+
+
+def load(path: str | Path) -> Config:
+    """Load and validate a YAML configuration file."""
+
+    return _build_config(_read_yaml(path))
+
+
+def load_causes(path: str | Path) -> Causes:
+    """Load and validate config/causes.yaml (pass Config.causes_file)."""
+
+    return _build_causes(_read_yaml(path))
 
 
 __all__ = [
+    "Causes",
     "Config",
     "ConfigError",
     "load",
+    "load_causes",
 ]

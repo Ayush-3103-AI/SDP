@@ -148,6 +148,7 @@ Validation rules: every `Var` key present in each per-var map; `d_max ≤ L2.ste
 ```python
 # xqi/config.py
 load(path: str | Path) -> Config
+load_causes(path: str | Path) -> Causes   # config/causes.yaml (cfg.causes_file); validated vs Var and DEFECTS
 # xqi/printer.py
 class Printer(Protocol):
     def get_state(self) -> PrinterState: ...

@@ -387,6 +387,47 @@ def test_query_is_read_only(tmp_path):
     store.close()
 
 
+def test_query_rejects_write_hidden_in_cte(tmp_path):
+    store = make_store(tmp_path)
+    store.write_run({"mode": "advisory"})
+
+    try:
+        store.query("WITH x AS (SELECT 1) DELETE FROM runs")
+    except ValueError as exc:
+        assert "read-only" in str(exc)
+    else:
+        raise AssertionError("query() allowed a write operation")
+
+    assert store.query("SELECT COUNT(*) AS n FROM runs")[0]["n"] == 1
+
+    store.close()
+
+
+def test_detections_batch_by_frame_not_by_detection(tmp_path):
+    store = make_store(tmp_path)
+
+    def det(frame_id):
+        return Detection(
+            frame_id=frame_id,
+            cls="stringing",
+            conf=0.9,
+            xyxy=(1.0, 2.0, 3.0, 4.0),
+            area_frac=0.1,
+        )
+
+    for _ in range(30):
+        store.write_detection(det(0), ts=0.0)
+
+    assert store.query("SELECT COUNT(*) AS n FROM detections")[0]["n"] == 0
+
+    for frame_id in range(1, 25):
+        store.write_detection(det(frame_id), ts=float(frame_id))
+
+    assert store.query("SELECT COUNT(*) AS n FROM detections")[0]["n"] == 54
+
+    store.close()
+
+
 def test_concurrent_ui_decision_during_loop_write(tmp_path):
     db = tmp_path / "run-001" / "events.sqlite"
 

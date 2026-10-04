@@ -1,8 +1,8 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice)
 
 PHASE:        5 — EXECUTE
-LAST SESSION: 2026-10-04 — reviewed the teammate's P1 (T-0003 contracts, T-0004 config, T-0032 store), all DONE.
-              Fixed: store SCHEMA_VERSION now imported from types; detections.ts was always 0.0.
+LAST SESSION: 2026-10-04 — reviewed the teammate's P1 (T-0003, T-0004, T-0032), all DONE, and fixed every review
+              finding (detections.ts, SCHEMA_VERSION source, causes.yaml loader, frame batching, query_only).
 NEXT ACTION:  SEQUENCE.md step 6 = T-0021 (gate L1+L2). T-0002 (HUMAN) is still open and must be running.
 
 ## Load for next session
@@ -14,9 +14,10 @@ Nothing else.
 
 ## Built so far (P1 done except T-0002)
 - xqi/types.py: §Types dataclasses + §Constants defaults, SCHEMA_VERSION = 1
-- xqi/config.py: load(path) -> frozen Config; ConfigError("<dotted.key>: <why>"); config/default.yaml, causes.yaml
+- xqi/config.py: load(path) -> frozen Config; load_causes(cfg.causes_file) -> Causes (runtime taxonomy; T-0007 edits
+  causes.yaml, the test pinning it to the types.py defaults must be updated then); ConfigError("<dotted.key>: <why>")
 - xqi/store.py: Store(path) WAL, busy_timeout 2000 ms; open_readonly + insert_decision for the UI;
-  write_detection(det, ts) is batched (25) and flushed on close
+  write_detection(det, ts) is batched every 25 frames and flushed on close; query() enforces PRAGMA query_only
 
 ## Settled — do not relitigate
 - Implementation order = 11-tickets/SEQUENCE.md, 52 steps; changes need user approval + scripts/check_sequence.py OK
@@ -35,8 +36,6 @@ Nothing else.
 - B2 envelope numbers → T-0024 / T-0025
 - B3 clog: estop vs pause → T-0025 (Dr. Meti)
 - B4 leave-one-printer-out → T-0050 (COULD)
-- B5 nothing loads config/causes.yaml at runtime (09 lists only config.load). Needs a loader + 09 entry (DESCEND)
-  by T-0006/T-0007. Until then tests/test_config.py pins it equal to the types.py defaults.
 
 ## Questions for the human (answer at the gate; recommended answer in brackets)
 - Q1 Semester end date / demo date? [assume ~14 weeks from 2026-10-05; the week plan in BOARD.md uses that]
