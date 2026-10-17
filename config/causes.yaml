@@ -1,0 +1,62 @@
+causes:
+  - none
+  - nozzle_temp_low
+  - nozzle_temp_high
+  - flow_low
+  - flow_high
+  - speed_low
+  - speed_high
+  - bed_temp_low
+  - misalignment
+
+cause_action:
+  nozzle_temp_low: [nozzle_temp, -1]
+  nozzle_temp_high: [nozzle_temp, 1]
+  flow_low: [flow, -1]
+  flow_high: [flow, 1]
+  speed_low: [speed, -1]
+  speed_high: [speed, 1]
+  bed_temp_low: [bed_temp, -1]
+  none: null
+  misalignment: null
+
+cause_defects:
+  nozzle_temp_high:
+    - stringing
+    - over_extrusion
+  nozzle_temp_low:
+    - under_extrusion
+    - clog
+  flow_high:
+    - over_extrusion
+  flow_low:
+    - under_extrusion
+  speed_high:
+    - under_extrusion
+  speed_low:
+    - over_extrusion
+    - stringing
+  bed_temp_low:
+    - warping
+    - spaghetti
+  misalignment:
+    - layer_shift
+
+deck_recipes:
+  over_extrusion:
+    nozzle_temp: 190
+    speed: 95
+    flow: 80
+
+  under_extrusion:
+    nozzle_temp: 205
+    speed: 80
+    flow: 110
+
+  stringing:
+    nozzle_temp: 190
+    speed: 80
+    flow: 95
+
+  warping:
+    bed_temp: 65

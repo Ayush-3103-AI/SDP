@@ -1,0 +1,76 @@
+{
+  "frames": {
+    "0": [
+      {
+        "cls": "under_extrusion",
+        "conf": 0.9,
+        "xyxy": [
+          8,
+          8,
+          36,
+          36
+        ]
+      }
+    ],
+    "1": [
+      {
+        "cls": "under_extrusion",
+        "conf": 0.9,
+        "xyxy": [
+          8,
+          8,
+          36,
+          36
+        ]
+      }
+    ],
+    "2": [
+      {
+        "cls": "under_extrusion",
+        "conf": 0.9,
+        "xyxy": [
+          8,
+          8,
+          36,
+          36
+        ]
+      }
+    ],
+    "3": [
+      {
+        "cls": "under_extrusion",
+        "conf": 0.9,
+        "xyxy": [
+          8,
+          8,
+          36,
+          36
+        ]
+      }
+    ],
+    "4": [
+      {
+        "cls": "under_extrusion",
+        "conf": 0.9,
+        "xyxy": [
+          8,
+          8,
+          36,
+          36
+        ]
+      }
+    ],
+    "5": [
+      {
+        "cls": "under_extrusion",
+        "conf": 0.9,
+        "xyxy": [
+          8,
+          8,
+          36,
+          36
+        ]
+      }
+    ]
+  }
+}

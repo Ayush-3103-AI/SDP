@@ -1,0 +1,120 @@
+mode: advisory
+run_dir: runs
+
+printer:
+  kind: octoprint
+  url: "http://octopi.local"
+  api_key_env: XQI_OCTOPRINT_KEY
+  timeout_s: 0.5
+  poll_s: 1.0
+  nominal:
+    nozzle_temp: 210
+    bed_temp: 60
+    flow: 100
+    speed: 100
+
+camera:
+  source: "0"
+  width: 1920
+  height: 1056
+  max_gap_s: 3.0
+
+detector:
+  weights: models/yolo/best.pt
+  imgsz: 1088
+  conf: 0.25
+  device: "cuda:0"
+
+confirm:
+  hits:
+    clog: 2
+    layer_shift: 2
+    spaghetti: 2
+    over_extrusion: 3
+    under_extrusion: 4
+    stringing: 3
+    warping: 3
+  rearm_frames: 50
+
+critical:
+  clog: estop
+  layer_shift: estop
+  spaghetti: estop
+
+severity:
+  a_ref: 0.02
+  h_ref: 15
+  window: 30
+
+causes_file: config/causes.yaml
+
+cause_model:
+  weights: models/cause/final.pt
+  crop_pad: 0.2
+  input_px: 224
+  device: "cuda:0"
+
+conformal:
+  alpha: 0.10
+  qhat_file: models/cause/qhat.json
+
+correction:
+  d_min:
+    nozzle_temp: 2
+    bed_temp: 2
+    flow: 5
+    speed: 5
+  d_max:
+    nozzle_temp: 5
+    bed_temp: 5
+    flow: 10
+    speed: 10
+
+envelope:
+  L1:
+    nozzle_temp: [170, 240]
+    bed_temp: [0, 100]
+    flow: [50, 150]
+    speed: [50, 150]
+
+  L2:
+    step:
+      nozzle_temp: 5
+      bed_temp: 5
+      flow: 10
+      speed: 10
+    cooldown_s:
+      nozzle_temp: 45
+      bed_temp: 90
+      flow: 20
+      speed: 20
+
+  L3:
+    material: PLA
+    window:
+      nozzle_temp: [195, 225]
+      bed_temp: [50, 70]
+      flow: [90, 110]
+      speed: [80, 110]
+
+  L4:
+    tau: 0.60
+
+sensors:
+  temp_dev_c: 5
+  temp_dev_s: 10
+  settle_s:
+    nozzle_temp: 45
+    bed_temp: 90
+
+hitl:
+  timeout_s: 90
+  timeout_action: noop
+
+verify:
+  window_s: 120
+  settle_s: 30
+
+attribution:
+  enabled: true
+  layer: "model.model.9"

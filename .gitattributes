@@ -1,0 +1,4 @@
+AM_*_Model_*.pt/** binary
+*.zip binary
+*.pkl binary
+*.pt binary
