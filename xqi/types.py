@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from typing import Literal
 
@@ -6,6 +7,17 @@ import numpy as np
 SCHEMA_VERSION = 1
 
 Var = Literal["nozzle_temp", "bed_temp", "flow", "speed"]
+
+
+def round_half_up(x: float) -> int:
+    """Round to the nearest integer, with halves rounded up.
+
+    G-code integers and the gate's physical-limit comparison must agree, but
+    Python's built-in ``round`` uses banker's rounding. The whole project shares
+    this one helper (T-0016 and the gate both use it; see 07-math.md §3).
+    """
+
+    return math.floor(x + 0.5)
 
 
 @dataclass(frozen=True, slots=True)

@@ -80,28 +80,28 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0011 Cause model | C | MUST | TODO |
 | T-0012 Train fold 0 | P | MUST | BLOCKED |
 | T-0013 LOGO CV + K2 | P | MUST | BLOCKED |
-| T-0014 Conformal | C | MUST | TODO |
+| T-0014 Conformal | C | MUST | DONE |
 | T-0015 Conformal eval | C | MUST | BLOCKED |
-| T-0016 Proposals/counterfactual | C | MUST | TODO |
+| T-0016 Proposals/counterfactual | C | MUST | DONE |
 | T-0017 CF fidelity eval | C | MUST | BLOCKED |
 | T-0018 EigenCAM | C | SHOULD | TODO |
-| T-0019 Sensor checks | C | MUST | TODO |
+| T-0019 Sensor checks | C | MUST | DONE |
 | T-0020 Explainer | C | MUST | TODO |
-| T-0021 Gate L1+L2 | C | MUST | TODO |
-| T-0022 Gate L3+verdict | C | MUST | TODO |
-| T-0023 Gate property + recipe audit | C | MUST | TODO |
+| T-0021 Gate L1+L2 | C | MUST | DONE |
+| T-0022 Gate L3+verdict | C | MUST | DONE |
+| T-0023 Gate property + recipe audit | C | MUST | DONE |
 | T-0024 Derive L3 window | C | MUST | BLOCKED |
 | T-0025 Envelope sign-off | H | MUST | BLOCKED |
-| T-0026 Printer + FakePrinter | C | MUST | TODO |
-| T-0027 OctoPrint client | C | MUST | TODO |
+| T-0026 Printer + FakePrinter | C | MUST | DONE |
+| T-0027 OctoPrint client | C | MUST | DONE |
 | T-0028 OctoPrint smoke | P | MUST | BLOCKED |
-| T-0029 Frame sources | C | MUST | TODO |
-| T-0030 Detector wrapper | C | MUST | TODO |
-| T-0031 Confirmation tracker | C | MUST | TODO |
+| T-0029 Frame sources | C | MUST | DONE |
+| T-0030 Detector wrapper | C | MUST | DONE |
+| T-0031 Confirmation tracker | C | MUST | DONE |
 | T-0032 Event store | C | MUST | DONE |
-| T-0033 Orchestrator baseline | C | MUST | TODO |
+| T-0033 Orchestrator baseline | C | MUST | DONE |
 | T-0034 Orchestrator modes | C | MUST | TODO |
-| T-0035 Outcome verifier | C | MUST | TODO |
+| T-0035 Outcome verifier | C | MUST | DONE |
 | T-0036 Latency report | C | MUST | TODO |
 | T-0037 Dashboard live view | C | MUST | TODO |
 | T-0038 Proposal cards | C | MUST | TODO |

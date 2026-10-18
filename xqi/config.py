@@ -35,6 +35,7 @@ class DetectorConfig:
     imgsz: int
     conf: float
     device: str
+    kind: str = "yolo"
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,11 +223,15 @@ def _build_config(data: dict[str, Any]) -> Config:
     )
 
     detector_data = _require(data, "detector")
+    detector_kind = str(detector_data.get("kind", "yolo"))
+    if detector_kind not in {"yolo", "replay"}:
+        raise ConfigError("detector.kind: must be yolo or replay")
     detector = DetectorConfig(
         weights=str(detector_data["weights"]),
         imgsz=int(detector_data["imgsz"]),
         conf=float(detector_data["conf"]),
         device=str(detector_data["device"]),
+        kind=detector_kind,
     )
 
     confirm_data = _require(data, "confirm")
