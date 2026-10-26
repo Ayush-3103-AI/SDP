@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import math
 import queue
 import subprocess
 import threading
@@ -13,6 +15,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from functools import partial
 from itertools import islice
+from types import SimpleNamespace
 
 from xqi import ui_data
 from xqi.detect import ConfirmationTracker
@@ -20,7 +23,15 @@ from xqi.explain import crop
 from xqi.explain.counterfactual import gcode, recipe_to_proposals
 from xqi.gate import event_verdict, gate
 from xqi.store import Store
-from xqi.types import DECK_RECIPES, ConfirmedDefect, EventVerdict, Frame, PrinterState
+from xqi.types import (
+    DECK_RECIPES,
+    ConfirmedDefect,
+    EventVerdict,
+    Frame,
+    OperatorDecision,
+    PrinterState,
+    Proposal,
+)
 from xqi.verify import Verifier
 
 log = logging.getLogger(__name__)
@@ -103,6 +114,8 @@ class Orchestrator:
                     ui_data.save_latest_frame(self.store.path.parent, frame.image, dets)
                 for cd in self.tracker.update(frame, dets):
                     self.handle_event(cd, frame)
+                self.process_operator_decisions()
+                self.check_timeouts()
                 for outcome in self.verifier.tick(frame.ts, {d.cls for d in dets}):
                     self.store.write_outcome(outcome)
         except KeyboardInterrupt:
@@ -167,6 +180,80 @@ class Orchestrator:
         model = getattr(self.detector, "model", None)
         if self.cfg.mode != "gated-recipe" and self.cfg.attribution.enabled and model is not None:
             self.jobs.put(partial(self._heatmap, cd, frame, model))  # FR-009: after dispatch
+
+    def process_operator_decisions(self) -> None:
+        """FR-017/018: the UI is untrusted, so every apply/modify is re-gated on the current state."""
+        pending = {row["defect_id"]: row for row in self.store.pending_events()}
+        for dec in self.store.new_decisions():
+            self.store.mark_consumed(dec["id"])
+            event = pending.pop(dec["defect_id"], None)
+            if event is None:  # unknown event, or one an earlier decision already consumed
+                self._ignore(dec, "no pending event")
+                continue
+            self._clear_pending(event)
+            choice, cd = dec["choice"], self._event(event)
+            if choice in ("pause", "stop"):
+                ok = self.printer.pause() if choice == "pause" else self.printer.estop()
+                self._log_action(cd, "operator", ["pause"] if choice == "pause" else ["M112"], ok, self.clock())
+            elif choice in ("apply", "modify"):
+                self._regate(cd, dec)
+            else:
+                log.info("%s %s: operator %s", cd.defect_id, cd.cls, choice)  # reject
+
+    def _regate(self, cd, dec) -> None:
+        rows = self.store.query(
+            "SELECT proposal_id, defect_id, cause, var, from_value, delta, to_value, gcode_json, counterfactual"
+            " FROM proposals WHERE proposal_id = ? AND defect_id = ?", (dec["proposal_id"], cd.defect_id))
+        if not rows:
+            self._ignore(dec, f"unknown proposal {dec['proposal_id']}")
+            return
+        row = rows[0]
+        row["gcode"] = tuple(json.loads(row.pop("gcode_json")))
+        p = Proposal(**row)
+        state = self._state()
+        if dec["choice"] == "modify":
+            delta = dec["modified_delta"]
+            if delta is None or not math.isfinite(delta):
+                self._ignore(dec, f"bad modified_delta {delta}")
+                return
+            x = state.setpoint(p.var) if state is not None else p.from_value
+            p = Proposal(f"{p.proposal_id}-op{dec['id']}", cd.defect_id, "operator", p.var, x, delta, x + delta,
+                         gcode(p.var, x + delta), f"Operator modify: {p.var} {x:g}→{x + delta:g} ({delta:+g}).")
+        g = gate(p, state, self.clock(), self.cfg)
+        if dec["choice"] == "modify":
+            self.store.write_proposal(p, g)  # gate_json carries the clip reason
+        if not g.passed:
+            self.store.write_alert(self.clock(), "decision_blocked",
+                                   f"{dec['choice']} {p.proposal_id}: {g.layers[-1].reason}")
+            return
+        self._dispatch(cd, "operator", list(g.final_gcode), p.proposal_id)
+
+    def check_timeouts(self) -> None:
+        """FR-019: an unanswered card past its deadline gets cfg.hitl.timeout_action."""
+        now = self.clock()
+        for event in self.store.pending_events():
+            if event["deadline_ts"] is None or now < event["deadline_ts"]:
+                continue
+            decision = OperatorDecision(None, event["defect_id"], "timeout", None, "loop", _iso(),
+                                        now - event["t_gate"])
+            self.store.mark_consumed(self.store.insert_decision(decision))
+            self._clear_pending(event)
+            if self.cfg.hitl.timeout_action == "pause":
+                self._log_action(self._event(event), "timeout", ["pause"], self.printer.pause(), self.clock())
+
+    def _event(self, event) -> SimpleNamespace:
+        """The defect_id/cls pair _dispatch and _log_action need, for a stored event."""
+        rows = self.store.query("SELECT cls FROM defects WHERE defect_id = ?", (event["defect_id"],))
+        return SimpleNamespace(defect_id=event["defect_id"], cls=rows[0]["cls"] if rows else "?")
+
+    def _clear_pending(self, event) -> None:
+        verdict = EventVerdict(event["defect_id"], event["verdict"], event["reason"],
+                               tuple(json.loads(event["proposal_ids_json"])))
+        self.store.write_verdict(verdict, t_gate=event["t_gate"], deadline_ts=event["deadline_ts"])
+
+    def _ignore(self, dec, why) -> None:
+        self.store.write_alert(self.clock(), "decision_ignored",
+                               f"decision {dec['id']} ({dec['choice']} {dec['defect_id']}): {why}")
 
     def _dispatch(self, cd, source, lines, proposal_id=None) -> float:
         ok = self.printer.send_gcode(lines) or self.printer.send_gcode(lines)  # P3: one retry
