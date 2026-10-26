@@ -114,3 +114,25 @@ BROKE:     Nothing.
 NEXT:      Gate (T-0021 etc.) imports round_half_up/gcode from xqi.explain.counterfactual so G-code rounding stays
            in one helper. The Explainer passes defect_id=cd.defect_id. The recipe speed Δ −20 exceeds the L2 step
            of 10, so the gate clips it, as gated-recipe mode intends.
+
+## 2026-10-26 — T-0019: Implement the telemetry sensor checks (parallel run)
+BUILT:     xqi/explain/sensors.py: check(history, now, cfg), a pure function per 07 §5. It flags
+           heater_deviation:nozzle|bed when the continuous run of |act-tgt| > cfg.sensors.temp_dev_c, ending at the
+           latest sample, has lasted more than temp_dev_s. It flags settling:<v> for each v in cfg.sensors.settle_s
+           whose target changed less than settle_s ago (the latest of last_change_ts[v] and any target step seen in
+           the history). It flags printer_not_printing when the state is not "Printing". Empty history returns
+           ("state_unavailable",). tests/test_sensors.py has the table-driven tests.
+RESULT:    A 6 °C deviation for 12 s → heater_deviation:nozzle; for 8 s → (); exactly 5 °C → no flag (strict >).
+           A nozzle target changed 30 s ago → settling:nozzle_temp (from both the history and last_change_ts). A bed
+           change 60 s ago still settles while the nozzle (45 s) does not. Empty history → ("state_unavailable",).
+           Merged t0019 into main with --no-ff, no conflicts. `pytest -q` → 84 passed (11 new); ruff clean on the
+           tracked tree (--extend-exclude .claude).
+SURPRISE:  - A target change comes from both last_change_ts (our own commands) and history diffs (slicer-issued
+             M104/M140), so a G-code target change also counts as settling.
+           - The deviation duration is measured from the first deviating sample still in the history. If the window
+             is shorter than temp_dev_s, the flag can fire late, never early (conservative for APPLY blocking).
+           - The branch added an empty xqi/explain/__init__.py; main already had an identical one, so the merge
+             didn't touch it.
+BROKE:     Nothing.
+NEXT:      The Explainer and event_verdict/L4 consume these flags: any flag blocks APPLY, and state_unavailable maps
+           to ESCALATE per §4 row 4.
