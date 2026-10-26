@@ -87,7 +87,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0018 EigenCAM | C | SHOULD | TODO |
 | T-0019 Sensor checks | C | MUST | DONE |
 | T-0020 Explainer | C | MUST | TODO |
-| T-0021 Gate L1+L2 | C | MUST | TODO |
+| T-0021 Gate L1+L2 | C | MUST | DONE |
 | T-0022 Gate L3+verdict | C | MUST | TODO |
 | T-0023 Gate property + recipe audit | C | MUST | TODO |
 | T-0024 Derive L3 window | C | MUST | BLOCKED |

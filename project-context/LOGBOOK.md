@@ -158,3 +158,23 @@ SURPRISE:  - Taken literally, "Euler at the call rate" with a single 8 s step gi
 BROKE:     Nothing.
 NEXT:      OctoPrintClient (the real Printer, with mocked HTTP) and the gate/loop tickets can use FakePrinter as
            their printer double.
+
+## 2026-10-26 — T-0021: Implement safety gate layers L2 (rate/cooldown) and L1 (physical limits) (parallel run)
+BUILT:     New xqi/gate.py has gate(p, state, now, cfg) -> GateDecision, a pure function (07 §3, P4). Order:
+           fail-closed state check -> L2 (cooldown reject, then clip |delta| to step) -> round_half_up -> L1
+           (physical limits) -> L3 stub (always passes). It also holds round_half_up(x) = floor(x + 0.5) and the
+           integer G-code map for M104/M140/M221/M220. Every LayerResult carries a readable reason, e.g.
+           'L2: clipped +15 → +5 °C', 'L2: cooldown 10s < 45s', 'L1: 245 °C outside [170, 240]'. The gate reads only
+           cfg.envelope.L1 and cfg.envelope.L2.
+RESULT:    Table tests pass: clip +15 -> +5 °C (flow +15 -> +10 gives M221 S110), cooldown reject at 10 s < 45 s,
+           physical reject at 245 °C, rounding 240.5 -> 241 -> L1 reject, and state None / NaN setpoint / NaN
+           last_change / NaN delta -> passed=False with reason 'state_unavailable'. On reject, final_delta = 0.0,
+           final_value = current setpoint, final_gcode = (). Merged t0021 into main with --no-ff, no conflicts.
+           `pytest -q` → 98 passed (10 new in tests/test_gate.py); ruff clean on the tracked tree (--extend-exclude .claude).
+SURPRISE:  - No shared round-half-up helper existed yet. T-0016 says the gate must use the same helper, so it now
+             lives in xqi/gate.py as round_half_up.
+           - GateDecision has no top-level reason field, so 'state_unavailable' goes into a single LayerResult tagged L1.
+BROKE:     Nothing. Only new files were added.
+NEXT:      T-0022 (L3 window + event_verdict / L4) replaces the L3 stub. T-0016's counterfactual.py should import
+           round_half_up (and GCODE if needed) from xqi.gate, not define its own. T-0023 property tests should allow
+           |final_delta| <= step + 0.5 for non-integer setpoints (rounding).
