@@ -535,3 +535,28 @@ SURPRISE:  - 09 §Store says the loop only sets `consumed` on operator_decisions
 BROKE:     Nothing. The existing 12 orchestrator tests still pass. If the detector raises on a frame, the decision and
            timeout steps are skipped for that frame (the existing `continue`); this is bounded by the 10-failure pause.
 NEXT:      Take the next step from SEQUENCE.md. Open item: propose the 09 §Store timeout-row note as a DESCEND.
+
+## 2026-10-26 — T-0036: Write the latency and VRAM report (parallel run)
+BUILT:     scripts/eval_latency.py joins defects/explanations/verdicts/actions per defect in each runs/<id>/events.sqlite
+           (through Store.open_readonly + query) and reports p50/p95/max for confirm→cause, cause→gate, added
+           (t_gate−t_conf), gate→dispatch (auto), end-to-end (auto) and critical end-to-end. --bench (GPU only) loads
+           YOLO11-S and runs it, then the cause model + qhat, times 20 warm-up + 500 random crops through
+           Explainer.explain + gate + event_verdict, and reads torch.cuda.max_memory_allocated (reserved is shown too).
+           It writes NFR-001/002/011 PASS/FAIL/NO DATA lines and has --selftest. Also tests/test_eval_latency.py and the
+           runbook docs/gpu-runs/T-0036.md (batch G4).
+RESULT:    Selftest: a synthetic store of 100 auto events with added = 1..100 ms gives p50 50.5 / p95 95.05 / max
+           100 ms, and end-to-end = +100 ms. One critical event at 200 ms. A failed (ok=0) dispatch is excluded. Bench
+           loop checked on CPU with a stub cause model: 12 timings, verdict APPLY. Merged t0036 (87270c8) into main
+           with --no-ff (759e013), no conflicts. `pytest -q` -> 192 passed, 4 deselected in 34 s; ruff clean;
+           `--selftest` prints "selftest ok". Done-when is still open: reports/latency.md comes from the RTX 3050
+           --bench run and is deliberately not committed from CPU. Status WAITING-GPU.
+SURPRISE:  - PrinterState.state is 'Printing' (capitalised). With 'printing', sensors.check flags printer_not_printing
+             and the bench verdict silently turns into PROPOSE. scripts/gate_audit.py uses lowercase too, but that
+             does not matter for the gate alone.
+           - xqi/__main__.py still passes explainer=None, so CLI runs write no explanations and auto mode never
+             dispatches non-critical events. Run-store stages other than critical end-to-end stay empty until that
+             is wired in.
+BROKE:     Nothing. No shared files were touched.
+NEXT:      The GPU laptop runs docs/gpu-runs/T-0036.md (needs models/yolo/best.pt from T-0002) and pushes
+           reports/latency.md. Then verify the bench heading names the RTX 3050 and the three NFR lines are present,
+           and close #36. NFR-002 will most likely read NO DATA until an auto-mode run store exists (T-0039 rig).
