@@ -5,8 +5,15 @@ from pathlib import Path
 import pytest
 
 from xqi.config import load
-from xqi.gate import gate, round_half_up
-from xqi.types import PrinterState, Proposal
+from xqi.gate import event_verdict, gate, l3_pass, round_half_up
+from xqi.types import (
+    CauseEstimate,
+    CauseSet,
+    ConfirmedDefect,
+    GateDecision,
+    PrinterState,
+    Proposal,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CFG = load(ROOT / "config" / "default.yaml")
@@ -117,3 +124,84 @@ def test_nan_delta_fails_closed():
 
     assert not d.passed
     assert d.layers[0].reason == "state_unavailable"
+
+
+def test_l3_toward_window_passes_from_outside():
+    # 235 is above the window max 225, but 230 is closer to it.
+    d = gate(_proposal(from_value=235.0, delta=-5.0), _state(nozzle=235.0), NOW, CFG)
+
+    assert d.passed and d.final_gcode == ("M104 S230",)
+    assert d.layers[-1].layer == "L3" and d.layers[-1].passed
+
+
+def test_l3_rules():
+    window = (195.0, 225.0)
+    assert l3_pass(235.0, 230.0, window)
+    assert not l3_pass(220.0, 230.0, window)
+    assert l3_pass(220.0, 225.0, window)
+    assert not l3_pass(230.0, 230.0, window)  # equal distance is not a decrease
+
+
+def test_l3_rejects_moving_out_of_window():
+    d = gate(_proposal(from_value=225.0, delta=5.0), _state(nozzle=225.0), NOW, CFG)
+
+    assert not d.passed and d.final_gcode == ()
+    assert d.layers[-1].layer == "L3" and not d.layers[-1].passed
+    assert d.layers[-1].reason == "L3: 230 °C moves away from [195, 225]"
+
+
+def _cd(cls="under_extrusion"):
+    return ConfirmedDefect(
+        defect_id="d1", cls=cls, frame_id=1, t0=NOW - 5, t_conf=NOW, conf=0.9,
+        xyxy=(0.0, 0.0, 1.0, 1.0), area_frac=0.01, recent_hits=4, severity=0.5,
+        critical=cls in ("clog", "layer_shift", "spaghetti"),
+    )
+
+
+def _dec(pid="p1", passed=True):
+    return GateDecision(pid, passed, False, 3.0 if passed else 0.0, 213.0, (), ())
+
+
+EST = CauseEstimate({"nozzle_temp_low": 0.8, "none": 0.2}, "nozzle_temp_low", 0.8)
+ONE = CauseSet(("nozzle_temp_low",), 0.1, 0.5)
+
+
+@pytest.mark.parametrize(
+    "row, kw, verdict, reason, ids",
+    [
+        (1, {"cd": _cd("spaghetti")}, "CRITICAL", "estop", ()),
+        (2, {"mode": "baseline"}, "APPLY_RAW", "deck_recipe", ()),
+        (3, {"mode": "gated-recipe", "decisions": [_dec("a"), _dec("b", False)]}, "APPLY",
+         "recipe", ("a",)),
+        (3, {"mode": "gated-recipe", "decisions": [_dec("a", False)]}, "NOOP", "recipe_blocked", ()),
+        (4, {"state": _state(nozzle=math.nan)}, "ESCALATE", "state_unavailable", ()),
+        (4, {"state": None}, "ESCALATE", "state_unavailable", ()),
+        (5, {"cset": CauseSet((), 0.1, 0.5)}, "ESCALATE", "no_confident_cause", ()),
+        (5, {"cset": None}, "ESCALATE", "no_confident_cause", ()),
+        (6, {"cset": CauseSet(("none",), 0.1, 0.5)}, "NOOP", "no_actionable_cause", ()),
+        (7, {"cset": CauseSet(("misalignment", "flow_low"), 0.1, 0.5)}, "ESCALATE",
+         "mechanical", ()),
+        (8, {"decisions": [_dec("a", False)]}, "ESCALATE", "outside_envelope", ()),
+        (8, {"decisions": []}, "ESCALATE", "outside_envelope", ()),
+        (9, {}, "APPLY", "L4: pass", ("p1",)),
+        (10, {"mode": "advisory"}, "PROPOSE", "advisory", ("p1",)),
+        (10, {"est": CauseEstimate({"nozzle_temp_low": 0.55}, "nozzle_temp_low", 0.55)},
+         "PROPOSE", "L4: p_top 0.55 < 0.6", ("p1",)),
+        (10, {"est": None}, "PROPOSE", "L4: no cause estimate", ("p1",)),
+        (10, {"flags": ("temp_unstable",)}, "PROPOSE", "L4: sensor flags temp_unstable", ("p1",)),
+        (10, {"cset": CauseSet(("nozzle_temp_low", "flow_low"), 0.1, 0.5),
+                  "decisions": [_dec("a"), _dec("b")]}, "PROPOSE", "L4: |C| = 2", ("a", "b")),
+        (10, {"decisions": [_dec("a"), _dec("b")]}, "PROPOSE", "2 surviving proposals",
+         ("a", "b")),
+    ],
+)
+def test_event_verdict_table(row, kw, verdict, reason, ids):
+    args = {"mode": "auto", "cd": _cd(), "cset": ONE, "est": EST, "flags": (), "decisions": [_dec()],
+                "state": _state()}
+    args.update(kw)
+
+    v = event_verdict(cfg=CFG, **args)
+
+    assert (v.defect_id, v.verdict, v.reason, v.proposal_ids) == (
+        args["cd"].defect_id, verdict, reason, ids
+    )
