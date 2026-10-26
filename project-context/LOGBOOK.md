@@ -648,3 +648,23 @@ BROKE:     Nothing. The dashboard's proposal_card is now a module-level function
 NEXT:      Human pilot per docs/gpu-runs/T-0043.md, same sitting as T-0037/T-0038; push reports/study/pilot.sqlite,
            reports/img/study_off.png, reports/img/study_on.png, then verify and close #43. Before T-0041/T-0045: make
            the loop save a crop per event (defects.crop_path).
+
+## 2026-10-26 — T-0044: Write the operator-study analysis script (parallel run)
+BUILT:     scripts/analyze_study.py. For each participant and condition it computes accuracy (recomputed from the rows:
+           apply/modify on the true cause, or pause/stop when the cause has no setpoint action, i.e. misalignment),
+           median decision time, NASA-TLX raw mean and trust mean. It gives paired ON − OFF differences with
+           percentile-bootstrap 95 % CIs (10 000 resamples, seed 0), applies the protocol exclusions it can check from
+           the data (did not finish both blocks; median decision under 2 s) plus --exclude IDs for facilitator notes,
+           and writes reports/operator_study.md. The report states n, says the study is underpowered, and compares
+           with Senoner's +7.7 pp. Also tests/test_analyze_study.py and the runbook docs/gpu-runs/T-0044.md.
+RESULT:    3/3 new tests pass. `--selftest` (40 synthetic participants, planted +10 pp, 60 % -> 70 %) prints accuracy
+           +9.2 pp, CI [+3.1, +15.4], so the CI excludes 0. Merged t0044 (3367e8e) into main with --no-ff, no
+           conflicts. `pytest -q` -> 208 passed, 5 deselected in 77 s; ruff clean. Done-when (report generated from
+           the pilot data) waits for reports/study/pilot.sqlite from the T-0043 pilot. Status WAITING-GPU (no GPU
+           needed). reports/operator_study.md was not fabricated.
+SURPRISE:  The stored `correct` column in study.sqlite counts only apply/modify on the known cause and has no pause/stop
+           rule for misalignment, so the script recomputes accuracy instead of trusting it. With the pilot's n = 1 the
+           bootstrap CI collapses to a single point; the report says so. No merge conflicts.
+BROKE:     Nothing. Ruff ISC004 flagged two implicit string concatenations in a list; now wrapped in parentheses.
+NEXT:      Run docs/gpu-runs/T-0044.md right after the T-0043 pilot (same sitting, one command, ~2 min); push
+           reports/operator_study.md, then verify and close #44. Re-run on the T-0045 data later.

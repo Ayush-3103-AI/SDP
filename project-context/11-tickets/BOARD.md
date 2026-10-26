@@ -110,7 +110,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0041 Run campaign | H | MUST | BLOCKED |
 | T-0042 Rig results | C | MUST | BLOCKED |
 | T-0043 Study mode | C | SHOULD | WAITING-GPU |
-| T-0044 Study analysis | C | SHOULD | TODO |
+| T-0044 Study analysis | C | SHOULD | WAITING-GPU |
 | T-0045 Run study | H | SHOULD | BLOCKED |
 | T-0046 Acceptance report | C | MUST | BLOCKED |
 | T-0047 Report/paper | P | MUST | BLOCKED |
