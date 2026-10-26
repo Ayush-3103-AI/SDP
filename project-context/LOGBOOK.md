@@ -285,3 +285,29 @@ NEXT:      The orchestrator ticket calls gate() for each proposal (or each recip
            and passes the decisions to event_verdict. Rows 1 and 2 return proposal_ids=() with the configured
            action ('estop'/'pause') or 'deck_recipe' as the reason, so the caller dispatches estop/pause or the
            raw recipe itself.
+
+## 2026-10-26 — T-0037: Build the dashboard live view (read-only) (parallel run)
+BUILT:     xqi/ui_data.py holds all of the UI's SQL as pure functions over a Store: resolve_run (an id, or 'latest'
+           = the newest runs/*/events.sqlite), latest_state, run_mode, last_events (a UNION over defects, verdicts,
+           actions and alerts, newest first, n=50 by default) and recent_alerts (alerts within 30 s of the latest
+           telemetry, both on the loop's clock). It also holds save_latest_frame, the loop-side writer: downscale
+           to 640 px wide, draw red boxes, write a temp file and swap it in with os.replace. xqi/ui.py is Streamlit
+           layout only (red st.error banner per alert, frame, mode/printer metrics, last-50 events table) inside
+           st.fragment(run_every=0.5); read-only. launch(run) wraps `streamlit run xqi/ui.py -- --run R`.
+           Runbook: docs/gpu-runs/T-0037.md.
+RESULT:    tests/test_ui_data.py: 7/7 on a fixture DB (latest state, mode, empty DB, last-N events capped at 50
+           newest first, alerts newest first with old ones dropped, resolve_run latest/id/missing, latest.jpg
+           writer). An in-process streamlit AppTest renders ui.py and asserts the red banner, Mode=advisory,
+           Printer=Printing, a 50-row table and the image. Merged t0037 into main with --no-ff, no conflicts.
+           `pytest -q` -> 143 passed, 2 deselected; ruff clean on the tracked tree (--extend-exclude .claude).
+           Done-when part 2 (manual check on a replay run + reports/img/ui_live.png) is WAITING-GPU.
+SURPRISE:  The Spec says to add the latest.jpg write to the orchestrator 'in this ticket' and lists
+           `python -m xqi ui`, but xqi/orchestrator.py and xqi/__main__.py are created by T-0033, which is not in
+           Depends on. Neither file was created (avoids add/add conflicts with T-0033). Detections are buffered in
+           the store 25 frames at a time, so the UI can't draw boxes from the DB in time; the loop draws them into
+           latest.jpg instead. First AppTest run takes 5-16 s (streamlit init), later ones 0.05 s.
+BROKE:     Nothing. On Windows os.replace can fail while the UI holds latest.jpg open; save_latest_frame then
+           returns None and the next 0.5 s save retries, so the loop never crashes on the UI.
+NEXT:      When T-0033 merges: (1) Orchestrator.run calls ui_data.save_latest_frame(run_path, frame.image, dets)
+           at most every 0.5 s; (2) __main__ `ui --run R` dispatches to xqi.ui.launch(R). Then the team laptop runs
+           docs/gpu-runs/T-0037.md (replay run + screenshot to reports/img/ui_live.png) with T-0038.
