@@ -335,3 +335,27 @@ NEXT:      T-0034 orchestrator: ConfirmationTracker(cfg.confirm.hits, cfg.confir
            estop/pause action (CriticalConfig is not a dict). Optional 09 note:
            `ConfirmationTracker.__init__(hits, rearm_frames, severity_cfg, critical=CRITICAL)`. Once T-0002
            delivers data/raw/reu_code, port its hit counts into confirm.hits.
+
+## 2026-10-26 — T-0027: Implement the OctoPrint REST client (parallel run)
+BUILT:     OctoPrintClient(cfg, clock) in xqi/printer.py. requests.Session with the X-Api-Key header from
+           os.environ[cfg.printer.api_key_env]. GET /api/printer (temps, state), GET /api/job (progress),
+           POST /api/printer/command (G-code), POST /api/job pause/resume; estop sends M112. Every request uses
+           timeout=cfg.printer.timeout_s with one retry. flow/speed start at cfg.printer.nominal and change only
+           after a successful M221/M220 send; last_change_ts tracked locally for every var. M104/M140/M220/M221
+           parsing moved out of FakePrinter into a shared _setpoint() helper so both printers parse G-code alike.
+RESULT:    tests/test_octoprint.py 10/10 with Session.request monkeypatched (no real network): state parsed from
+           a recorded /api/printer JSON + progress from /api/job; send_gcode posts exactly {"commands": [...]}
+           and tracks setpoints; timeout on both tries -> False, flow_pct/last_change_ts unchanged; connection
+           error retried once; pause/resume/estop bodies; key never in caplog text or repr (even when an
+           exception message contains it); missing env var -> KeyError naming the var.
+           Merged t0027 into main with --no-ff, no conflicts. `pytest -q` -> 158 passed, 2 deselected; ruff clean
+           on the tracked tree (--extend-exclude .claude). Done-when met.
+SURPRISE:  08 P3 says retry on non-2xx or timeout; the ticket only says connection error. The client retries
+           once on any RequestException or non-2xx (the broader P3 rule). M220/M221/M104/M140 S-values are
+           absolute, so the retry is idempotent. The orchestrator must NOT add its own retry (would make up to
+           4 attempts per send).
+BROKE:     Nothing. FakePrinter behaviour unchanged after the _setpoint refactor (test_printer_fake green).
+NEXT:      Orchestrator: wrap get_state in try/except OSError -> state=None so P3 row 4 escalates (get_state raises
+           OSError when /api/printer fails after its retry; a failed /api/job only sets progress_pct=None). The
+           __main__/orchestrator factory picks OctoPrintClient vs FakePrinter from cfg.printer.kind. Real-printer
+           (hw marker) checks not run, per the no-hardware rule.
