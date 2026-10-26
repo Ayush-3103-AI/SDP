@@ -196,3 +196,24 @@ SURPRISE:  The ticket test asks for 25 %, which a 10-frame on/off pattern cannot
 BROKE:     Nothing. Only new files were added.
 NEXT:      The orchestrator (P3/P1) calls watch() after an applied action, tick() on every frame and close() at run
            end, and passes each Outcome to store.write_outcome.
+
+## 2026-10-26 — T-0030: Implement the YOLO11 detector wrapper (parallel run)
+BUILT:     xqi/detect.py has Detector(weights, imgsz, conf, device, model=None). It wraps ultralytics.YOLO and
+           imports it lazily, so it is only loaded when no model is injected. It passes imgsz, conf and device to
+           predict and also re-applies the conf filter. normalise() lower-cases names, turns spaces and hyphens
+           into _, strips dots, then applies ALIASES (over_extr -> over_extrusion, under_extr -> under_extrusion).
+           NO_DEFECT names are dropped, and an unknown name raises ValueError at init. area_frac = box area /
+           frame area. tests/test_detect.py uses a stub model and a fake Results object. The runbook is
+           docs/gpu-runs/T-0030.md.
+RESULT:    Fake-model tests: class mapping ('Over-extr.' -> over_extrusion, 'Layer Shift' -> layer_shift,
+           'no defect' dropped), conf filter (0.1 dropped, 0.25 kept), area_frac and xyxy, empty result, and
+           unknown name -> ValueError at init. The gpu test (best.pt, 1 frame at 1920x1056, < 60 ms after 3
+           warm-up frames) is written and deselected by default. Merged t0030 into main with --no-ff, no
+           conflicts. `pytest -q` -> 108 passed, 1 deselected (gpu); ruff clean on the tracked tree
+           (--extend-exclude .claude). Status WAITING-GPU.
+SURPRISE:  The real class names in best.pt are unknown until T-0002 delivers the weights. ALIASES and NO_DEFECT
+           are guesses from the ticket's example. Runbook step 2 prints model.names so we can check them.
+BROKE:     Nothing. Only new files were added.
+NEXT:      GPU batch G1 (with T-0008), once T-0002 delivers models/yolo/best.pt: run docs/gpu-runs/T-0030.md and
+           close #30 if step 3 passes. If a class name doesn't map, add an alias in xqi/detect.py.
+           ConfirmationTracker (also in xqi/detect.py per 09) belongs to its own ticket.
