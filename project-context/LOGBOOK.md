@@ -430,3 +430,34 @@ BROKE:     Nothing. In gated-recipe, auto and advisory modes a non-critical defe
 NEXT:      T-0034: gated-recipe, auto and advisory paths; move the critical explain_only call onto the worker
            queue (synchronous for now, ponytail comment); wire the real Explainer into __main__. Operator-decision
            processing and check_timeouts (FR-019) are also still open.
+
+## 2026-10-26 — Parallel run 1 (24 unblocked CODE tickets, user-requested) + camera-roll audit
+BUILT:     The user asked for a parallel agent setup with no heavy compute on this laptop. A workflow built each
+           unblocked CODE ticket in its own git worktree, test-first, in dependency order. One serial integrator
+           merged each ticket into main, re-ran the suite and ruff, updated BOARD/LOGBOOK and pushed.
+           This overrides "one ticket per session" at the user's request. SEQUENCE order is unchanged: every
+           ticket started only after its dependencies were merged.
+           Earlier this session: audited the previous team's Drive "Camera Roll" (docs/inherited/camera_roll_report.html,
+           HANDOVER.md draft, comment on #2). It holds 5,490 unlabelled stills of one print, so T-0002 item 2 is partial.
+RESULT:    16 of 24 merged and pushed. DONE (13): T-0011 0014 0016 0019 0020 0021 0022 0026 0027 0029 0031 0033 0035.
+           WAITING-GPU (3), each with a runbook in docs/gpu-runs/:
+           - T-0023: 100k-case @slow property run, CPU only, under 2 min
+           - T-0030: gpu test, needs best.pt
+           - T-0037: manual replay check + screenshot
+           BLOCKED-SPEC (1): T-0018 (below). Skipped because they depend on T-0018: T-0034 → 0051 → 0036, 0038,
+           0052 → 0043 → 0044.
+           Main: 174 passed, 3 deselected in 33 s; ruff clean.
+SURPRISE:  - T-0018: 07 §11's sign rule "if ΣH < 0 then H ← −H" is degenerate. Ā is row-centred, so ΣĀv₁ ≡ 0 and the
+             sign depends on rounding noise. Proposed DESCEND: test Σ(A v₁) instead. Branch t0018 (c1b8ed4)
+             implements that and is green, not merged.
+           - T-0023 found that gate() rounds half-up after the L2 clip, so a fractional setpoint can exceed the step
+             (210.5 + 5 → S216, |Δ| 5.5 > step 5). The 07 §3 invariant |Δ'| ≤ step breaks only for non-integer
+             setpoints, which the gate itself never sends. Not fixed: the obvious fix flips the L1 verdict of
+             tests/test_gate.py::test_rounding_pushes_over_l1_limit, so it needs a user decision.
+           - One full-suite run during the parallel build took 52 min because of CPU contention from the agents'
+             processes. With nothing else running it takes 33 s.
+           - T-0011 added an additive build_model(..., pretrained=True) flag (tests never download weights).
+             T-0016 added make_proposal(..., defect_id='').
+BROKE:     Nothing. Added .claude to ruff extend-exclude and .claude/worktrees/ to .gitignore (agent worktrees).
+NEXT:      User decision on the T-0018 DESCEND. If approved: edit 07 §11, merge t0018, then a second parallel run for
+           T-0034 → 0051 → {0036, 0038, 0052} → 0043 → 0044. T-0002 (HUMAN) is still the critical-path blocker.

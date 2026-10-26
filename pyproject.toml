@@ -31,6 +31,9 @@ explicit = true
 torch = { index = "pytorch-cu126" }
 torchvision = { index = "pytorch-cu126" }
 
+[tool.ruff]
+extend-exclude = [".claude"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = '-m "not gpu and not hw and not slow"'
