@@ -1,20 +1,26 @@
-"""Main loop (08 P1) and event handling (08 P3): critical-first and baseline branches."""
+"""Main loop (08 P1) and event handling (08 P3): every mode's action path."""
 
 from __future__ import annotations
 
 import logging
+import queue
 import subprocess
+import threading
 import time
 import uuid
 from collections import deque
 from dataclasses import asdict
 from datetime import UTC, datetime
+from functools import partial
 from itertools import islice
 
 from xqi import ui_data
 from xqi.detect import ConfirmationTracker
-from xqi.explain.counterfactual import gcode
-from xqi.types import DECK_RECIPES, ConfirmedDefect, EventVerdict, Frame
+from xqi.explain import crop
+from xqi.explain.counterfactual import gcode, recipe_to_proposals
+from xqi.gate import event_verdict, gate
+from xqi.store import Store
+from xqi.types import DECK_RECIPES, ConfirmedDefect, EventVerdict, Frame, PrinterState
 from xqi.verify import Verifier
 
 log = logging.getLogger(__name__)
@@ -56,10 +62,16 @@ class Orchestrator:
         )
         self.verifier = Verifier(cfg.verify.window_s, cfg.verify.settle_s)
         self.history = deque(maxlen=HISTORY_LEN)
+        self.jobs = queue.Queue()  # off-latency-path work (FR-009 heatmaps)
+        # ponytail: one lock serialises detector and heatmap passes on the shared YOLO model;
+        # give the heatmap its own model copy if this ever stalls frames.
+        self.model_lock = threading.Lock()
 
     def run(self, max_frames: int | None = None) -> None:
         run = {"mode": self.cfg.mode, "cfg": self.cfg, "git_sha": git_sha(), "started_iso": _iso()}
         self.store.write_run(run)
+        worker = threading.Thread(target=self._work, name="xqi-worker", daemon=True)
+        worker.start()
         last_frame_ts = self.clock()
         last_poll = last_save = float("-inf")
         failures = 0
@@ -70,10 +82,11 @@ class Orchestrator:
                 last_frame_ts = frame.ts
                 if frame.ts - last_poll >= self.cfg.printer.poll_s:
                     last_poll = frame.ts
-                    self._poll()
+                    self._state()
 
                 try:
-                    dets = self.detector(frame)
+                    with self.model_lock:
+                        dets = self.detector(frame)
                 except Exception:
                     failures += 1
                     log.exception("detector failed on frame %d (%d in a row)", frame.frame_id, failures)
@@ -98,6 +111,8 @@ class Orchestrator:
             for outcome in self.verifier.close():
                 self.store.write_outcome(outcome)
             self.store.write_run({**run, "ended_iso": _iso()})
+            self.jobs.put(None)
+            worker.join()
             self.store.close()
 
     def handle_event(self, cd: ConfirmedDefect, frame: Frame) -> None:
@@ -114,23 +129,83 @@ class Orchestrator:
         self._log_defect(cd)
         if self.cfg.mode == "baseline":  # FR-023: deck recipe as absolute setpoints, no gate
             lines = [line for var, value in DECK_RECIPES[cd.cls].items() for line in gcode(var, value)]
-            ok = self.printer.send_gcode(lines)
-            t_disp = self.clock()
-            action_id = self._log_action(cd, "baseline", lines, ok, t_disp)
-            if ok:
-                self.verifier.watch(action_id, cd.defect_id, cd.cls, t_disp)
+            t_disp = self._dispatch(cd, "baseline", lines)
             verdict = EventVerdict(cd.defect_id, "APPLY_RAW", "deck_recipe", ())
             self.store.write_verdict(verdict, t_gate=t_disp)
-        # gated-recipe / auto / advisory branches: T-0034. Until then nothing is sent.
+            return
+
+        state = self._state()
+        est = cset = None
+        flags, props = (), []
+        if self.cfg.mode == "gated-recipe":  # 07 §4 row 3: L1–L3 on the recipe, no cause model, no L4
+            if state is not None:
+                props = recipe_to_proposals(cd.cls, state, cd.defect_id)
+        elif self.explainer is not None:
+            try:
+                est, cset, flags, props = self.explainer.explain(cd, frame, list(self.history))
+            except Exception:  # no cause set → 07 §4 row 5 escalates
+                log.exception("explanation failed for %s", cd.defect_id)
+            else:
+                self.store.write_explanation(cd.defect_id, est, cset, cset.qhat, flags, self.clock())
+        now = self.clock()
+        decisions = [gate(p, state, now, self.cfg) for p in props]
+        verdict = event_verdict(self.cfg.mode, cd, cset, est, flags, decisions, state, self.cfg)
+        t_gate = self.clock()
+        for p, g in zip(props, decisions, strict=True):
+            self.store.write_proposal(p, g)
+        pending = verdict.verdict in ("PROPOSE", "ESCALATE")
+        deadline = t_gate + self.cfg.hitl.timeout_s if pending else None
+        self.store.write_verdict(verdict, t_gate=t_gate, pending=pending, deadline_ts=deadline)
+        log.info("%s %s: %s %s", cd.defect_id, cd.cls, verdict.verdict, verdict.reason)
+
+        if verdict.verdict == "APPLY":
+            ids = verdict.proposal_ids
+            lines = [line for g in decisions if g.proposal_id in ids for line in g.final_gcode]
+            self._dispatch(cd, "auto", lines, ids[0] if len(ids) == 1 else None)
+        elif verdict.verdict == "ESCALATE" and not self.printer.pause():
+            self.store.write_alert(self.clock(), "pause_failed", f"escalate {verdict.reason} for {cd.cls}")
+        model = getattr(self.detector, "model", None)
+        if self.cfg.mode != "gated-recipe" and self.cfg.attribution.enabled and model is not None:
+            self.jobs.put(partial(self._heatmap, cd, frame, model))  # FR-009: after dispatch
+
+    def _dispatch(self, cd, source, lines, proposal_id=None) -> float:
+        ok = self.printer.send_gcode(lines) or self.printer.send_gcode(lines)  # P3: one retry
+        t_disp = self.clock()
+        action_id = self._log_action(cd, source, lines, ok, t_disp, proposal_id)
+        if ok:  # the printer client updates tracked setpoints / last_change_ts only on success
+            self.verifier.watch(action_id, cd.defect_id, cd.cls, t_disp)
+        return t_disp
+
+    def _work(self) -> None:
+        store = Store(self.store.path)  # the worker's own SQLite connection
+        try:
+            for job in iter(self.jobs.get, None):
+                try:
+                    job(store)
+                except Exception:
+                    log.exception("worker job failed")
+        finally:
+            store.close()
+
+    def _heatmap(self, cd, frame, model, store) -> None:
+        # Lazy: keeps the torch import off the start-up path.
+        from xqi.explain import attribution
+
+        with self.model_lock:
+            heat = attribution.eigencam(model, frame, self.cfg.attribution.layer, cd.xyxy)
+        path = self.store.path.parent / "heatmaps" / f"{cd.defect_id}.png"
+        attribution.save_heatmap_png(heat, crop(frame.image, cd.xyxy, 0.0), path)
+        store.write_defect(cd, heatmap_path=str(path))
+        store.write_timing(cd.defect_id, "t_heatmap", self.clock())
 
     def _log_defect(self, cd: ConfirmedDefect) -> None:
         self.store.write_defect(cd)
         self.store.write_timing(cd.defect_id, "t0", cd.t0)
         self.store.write_timing(cd.defect_id, "t_conf", cd.t_conf)
 
-    def _log_action(self, cd, source, lines, ok, t_disp) -> str:
+    def _log_action(self, cd, source, lines, ok, t_disp, proposal_id=None) -> str:
         action_id = str(uuid.uuid4())
-        self.store.write_action(action_id, cd.defect_id, None, source, lines, t_disp, ok)
+        self.store.write_action(action_id, cd.defect_id, proposal_id, source, lines, t_disp, ok)
         if ok:
             self.store.write_timing(cd.defect_id, "t_disp", t_disp)
         else:
@@ -138,7 +213,8 @@ class Orchestrator:
         return action_id
 
     def _explain_only(self, cd, frame) -> None:
-        # ponytail: synchronous after the action; T-0034 moves explanation work onto the worker queue.
+        # ponytail: synchronous after the estop/pause (P3 queues it); move it to self.jobs if the
+        # cause model must stay single-threaded with heatmaps or a critical stall matters.
         if self.explainer is None:
             return
         try:
@@ -152,11 +228,12 @@ class Orchestrator:
         ok = self.printer.pause()
         self.store.write_alert(self.clock(), kind, message if ok else f"{message}; pause failed")
 
-    def _poll(self) -> None:
+    def _state(self) -> PrinterState | None:
         try:
             state = self.printer.get_state()
-        except OSError as exc:  # telemetry is best-effort; P3 handles a missing state per event
+        except OSError as exc:  # telemetry is best-effort; P3: state=None → ESCALATE
             log.warning("get_state failed: %s", type(exc).__name__)
-            return
+            return None
         self.store.write_telemetry(state)
         self.history.append(state)
+        return state
