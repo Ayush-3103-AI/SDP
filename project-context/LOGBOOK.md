@@ -92,3 +92,25 @@ SURPRISE:  - Checking p ≥ 1−qhat directly can drop an exact tie by one ulp, 
 BROKE:     Nothing.
 NEXT:      The Explainer fills CauseSet(alpha, qhat) from load_qhat. scripts/eval_conformal.py (empirical coverage on
            LOGO folds) waits on real cause-model probs.
+
+## 2026-10-26 — T-0016: Implement proposal and counterfactual generation (severity-scaled Δ, G-code, sentence) (parallel run)
+BUILT:     xqi/explain/counterfactual.py: severity() per 07 §1; make_proposal() per §2 (severity-scaled Δ from
+           cfg.correction d_min/d_max, integer G-code, counterfactual sentence with S+W = verify.settle_s +
+           window_s = 150 s); recipe_to_proposals() (deck recipe minus the current setpoint, one Proposal per
+           variable); the shared round_half_up() and gcode() helpers. tests/test_counterfactual.py has the
+           table-driven tests.
+RESULT:    flow_low s=0 → +5, s=1 → +10 → `M221 S110` from 100. nozzle_temp_high s=0.5 from 210 → 206.5 →
+           `M104 S207` (math.floor(x+0.5)). none and misalignment → None. under_extrusion recipe from nominal →
+           3 proposals: nozzle −5, speed −20, flow +10. Merged t0016 into main with --no-ff, no conflicts.
+           `pytest -q` → 73 passed (21 new); ruff clean on the tracked tree (--extend-exclude .claude).
+SURPRISE:  - The 09 signature make_proposal(cause, p, severity, state, cfg) has no defect_id, but Proposal needs one.
+             Added an optional keyword defect_id='' so the 09 call still works. Proposal ids are deterministic:
+             '<defect_id>-<cause>' and '<defect_id>-recipe-<var>'. Recipe proposals use cause='recipe'.
+           - Cause label = cause.replace('_',' '); the flow/speed unit is '%'. The spec defines neither.
+           - severity(area_frac, recent_hits, cfg) takes the full Config (reads cfg.severity.a_ref, matching the 07 §1
+             notation). ConfirmationTracker holds only severity_cfg, so it needs the full cfg or a small wrapper.
+           - The branch had no xqi/explain/__init__.py; main already has one from T-0014, so it's a regular package.
+BROKE:     Nothing.
+NEXT:      Gate (T-0021 etc.) imports round_half_up/gcode from xqi.explain.counterfactual so G-code rounding stays
+           in one helper. The Explainer passes defect_id=cd.defect_id. The recipe speed Δ −20 exceeds the L2 step
+           of 10, so the gate clips it, as gated-recipe mode intends.
