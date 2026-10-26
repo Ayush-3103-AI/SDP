@@ -359,3 +359,24 @@ NEXT:      Orchestrator: wrap get_state in try/except OSError -> state=None so P
            OSError when /api/printer fails after its retry; a failed /api/job only sets progress_pct=None). The
            __main__/orchestrator factory picks OctoPrintClient vs FakePrinter from cfg.printer.kind. Real-printer
            (hw marker) checks not run, per the no-hardware rule.
+
+## 2026-10-26 — T-0020: Assemble the Explainer (cause model → conformal set → sensor flags → proposals) (parallel run)
+BUILT:     xqi/explain/__init__.py: crop(image, xyxy, pad) pads the pixel box by pad x its width/height and clips
+           it to the image. Explainer(cause_model, qhat, labels, cfg).explain(cd, frame, history) runs
+           cause_model.predict(crop, cd.cls), then conformal.predict_set, then a CauseSet(alpha=cfg.conformal.alpha,
+           qhat), then sensors.check(history, now=cd.t_conf), then make_proposal for each actionable member in
+           descending probability order. It does no gating. tests/test_explain.py uses a stub cause model.
+RESULT:    5 new tests in tests/test_explain.py. probs {flow_low .6, nozzle_temp_low .3, none .1} with qhat .8 ->
+           2-member set and 2 proposals ordered [flow_low, nozzle_temp_low]; {none}-only set -> 0 proposals;
+           misalignment in the set is skipped; empty history -> ('state_unavailable',) and no proposals; crop
+           shape checks pass. Merged t0020 into main with --no-ff, no conflicts. `pytest -q` -> 163 passed,
+           2 deselected; ruff clean on the tracked tree (--extend-exclude .claude). Done-when met.
+SURPRISE:  The spec does not say which state make_proposal should use or which 'now' sensors.check should use.
+           Chosen: the latest state in history by ts, and cd.t_conf (monotonic, the same clock as
+           PrinterState.ts) so explain stays pure. With empty history it returns [] proposals and the
+           gate/event_verdict handles state=None. xyxy is in pixel coordinates, as Detector produces it; the
+           cause model's probs are read in `labels` order to build the predict_set input.
+BROKE:     Nothing. xqi/explain/__init__.py imports only conformal, sensors and counterfactual, so it does not
+           pull in torch.
+NEXT:      Orchestrator (P3 handle_event) wires Explainer and gate together: build CauseModel and
+           load_qhat(cfg.conformal.qhat_file) at startup and pass them to Explainer.
