@@ -261,3 +261,27 @@ BROKE:     Nothing. Additive only: build_model gained an optional pretrained kwa
            optional input_px=224 so it can be wired from cfg.cause_model.input_px.
 NEXT:      T-0012 (LOGO training script) reuses build_model and train_one_epoch, with aug, early stop and fold
            saving per 08 P5. The real training needs a GPU plus T-0005/6/7 data and gets a runbook then.
+
+## 2026-10-26 — T-0022: Implement gate layer L3 and the event-verdict truth table (with L4) (parallel run)
+BUILT:     xqi/gate.py: replaced the L3 stub with the 07 §3 toward-window rule (l3_pass: inside W3 or the distance
+           strictly decreases; reasons 'within'/'toward'/'moves away from'). Added event_verdict(mode, cd, cset,
+           est, flags, decisions, state, cfg), which implements the 07 §4 rows in order. L4 (|C|=1, C!={none},
+           p_top>=tau, no flags) is evaluated inside it via _l4_fail, which returns the failure reason for row-10
+           PROPOSE cards. tests/test_gate.py: L3 cases plus a parametrised test_event_verdict_table.
+RESULT:    test_event_verdict_table has 19 parametrised cases covering all 10 rows, with extra cases for rows 3,
+           4, 5, 8 and 10. L3: through gate(), 235 -> 230 passes although the window max is 225 (G-code M104
+           S230); l3_pass(220, 230) rejects; through gate(), 225 -> 230 rejects with 'L3: 230 °C moves away from
+           [195, 225]'; equal distance is not a decrease. Merged t0022 into main with --no-ff, no conflicts.
+           `pytest -q` -> 136 passed, 2 deselected; ruff clean on the tracked tree (--extend-exclude .claude).
+SURPRISE:  The ticket's '220 -> 230 rejects' case can't happen through gate(), because L2 clips +10 to +5 and 225
+           is inside the window. So that case tests the pure l3_pass helper, and the gate-level rejection uses
+           225 -> 230. cfg.critical is a dataclass (CriticalConfig), not a mapping, so row 1 uses
+           getattr(cfg.critical, cd.cls, None). Spec readings (not conflicts): cset=None counts as C=∅ and gives
+           ESCALATE(no_confident_cause), which fails closed; row 4 fires when state is None or any of the four
+           setpoints is NaN; est=None fails L4 and gives PROPOSE; the advisory row-10 reason is the mode name,
+           and the auto row-10 reason is the L4 failure reason or 'N surviving proposals'.
+BROKE:     Nothing. The existing L1/L2 tests still pass, and only the stub L3 reason changed.
+NEXT:      The orchestrator ticket calls gate() for each proposal (or each recipe proposal in gated-recipe mode)
+           and passes the decisions to event_verdict. Rows 1 and 2 return proposal_ids=() with the configured
+           action ('estop'/'pause') or 'deck_recipe' as the reason, so the caller dispatches estop/pause or the
+           raw recipe itself.
