@@ -380,3 +380,28 @@ BROKE:     Nothing. xqi/explain/__init__.py imports only conformal, sensors and 
            pull in torch.
 NEXT:      Orchestrator (P3 handle_event) wires Explainer and gate together: build CauseModel and
            load_qhat(cfg.conformal.qhat_file) at startup and pass them to Explainer.
+
+## 2026-10-26 — T-0023: Write the randomised gate property test and the deck-recipe audit (parallel run)
+BUILT:     tests/test_gate_property.py is a seed-0 random property test with no hypothesis library. It runs
+           sequential dispatch in 10-proposal episodes. Start states are integer setpoints in the L1 box ±20 %
+           with random last-change times, and Δ ~ U[−50, 50]. Every dispatched change is checked against the
+           07 §3 invariant (step, L1, L3 window-or-closer, cooldown since the previous dispatch). The checker is
+           written from config and does not use gate.py. A 1 000-case test runs by default; a 100 000-case @slow
+           test writes reports/gate_property.md. scripts/gate_audit.py pushes each DECK_RECIPE from nominal
+           through gate() and writes reports/recipe_audit.md (committed). Runbook: docs/gpu-runs/T-0023.md.
+RESULT:    The 1 000-case run had 0 violations. Every layer (L1, L2, L3) both blocked and passed cases, so the test
+           is not vacuous. The checker unit test shows it flags step, L1, L3 and cooldown breaches. recipe_audit.md:
+           5 of 10 fixed recipe changes violate the envelope as written (over_extrusion nozzle/flow and stringing
+           nozzle break step+L3; under_extrusion speed and stringing speed break step). The gate clips all 5 at
+           L2. Merged t0023 into main with --no-ff, no conflicts. `pytest -q` -> 166 passed, 3 deselected; ruff
+           clean on the tracked tree (--extend-exclude .claude). Done-when still open: the 100 000-case slow run
+           is on the team laptop (CPU only, < 2 min).
+SURPRISE:  The gate rounds after the L2 clip, so a fractional setpoint can overshoot the step: 210.5 + 5 gives
+           M104 S216, a dispatched Δ of 5.5 > step 5. The property test samples integer setpoints, which is
+           realistic because Marlin stores targets and percentages as integers and the gate sends only integer
+           G-code. The report states this scope limit. Fractional states would break the invariant.
+BROKE:     Nothing. No shared files and no xqi/ code were touched.
+NEXT:      The team runs docs/gpu-runs/T-0023.md (`uv run pytest -m slow tests/test_gate_property.py`) and pushes
+           reports/gate_property.md showing 0 / 100000, then T-0023 closes. Separately, decide whether gate.py
+           should clamp |round(x+Δ')−x| ≤ step for fractional setpoints (a small T-0022 follow-up: after
+           round_half_up, step x2 back by 1 toward x when |x2 − x| > step).
