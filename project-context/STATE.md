@@ -1,11 +1,13 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice)
 
 PHASE:        5 — EXECUTE
-LAST SESSION: 2026-10-26 — camera-roll audit (T-0002 item 2 partial) + parallel run 1: 16 of 24 unblocked CODE
-              tickets merged (13 DONE, 3 WAITING-GPU), T-0018 BLOCKED-SPEC, 7 downstream tickets skipped.
-NEXT ACTION:  D1 approved: 07 §11 updated, T-0018 merged (DONE). Parallel run 2 in progress:
-              T-0034 → T-0051 → {T-0036, T-0038, T-0052} → T-0043 → T-0044.
-              T-0002 (HUMAN) is still open and still blocks the data lane (steps 27+).
+LAST SESSION: 2026-10-26 — camera-roll audit (T-0002 item 2 partial); parallel runs 1–2 built every CODE ticket that
+              needs no REU data and no printer (24 tickets): 16 DONE, 8 WAITING-GPU (team runs). One DESCEND (07 §11).
+NEXT ACTION:  Nothing CODE-only is left before the data arrives. In order:
+              1. User decides D2–D4 (below).
+              2. Team runs the waiting runbooks (docs/gpu-runs/): T-0023 now; T-0037/0038/0043/0052 any laptop;
+                 T-0030/0036 (+ T-0018 gpu test, T-0008) once best.pt arrives.
+              3. T-0002 hand-over unblocks SEQUENCE step 27 (T-0005) and the rest of the data lane.
 
 ## Load for next session
 - project-context/STATE.md (this file)
@@ -13,42 +15,58 @@ NEXT ACTION:  D1 approved: 07 §11 updated, T-0018 merged (DONE). Parallel run 2
 - the next ticket's file + the sections its Context: line names
 Nothing else.
 
-## Built so far
+## Built so far (main 83ba73c: 208 passed, 5 deselected in ~90 s; ruff clean)
 - P1: xqi/types.py, xqi/config.py (load, load_causes), xqi/store.py
-- Gate: xqi/gate.py: L2 → L1 → L3 + event_verdict (L4), round_half_up. tests/test_gate_property.py, scripts/gate_audit.py,
-  reports/recipe_audit.md (T-0021/22/23)
-- Explain: xqi/explain/ has cause_model.py (T-0011, build_model(..., pretrained=True)), conformal.py (T-0014; load_qhat
-  returns {qhat, alpha, n}), counterfactual.py (T-0016; severity, make_proposal(..., defect_id=''), gcode),
-  sensors.py (T-0019), and the Explainer in __init__.py (T-0020)
-- Loop I/O: xqi/printer.py (Printer protocol, FakePrinter, OctoPrint client with mocked HTTP; T-0026/27),
-  xqi/camera.py (camera + replay folder; T-0029), xqi/detect.py (YOLO wrapper + ConfirmationTracker; T-0030/31),
-  xqi/verify.py (T-0035)
-- Orchestrator: xqi/orchestrator.py + xqi/__main__.py (baseline mode, critical-first, timings, CLI incl. `ui`; T-0033)
-- UI: xqi/ui.py, xqi/ui_data.py (live view, read-only; T-0037)
-- Suite: 174 passed, 3 deselected (gpu/slow) in ~33 s; ruff clean
+- Gate: xqi/gate.py (L2 → L1 → L3, event_verdict/L4, round_half_up), tests/test_gate_property.py, scripts/gate_audit.py,
+  reports/recipe_audit.md
+- Explain: xqi/explain/ has cause_model.py, conformal.py (load_qhat → {qhat, alpha, n}), counterfactual.py (severity,
+  make_proposal(..., defect_id=''), gcode), sensors.py, attribution.py (EigenCAM, 07 §11 as amended), and the
+  Explainer in __init__.py
+- Loop I/O: xqi/printer.py (Printer, FakePrinter, OctoPrint client), xqi/camera.py, xqi/detect.py (YOLO wrapper +
+  ConfirmationTracker), xqi/verify.py
+- Orchestrator: xqi/orchestrator.py: baseline, critical-first, gated-recipe/auto/advisory, operator decisions +
+  timeouts. xqi/__main__.py: run / ui / study
+- UI + study: xqi/ui.py, xqi/ui_data.py (live view, proposal cards), xqi/study.py, docs/study_protocol.md,
+  scripts/analyze_study.py
+- Bench/soak: scripts/eval_latency.py (--selftest ok), tests/test_soak.py (@slow), tests/conftest.py (FastClock,
+  StubDetector)
 
-## Waiting on the GPU / long-run team (runbooks in docs/gpu-runs/)
-- T-0023: 100k-case @slow gate property run. CPU only, under 2 min. Send back reports/gate_property.md
-- T-0030: gpu detector test. Needs models/yolo/best.pt (T-0002). Batch with T-0008 (G1)
-- T-0037: manual replay check + reports/img/ui_live.png. Needs best.pt
+## Waiting on team runs (runbooks: docs/gpu-runs/T-00NN.md; manual: docs/GPU_SETUP.md)
+| Ticket | Needs | Time | Send back |
+|---|---|---|---|
+| T-0023 | CPU only, `-m slow` | < 2 min | reports/gate_property.md |
+| T-0052 | CPU only, soak `-m slow` | 10–20 min | reports/soak_T-0052.txt |
+| T-0037 | Streamlit + replay | ~15 min | reports/img/ui_live.png |
+| T-0038 | Streamlit + stub loop (same sitting as 0037) | ~15 min | reports/img/ui_card.png |
+| T-0043 | human pilot on Streamlit | ~40 min | reports/study/pilot.sqlite, reports/img/study_{off,on}.png |
+| T-0044 | pilot.sqlite from T-0043 | ~2 min | reports/operator_study.md |
+| T-0030 | GPU + best.pt (G1 with T-0008) | ~2 min | issue comment output |
+| T-0036 | GPU + best.pt, `--bench` | ~5 min, ~1.5 GB | reports/latency.md |
+The T-0018 gpu test (test_real_best_pt_heatmap_fast) also runs in G1. When results are pushed: git pull, verify
+Done-when, close the ticket (CLAUDE.md GPU step 6).
 
-## Decisions pending (user)
-- D2: gate rounding. For a fractional setpoint, half-up rounding after the L2 clip can exceed step by 0.5
-  (210.5 + 5 → S216). Never happens with integer setpoints. Options: leave it as is (document it), or step x2 back
-  toward x when |x2 − x| > step. The second option changes test_rounding_pushes_over_l1_limit (235.5 + 5 would pass at
-  240 instead of being rejected).
+## Decisions pending (user; recommended answer in brackets)
+- D2 gate rounding: for a fractional setpoint, half-up after the L2 clip can exceed step by 0.5 (210.5 + 5 → S216).
+  Never happens with integer setpoints. [document it, no code change]
+- D3 09 §Store says the loop only sets `consumed` on operator_decisions. FR-019 and the T-0051 code also insert
+  choice=timeout rows (consumed=1). [approve a one-line DESCEND to 09]
+- D4 xqi/__main__.py builds Orchestrator(explainer=None), so a real `xqi run` in auto/advisory ESCALATEs every
+  non-critical defect and shows no proposal cards. No ticket owns this wiring. [wire the Explainer in __main__ now
+  with a fallback when models/cause/final.pt or qhat.json is missing; real weights after T-0015]
+- D5 the orchestrator never writes defects.crop_path, so study cards from real campaign runs have no image. This
+  must be fixed before T-0041/T-0045. [fold into D4's wiring change, or into T-0039]
 
 ## Parallel-run setup (user request, 2026-10-26)
-- Workflow script: builds each ticket in its own worktree (.claude/worktrees/, gitignored), test-first, with the main
-  .venv (PYTHONPATH=. python -m pytest; never uv sync in a worktree), then one serial integrator merges, tests,
-  updates BOARD/LOGBOOK, pushes, and comments runbooks on issues.
-- No heavy compute on the dev laptop: default-marker unit tests + ruff only. Training/eval/bench/soak/gpu/hw runs go
-  to the team via docs/gpu-runs/T-00NN.md (docs/GPU_SETUP.md).
-- Agent worktrees for merged tickets can be removed (`git worktree remove`). Keep t0018's until D1 is decided.
+- Workflow script (session dir): each ticket in its own worktree (.claude/worktrees/, gitignored), test-first, with
+  the main .venv (PYTHONPATH=. python -m pytest; never uv sync in a worktree, never edit pyproject/uv.lock). One
+  serial integrator then merges, tests, updates BOARD/LOGBOOK, pushes, and comments runbooks on issues. Keeps
+  SEQUENCE dependency order; overrides one-ticket-per-session at the user's request.
+- No heavy compute on the dev laptop: default-marker unit tests + ruff only. Everything else goes through runbooks.
+- psutil is used by the soak test and comes in through ultralytics. Declare it in the dev group at the next
+  deliberate `uv lock`.
 
 ## Settled — do not relitigate
 - Implementation order = 11-tickets/SEQUENCE.md, 52 steps. Changes need user approval + scripts/check_sequence.py OK.
-  Parallel runs keep dependency order.
 - New standalone `xqi` package; REU code is reference only. ADR-0001
 - Image-only learned cause model; telemetry is never a model input. ADR-0002
 - Split-conformal LAC sets, α = 0.10. ADR-0003
@@ -56,6 +74,7 @@ Nothing else.
 - Streamlit + SQLite, two processes; UI only inserts operator_decisions. ADR-0005
 - Critical classes default to M112 (deck parity). ADR-0006
 - LOGO by trial is the frozen eval. ADR-0007 (frozen at T-0007)
+- 07 §11 EigenCAM orients v₁ by Σ(A v₁) (DESCEND 2026-10-26, user-approved)
 - Non-goals: RL, firmware changes, new sensors, new DOE, generative counterfactuals (06-requirements §Non-goals)
 - Tooling: uv + hatchling, Python 3.11, torch/torchvision from the pytorch-cu126 index, pytest addopts skip gpu/hw/slow,
   ruff excludes .claude

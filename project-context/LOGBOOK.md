@@ -668,3 +668,18 @@ SURPRISE:  The stored `correct` column in study.sqlite counts only apply/modify 
 BROKE:     Nothing. Ruff ISC004 flagged two implicit string concatenations in a list; now wrapped in parentheses.
 NEXT:      Run docs/gpu-runs/T-0044.md right after the T-0043 pilot (same sitting, one command, ~2 min); push
            reports/operator_study.md, then verify and close #44. Re-run on the T-0045 data later.
+
+## 2026-10-26 — Parallel run 2 wrap-up (T-0034, 0051, 0036, 0038, 0052, 0043, 0044)
+BUILT:     Run 2 built the 7 tickets that were waiting on T-0018. In the first attempt T-0038 and T-0052 failed on a
+           network outage (ENOTFOUND). Their partial worktrees were discarded, including an unrequested psutil dev-dep
+           edit, and both were rebuilt in run 2b. The agent prompt now forbids pyproject/uv.lock edits.
+RESULT:    All 7 merged and pushed. DONE: T-0034, T-0051. WAITING-GPU (team run, runbooks in docs/gpu-runs/):
+           T-0036 (GPU + best.pt), T-0038 (screenshot), T-0052 (soak, CPU), T-0043 (pilot), T-0044 (pilot data).
+           Main 83ba73c: 208 passed, 5 deselected in 90 s; ruff clean. Every CODE ticket that needs neither REU data
+           nor the printer is now built.
+SURPRISE:  - xqi/__main__.py still passes explainer=None, so CLI auto/advisory runs ESCALATE everything and show no
+             proposals. No ticket owns the wiring (STATE D4).
+           - The orchestrator never writes defects.crop_path, so real study cards have no image (STATE D5).
+           - 09 §Store's operator_decisions writer column doesn't list the loop's choice=timeout inserts (STATE D3).
+BROKE:     Nothing.
+NEXT:      User decides D2–D5. The team runs the waiting runbooks. T-0002 hand-over → SEQUENCE step 27 (T-0005).
