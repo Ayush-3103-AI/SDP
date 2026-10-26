@@ -101,7 +101,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0032 Event store | C | MUST | DONE |
 | T-0033 Orchestrator baseline | C | MUST | TODO |
 | T-0034 Orchestrator modes | C | MUST | TODO |
-| T-0035 Outcome verifier | C | MUST | TODO |
+| T-0035 Outcome verifier | C | MUST | DONE |
 | T-0036 Latency report | C | MUST | TODO |
 | T-0037 Dashboard live view | C | MUST | TODO |
 | T-0038 Proposal cards | C | MUST | TODO |

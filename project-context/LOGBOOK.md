@@ -178,3 +178,21 @@ BROKE:     Nothing. Only new files were added.
 NEXT:      T-0022 (L3 window + event_verdict / L4) replaces the L3 stub. T-0016's counterfactual.py should import
            round_half_up (and GCODE if needed) from xqi.gate, not define its own. T-0023 property tests should allow
            |final_delta| <= step + 0.5 for non-integer setpoints (rounding).
+
+## 2026-10-26 — T-0035: Implement the outcome verifier (parallel run)
+BUILT:     xqi/verify.py has Verifier(window_s, settle_s) with a per-class (DEFECTS) deque ring buffer of
+           (ts, present), pruned to the last S+2W seconds. watch(action_id, defect_id, cls, t_a) fixes r_before
+           over [t_a-W, t_a]. tick(frame_ts, present) -> list[Outcome] classifies a watch once ts >= t_a+S+W.
+           close() returns the remaining watches as unknown. Matches the 09 interface; the orchestrator writes
+           the Outcomes to the store.
+RESULT:    tests/test_verify.py at a synthetic 10 fps, W=120, S=30: 50% -> 0% gives resolved, 20% -> 40% worsened,
+           30% -> 25% persisted, a run that ends early (close) unknown, and fewer than 10 before-frames unknown.
+           Merged t0035 into main with --no-ff, no conflicts. `pytest -q` -> 103 passed (5 new in
+           tests/test_verify.py); ruff clean on the tracked tree (--extend-exclude .claude).
+SURPRISE:  The ticket test asks for 25 %, which a 10-frame on/off pattern cannot produce exactly. The test uses an
+           even floor-based spreading pattern instead, so every rate is exact over the window. Windows are closed
+           intervals [t0, t1]; a frame at exactly t_a+S+W is in the after window. r_before/r_after are 0.0 when a
+           window has no frames, and the verdict is then unknown. A watch on a class not in DEFECTS raises KeyError.
+BROKE:     Nothing. Only new files were added.
+NEXT:      The orchestrator (P3/P1) calls watch() after an applied action, tick() on every frame and close() at run
+           end, and passes each Outcome to store.write_outcome.
