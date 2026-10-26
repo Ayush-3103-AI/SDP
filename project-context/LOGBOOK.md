@@ -472,3 +472,38 @@ RESULT:    Main: 178 passed, 4 deselected in 100 s; ruff clean. Done-when met: t
 SURPRISE:  Nothing new.
 BROKE:     Nothing.
 NEXT:      Parallel run 2: T-0034 → T-0051 → {T-0036, T-0038, T-0052} → T-0043 → T-0044.
+
+## 2026-10-26 — T-0034: Implement the orchestrator's gated-recipe, auto and advisory action paths (parallel run)
+BUILT:     xqi/orchestrator.py: the non-critical, non-baseline P3 branch. It runs get_state (a fresh state also goes
+           into telemetry/history; _poll became _state), then explain (or recipe_to_proposals in gated-recipe, with no
+           cause model and no L4), then gate each proposal, then event_verdict. Proposals and verdicts are written with
+           t_gate. PROPOSE and ESCALATE are written pending with deadline_ts = t_gate + hitl.timeout_s, and ESCALATE
+           also pauses (a failed pause writes a pause_failed alert). APPLY goes through a new _dispatch: one retry, an
+           action row (source auto, proposal_id when there is one), and Verifier.watch only when ok. Baseline now uses
+           _dispatch too. EigenCAM runs as a job on a worker thread after dispatch. The worker has its own Store
+           connection and writes runs/<id>/heatmaps/<defect_id>.png, defects.heatmap_path and a t_heatmap timing.
+           A model_lock serialises detector and heatmap passes on the shared YOLO model.
+RESULT:    New tests in tests/test_orchestrator.py: (1) test_modes: a singleton set in auto sends M221 S108 and is
+           APPLY; a 2-member set in auto is PROPOSE, pending, with the right deadline; advisory is PROPOSE and sends
+           nothing; misalignment is ESCALATE, pending and paused; in gated-recipe the nozzle line is blocked by L2
+           cooldown and only the survivors M220 S90 / M221 S110 are sent, with no explanation row.
+           (2) test_apply_updates_state: printer flow is 108, last_change_ts is about t_disp, one outcome is logged.
+           (3) test_heatmap_after_dispatch: the PNG exists, heatmap_path is set, and t_heatmap > t_disp.
+           (4) test_dispatch_failure: 2 send attempts, ok=0, setpoints and last_change_ts unchanged, a dispatch_failed
+           alert, and no outcome. Done-when (the mode tests pass) holds. Merged t0034 (4340922) into main with
+           --no-ff, no conflicts. `pytest -q` -> 182 passed, 4 deselected in 31 s; ruff clean.
+SURPRISE:  - The Windows time.monotonic resolution is coarse enough that an instant stub heatmap tied t_disp exactly.
+             The stub eigencam now sleeps 20 ms, like a real pass.
+           - Ultralytics YOLO is not safe to share across threads, and the forward hook would catch detector passes
+             too. That is why the heatmap job takes model_lock.
+           - Spec calls the implementer made: gated-recipe APPLY actions use source "auto" (09 §Store lists
+             auto/operator/critical/baseline/timeout); several surviving recipe lines go in one send_gcode call and
+             one action row with proposal_id NULL, like baseline, and the verdict row holds the proposal ids.
+             Heatmaps are queued only in auto/advisory (P3); FR-009 says "per non-critical confirmed defect", which is
+             broader. Mild 06-vs-08 wording gap, not a blocker.
+BROKE:     Nothing. One behaviour change: in auto/advisory with no explainer wired, every non-critical defect now
+           ESCALATEs (no_confident_cause), which pauses the printer. Before, it did nothing. __main__ still passes
+           explainer=None.
+NEXT:      Wire the Explainer (CauseModel weights + qhat_file) into xqi/__main__.py (outside this ticket's Files:
+           line), so auto/advisory from the CLI stays a fail-safe that escalates every defect until then. Next in
+           parallel run 2: T-0051.
