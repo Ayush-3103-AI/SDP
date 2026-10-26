@@ -217,3 +217,24 @@ BROKE:     Nothing. Only new files were added.
 NEXT:      GPU batch G1 (with T-0008), once T-0002 delivers models/yolo/best.pt: run docs/gpu-runs/T-0030.md and
            close #30 if step 3 passes. If a class name doesn't map, add an alias in xqi/detect.py.
            ConfirmationTracker (also in xqi/detect.py per 09) belongs to its own ticket.
+
+## 2026-10-26 — T-0029: Implement the frame sources (camera and replay folder) (parallel run)
+BUILT:     xqi/camera.py has open_source(spec, width, height) -> Iterator[Frame]. A spec of "<int>" opens
+           cv2.VideoCapture, sets the width and height, and skips frames whose read fails. "replay:<dir>" reads
+           the image files sorted by filename and skips non-images and files that cannot be read.
+           "replay:<dir>@<fps>" paces playback to that fps. frame_id counts up from 0, ts comes from
+           time.monotonic(), and wall_iso is a local ISO timestamp. Any other spec raises ValueError. New
+           tests/test_camera.py.
+RESULT:    4 camera tests: 3 run by default and 1 marked hw (deselected). The Done-when replay test passes: 3 PNGs
+           written in the order b, a, c come back as 3 frames in name order (a, b, c), with frame_id 0..2,
+           strictly increasing ts and BGR uint8 images, then StopIteration. Camera mode is covered by
+           @pytest.mark.hw test_camera_yields_frames. Merged t0029 into main with --no-ff, no conflicts.
+           `pytest -q` -> 111 passed, 2 deselected; ruff clean on the tracked tree (--extend-exclude .claude).
+SURPRISE:  On Windows with Python 3.11, time.monotonic() is GetTickCount64 and ticks only every 15.6 ms, so a fast
+           replay could give several frames the same ts (FR-002 needs ts to increase). ts is now
+           max(monotonic(), last + 1e-6). fps pacing sleeps against perf_counter; with monotonic it failed about
+           3 runs in 8. The test allows one tick of tolerance at 10 fps.
+BROKE:     Nothing. Only new files were added.
+NEXT:      Run `uv run pytest -m hw tests/test_camera.py` on the rig laptop with the webcam. The orchestrator
+           (T-0030+) uses open_source(cfg.camera.source, cfg.camera.width, cfg.camera.height). A dead camera
+           yields no frames, so the loop's max_gap_s check has to run on a timer outside the frame iterator.

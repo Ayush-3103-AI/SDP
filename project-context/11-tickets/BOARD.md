@@ -95,7 +95,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0026 Printer + FakePrinter | C | MUST | DONE |
 | T-0027 OctoPrint client | C | MUST | TODO |
 | T-0028 OctoPrint smoke | P | MUST | BLOCKED |
-| T-0029 Frame sources | C | MUST | TODO |
+| T-0029 Frame sources | C | MUST | DONE |
 | T-0030 Detector wrapper | C | MUST | WAITING-GPU |
 | T-0031 Confirmation tracker | C | MUST | TODO |
 | T-0032 Event store | C | MUST | DONE |
