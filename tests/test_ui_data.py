@@ -6,7 +6,17 @@ import pytest
 
 from xqi import ui_data
 from xqi.store import Store
-from xqi.types import ConfirmedDefect, Detection, EventVerdict, PrinterState
+from xqi.types import (
+    CauseEstimate,
+    CauseSet,
+    ConfirmedDefect,
+    Detection,
+    EventVerdict,
+    GateDecision,
+    LayerResult,
+    PrinterState,
+    Proposal,
+)
 
 
 def make_state(ts: float, state: str = "Printing") -> PrinterState:
@@ -127,3 +137,157 @@ def test_live_view_shows_all_elements(db, monkeypatch):
     assert {m.label: m.value for m in at.metric}["Printer"] == "Printing"
     assert len(at.dataframe[0].value) == 50
     assert at.get("image")  # latest frame
+
+
+def make_gate(pid: str, delta: float) -> GateDecision:
+    layers = (
+        LayerResult("L2", True, f"L2: {delta:+g} % within ±10"),
+        LayerResult("L1", True, "L1: 108 % within [80, 120]"),
+        LayerResult("L3", True, "L3: 108 % inside [80, 120]"),
+    )
+    return GateDecision(pid, True, False, delta, 100 + delta, (f"M221 S{100 + delta:g}",), layers)
+
+
+@pytest.fixture
+def card_db(db):
+    with Store(db) as store:
+        store.write_run({"run_id": "run-001", "mode": "advisory", "cfg": {"conformal": {"alpha": 0.1}}})
+        store.write_telemetry(make_state(33.1))
+        store.write_explanation(
+            "d1",
+            CauseEstimate({"flow_low": 0.64, "nozzle_cold": 0.22, "speed_high": 0.14}, "flow_low", 0.64),
+            CauseSet(("flow_low", "nozzle_cold"), 0.1, 0.7), 0.7, ["telemetry_stale"], 3.05,
+        )
+        store.write_proposal(
+            Proposal("d1-flow_low", "d1", "flow_low", "flow", 100.0, 8.0, 108.0, ("M221 S108",), "Flow sentence."),
+            make_gate("d1-flow_low", 8.0),
+        )
+        store.write_proposal(
+            Proposal("d1-nozzle_cold", "d1", "nozzle_cold", "nozzle_temp", 200.0, 4.0, 204.0, ("M104 S204",), "N."),
+        )
+        store.write_verdict(
+            EventVerdict("d1", "PROPOSE", "two causes in the set", ("d1-flow_low", "d1-nozzle_cold")),
+            t_gate=3.1, pending=True, deadline_ts=93.1,
+        )
+    return db
+
+
+def test_card_model(card_db):
+    with Store.open_readonly(card_db) as store:
+        assert [e["defect_id"] for e in store.pending_events()] == ["d1"]
+        card = ui_data.card_model(store, "d1")
+        assert ui_data.card_model(store, "nope") is None
+
+    assert (card["defect_id"], card["cls"], card["severity"]) == ("d1", "stringing", pytest.approx(0.4))
+    assert card["crop_path"] is None and card["heatmap_path"] is None  # UI shows "computing…"
+    assert card["causes"] == [("flow_low", 0.64), ("nozzle_cold", 0.22)]  # set members, most likely first
+    assert card["alpha"] == 0.1
+    assert card["flags"] == ["telemetry_stale"]
+    assert (card["verdict"], card["reason"]) == ("PROPOSE", "two causes in the set")
+    assert card["remaining_s"] == pytest.approx(93.1 - 33.1)  # deadline - latest telemetry (loop clock)
+    assert card["latency_s"] == pytest.approx(33.1 - 3.1)
+
+    flow, nozzle = card["proposals"]
+    assert (flow["proposal_id"], flow["var"], flow["from_value"], flow["to_value"], flow["delta"], flow["unit"]) == (
+        "d1-flow_low", "flow", 100.0, 108.0, 8.0, "%")
+    assert flow["passed"] is True and flow["clipped"] is False
+    assert [(lay["layer"], lay["passed"]) for lay in flow["layers"]] == [("L2", True), ("L1", True), ("L3", True)]
+    assert flow["layers"][0]["reason"] == "L2: +8 % within ±10"
+    assert flow["counterfactual"] == "Flow sentence."
+    assert nozzle["passed"] is None and nozzle["layers"] == []  # not gated yet
+
+
+def test_card_model_without_explanation(db):
+    with Store.open_readonly(db) as store:
+        card = ui_data.card_model(store, "d1")
+    assert card["causes"] == [] and card["flags"] == [] and card["alpha"] is None
+    assert card["proposals"] == [] and card["remaining_s"] is None
+
+
+def decisions(path):
+    with Store(path) as store:
+        return store.new_decisions()
+
+
+def test_insert_decision_writes_row(card_db):
+    with Store.open_readonly(card_db) as store:
+        card = ui_data.card_model(store, "d1")
+        row_id = ui_data.insert_decision(store, card, "modify", "asha", proposal_id="d1-flow_low", modified_delta=5.0)
+        ui_data.insert_decision(store, card, "reject", "asha")
+
+    first, second = decisions(card_db)
+    assert first["id"] == row_id
+    assert (first["defect_id"], first["proposal_id"], first["choice"], first["modified_delta"], first["operator"]) == (
+        "d1", "d1-flow_low", "modify", 5.0, "asha")
+    assert first["latency_s"] == pytest.approx(30.0)
+    assert first["wall_iso"] and first["consumed"] == 0
+    assert (second["choice"], second["proposal_id"], second["modified_delta"]) == ("reject", None, None)
+
+
+def test_stop_needs_confirm(card_db):
+    with Store.open_readonly(card_db) as store:
+        card = ui_data.card_model(store, "d1")
+        assert ui_data.insert_decision(store, card, "stop", "asha") is None
+        assert decisions(card_db) == []
+        assert ui_data.insert_decision(store, card, "stop", "asha", confirm=True) is not None
+    assert [d["choice"] for d in decisions(card_db)] == ["stop"]
+
+
+def test_card_buttons_only_insert_decisions(card_db, monkeypatch):
+    from streamlit.testing.v1 import AppTest
+
+    monkeypatch.setattr("sys.argv", ["ui.py", "--run", "run-001", "--run-dir", str(card_db.parent.parent)])
+    at = AppTest.from_file("../xqi/ui.py").run(timeout=30)
+    assert not at.exception
+    text = " ".join(m.value for m in at.markdown)
+    assert "two causes in the set" in text and "Flow sentence." in text and "telemetry_stale" in text
+
+    at.sidebar.text_input[0].set_value("asha").run(timeout=30)
+    at.button(key="apply-d1-flow_low").click().run(timeout=30)
+    at.button(key="stop-d1").click().run(timeout=30)  # confirm box unticked: no row
+    assert not at.exception
+    assert [(d["choice"], d["proposal_id"], d["operator"]) for d in decisions(card_db)] == [
+        ("apply", "d1-flow_low", "asha")]
+
+
+def test_apply_on_loop_card_dispatches(tmp_path):
+    """Done-when, CPU side: Apply on a card the replay loop built leads to a dispatched action row."""
+    from dataclasses import replace
+    from pathlib import Path
+
+    from xqi.camera import open_source
+    from xqi.config import load
+    from xqi.explain.counterfactual import make_proposal
+    from xqi.orchestrator import Orchestrator
+    from xqi.printer import FakePrinter
+
+    cfg = replace(load(Path(__file__).resolve().parents[1] / "config" / "default.yaml"), mode="advisory")
+    folder = tmp_path / "frames_in"
+    folder.mkdir()
+    for i in range(6):
+        assert cv2.imwrite(str(folder / f"{i:03d}.png"), np.zeros((8, 8, 3), np.uint8))
+    store = Store(tmp_path / "run" / "events.sqlite")
+
+    class FlowExplainer:
+        def explain(self, cd, frame, history):
+            est = CauseEstimate({"flow_low": 0.9}, "flow_low", 0.9)
+            return est, CauseSet(("flow_low",), 0.1, 0.5), (), [
+                make_proposal("flow_low", 0.9, cd.severity, history[-1], cfg, cd.defect_id)]
+
+    def detector(frame):
+        if frame.frame_id == 5:  # the operator clicks Apply on the card
+            with Store.open_readonly(store.path) as ui:
+                (event,) = ui.pending_events()
+                card = ui_data.card_model(ui, event["defect_id"])
+                ui_data.insert_decision(ui, card, "apply", "asha", proposal_id=card["proposals"][0]["proposal_id"])
+        return [Detection(frame.frame_id, "under_extrusion", 0.9, (0.0, 0.0, 4.0, 4.0), 0.25)]
+
+    printer = FakePrinter()
+    Orchestrator(cfg, printer, open_source(f"replay:{folder}", 0, 0), detector, FlowExplainer(), store).run()
+
+    with Store.open_readonly(store.path) as db:
+        (action,) = db.query("SELECT source, proposal_id, gcode_json, ok FROM actions")
+        (proposal,) = db.query("SELECT proposal_id FROM proposals")
+    assert action == {"source": "operator", "proposal_id": proposal["proposal_id"],
+                      "gcode_json": '["M221 S108"]', "ok": 1}
+    assert [line for _, line in printer.sent] == ["M221 S108"]
