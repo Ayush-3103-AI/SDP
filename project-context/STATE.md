@@ -3,8 +3,8 @@
 PHASE:        5 — EXECUTE
 LAST SESSION: 2026-10-26 — camera-roll audit (T-0002 item 2 partial) + parallel run 1: 16 of 24 unblocked CODE
               tickets merged (13 DONE, 3 WAITING-GPU), T-0018 BLOCKED-SPEC, 7 downstream tickets skipped.
-NEXT ACTION:  User decides the T-0018 DESCEND (07 §11 sign rule). If approved: edit 07 §11, merge branch t0018,
-              then parallel run 2 = T-0034 → T-0051 → {T-0036, T-0038, T-0052} → T-0043 → T-0044.
+NEXT ACTION:  D1 approved: 07 §11 updated, T-0018 merged (DONE). Parallel run 2 in progress:
+              T-0034 → T-0051 → {T-0036, T-0038, T-0052} → T-0043 → T-0044.
               T-0002 (HUMAN) is still open and still blocks the data lane (steps 27+).
 
 ## Load for next session
@@ -33,8 +33,6 @@ Nothing else.
 - T-0037: manual replay check + reports/img/ui_live.png. Needs best.pt
 
 ## Decisions pending (user)
-- D1: T-0018 DESCEND. 07 §11 "if ΣH < 0 then H ← −H" is degenerate (Ā row-centred ⇒ ΣĀv₁ ≡ 0). Proposed:
-  "if Σ(A v₁) < 0". Branch t0018 (c1b8ed4) implements it and is green. Blocks T-0034 and everything after it.
 - D2: gate rounding. For a fractional setpoint, half-up rounding after the L2 clip can exceed step by 0.5
   (210.5 + 5 → S216). Never happens with integer setpoints. Options: leave it as is (document it), or step x2 back
   toward x when |x2 − x| > step. The second option changes test_rounding_pushes_over_l1_limit (235.5 + 5 would pass at

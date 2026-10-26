@@ -461,3 +461,14 @@ SURPRISE:  - T-0018: 07 §11's sign rule "if ΣH < 0 then H ← −H" is degener
 BROKE:     Nothing. Added .claude to ruff extend-exclude and .claude/worktrees/ to .gitignore (agent worktrees).
 NEXT:      User decision on the T-0018 DESCEND. If approved: edit 07 §11, merge t0018, then a second parallel run for
            T-0034 → 0051 → {0036, 0038, 0052} → 0043 → 0044. T-0002 (HUMAN) is still the critical-path blocker.
+
+## 2026-10-26 — DESCEND (user-approved): 07 §11 EigenCAM sign rule + T-0018 merged
+BUILT:     07-math §11: "If ΣH < 0" became "If Σ(A v₁) < 0". Ā is row-centred, so ΣĀv₁ ≡ 0 and the old test was
+           float noise. The user approved the change ("approve and start the second run"). Merged branch t0018
+           (xqi/explain/attribution.py, tests/test_attribution.py), which already implemented the new rule.
+RESULT:    Main: 178 passed, 4 deselected in 100 s; ruff clean. Done-when met: the tiny-CNN quadrant + zero-activation
+           tests pass, and the gpu test (test_real_best_pt_heatmap_fast) is written for GPU batch G1 with T-0008.
+           No SCHEMA_VERSION bump (math only; types/store/CSVs unchanged).
+SURPRISE:  Nothing new.
+BROKE:     Nothing.
+NEXT:      Parallel run 2: T-0034 → T-0051 → {T-0036, T-0038, T-0052} → T-0043 → T-0044.

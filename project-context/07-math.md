@@ -138,7 +138,7 @@ $$ C(x) = \{y : \hat p_y(x) \ge 1 - \hat q\} $$
 A ∈ ℝ^{(h·w)×C} = activations of layer `cfg.attribution.layer` for the frame.
 - Ā = A − mean over rows.
 - v₁ = first right-singular vector of Ā; H = reshape(Ā v₁, h, w).
-- If ΣH < 0 then H ← −H; then H ← ReLU(H) / max(H) (if max = 0, H = 0).
+- If Σ(A v₁) < 0 then H ← −H (orient v₁ by the uncentred activations: Ā is row-centred, so ΣĀv₁ ≡ 0); then H ← ReLU(H) / max(H) (if max = 0, H = 0).
 - Bilinear upsample to the frame size, then crop to the bbox.
 - Cost: an SVD of an (h·w)×C matrix, ≈ 5–20 ms; it runs after dispatch (D10).
 

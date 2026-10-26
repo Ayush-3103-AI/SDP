@@ -84,7 +84,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0015 Conformal eval | C | MUST | BLOCKED |
 | T-0016 Proposals/counterfactual | C | MUST | DONE |
 | T-0017 CF fidelity eval | C | MUST | BLOCKED |
-| T-0018 EigenCAM | C | SHOULD | BLOCKED (DESCEND pending: 07 §11 sign rule) |
+| T-0018 EigenCAM | C | SHOULD | DONE |
 | T-0019 Sensor checks | C | MUST | DONE |
 | T-0020 Explainer | C | MUST | DONE |
 | T-0021 Gate L1+L2 | C | MUST | DONE |
