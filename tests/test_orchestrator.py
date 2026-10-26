@@ -1,3 +1,4 @@
+import json
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -14,7 +15,14 @@ from xqi.explain.counterfactual import make_proposal
 from xqi.orchestrator import Orchestrator
 from xqi.printer import FakePrinter
 from xqi.store import Store
-from xqi.types import CauseEstimate, CauseSet, Detection, Frame
+from xqi.types import (
+    CauseEstimate,
+    CauseSet,
+    ConfirmedDefect,
+    Detection,
+    Frame,
+    OperatorDecision,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CFG = load(ROOT / "config" / "default.yaml")
@@ -242,6 +250,129 @@ def test_max_frames_stops_early(tmp_path):
     printer, _ = _run(tmp_path, "baseline", _always("under_extrusion"), max_frames=3)
 
     assert printer.sent == []  # under_extrusion needs 4 hits
+
+
+class Clock:
+    def __init__(self, t=1000.0):
+        self.t = t
+
+    def __call__(self):
+        return self.t
+
+
+def _pending(tmp_path, cause, cls="under_extrusion", cfg=CFG):
+    """Advisory loop with one PROPOSE event pending; returns (orch, printer, clock, defect_id)."""
+    clock = Clock()
+    printer = FakePrinter(clock=clock)
+    store = Store(tmp_path / "run" / "events.sqlite")
+    orch = Orchestrator(replace(cfg, mode="advisory"), printer, iter(()), None,
+                        SetExplainer(cause), store, clock=clock)
+    cd = ConfirmedDefect("d1", cls, 0, clock.t, clock.t, 0.9, (0.0, 0.0, 4.0, 4.0), 0.25, 4, 0.63, False)
+    orch.handle_event(cd, Frame(0, clock.t, "", np.zeros((8, 8, 3), np.uint8)))
+    assert _verdict(store)["pending"] == 1 and printer.sent == []
+    return orch, printer, clock, cd.defect_id
+
+
+def _decide(orch, defect_id, choice, delta=None):
+    pid = orch.store.query("SELECT proposal_id FROM proposals")[0]["proposal_id"]
+    ui =Store.open_readonly(orch.store.path)  # the UI's only write path
+    ui.insert_decision(OperatorDecision(pid, defect_id, choice, delta, "op", "", 1.0))
+    ui.close()
+
+
+def _sent(printer):
+    return [line for _, line in printer.sent]
+
+
+def test_modify_regated(tmp_path):
+    orch, printer, _, d = _pending(tmp_path, "nozzle_temp_low")
+    _decide(orch, d, "modify", 15.0)
+    orch.process_operator_decisions()
+
+    assert _sent(printer) == ["M104 S215"]  # 210 + 15 clipped to the L2 step (+5 °C)
+    (p,) = orch.store.query("SELECT delta, gate_json FROM proposals WHERE cause = 'operator'")
+    g = json.loads(p["gate_json"])
+    assert p["delta"] == 15.0 and g["clipped"] and g["layers"][0]["reason"] == "L2: clipped +15 → +5 °C"
+    assert orch.store.query("SELECT source FROM actions") == [{"source": "operator"}]
+    assert orch.store.new_decisions() == [] and _verdict(orch.store)["pending"] == 0
+
+
+def test_apply_rechecks_cooldown(tmp_path):
+    orch, printer, clock, d = _pending(tmp_path, "flow_low")
+    clock.t += 5
+    printer.send_gcode(["M221 S100"])  # flow changed after the proposal: L2 cooldown now applies
+    printer.sent.clear()
+    clock.t += 5
+    _decide(orch, d, "apply")
+    orch.process_operator_decisions()
+
+    assert printer.sent == []
+    (a,) = orch.store.query("SELECT kind, message FROM alerts")
+    assert a["kind"] == "decision_blocked" and "L2: cooldown 5s < 20s" in a["message"]
+    assert orch.store.new_decisions() == [] and _verdict(orch.store)["pending"] == 0
+
+
+def test_pause_stop(tmp_path):
+    orch, printer, _, d = _pending(tmp_path / "a", "flow_low")
+    _decide(orch, d, "pause")
+    orch.process_operator_decisions()
+    assert printer.state == "Paused" and printer.sent == []
+
+    orch, printer, _, d = _pending(tmp_path / "b", "flow_low")
+    _decide(orch, d, "stop")
+    orch.process_operator_decisions()
+    assert _sent(printer) == ["M112"] and printer.state == "Error"
+    assert orch.store.query("SELECT source, gcode_json FROM actions") == [
+        {"source": "operator", "gcode_json": '["M112"]'}]
+
+
+@pytest.mark.parametrize("action, state", [("noop", "Printing"), ("pause", "Paused")])
+def test_timeout(tmp_path, action, state):
+    cfg = replace(CFG, hitl=replace(CFG.hitl, timeout_action=action))
+    orch, printer, clock, d = _pending(tmp_path, "flow_low", cfg=cfg)
+    clock.t += CFG.hitl.timeout_s - 1
+    orch.check_timeouts()
+    assert _verdict(orch.store)["pending"] == 1  # not yet
+
+    clock.t += 2
+    orch.check_timeouts()
+    assert printer.state == state and printer.sent == []
+    assert _verdict(orch.store)["pending"] == 0
+    (row,) = orch.store.query("SELECT defect_id, choice, consumed, latency_s FROM operator_decisions")
+    assert row == {"defect_id": d, "choice": "timeout", "consumed": 1,
+                   "latency_s": pytest.approx(CFG.hitl.timeout_s + 1)}
+    sources = [a["source"] for a in orch.store.query("SELECT source FROM actions")]
+    assert sources == (["timeout"] if action == "pause" else [])
+
+
+def test_duplicate_decision_ignored(tmp_path):
+    orch, printer, _, d = _pending(tmp_path, "flow_low")
+    _decide(orch, d, "apply")
+    _decide(orch, d, "apply")  # double click
+    orch.process_operator_decisions()
+    _decide(orch, d, "modify", 5.0)  # late, after the event was consumed
+    _decide(orch, "nope", "apply")  # unknown event
+    orch.process_operator_decisions()
+
+    assert _sent(printer) == ["M221 S108"]  # dispatched once
+    assert [a["kind"] for a in orch.store.query("SELECT kind FROM alerts")] == ["decision_ignored"] * 3
+    assert orch.store.new_decisions() == []
+
+
+def test_decisions_processed_in_loop(tmp_path):
+    store = Store(tmp_path / "run" / "events.sqlite")
+
+    def detector(frame):  # the operator answers the card while frame 5 is being processed
+        if frame.frame_id == 5:
+            (p,) = store.query("SELECT proposal_id, defect_id FROM proposals")
+            store.insert_decision(OperatorDecision(p["proposal_id"], p["defect_id"], "apply", None,
+                                                   "op", "", 1.0))
+        return _always("under_extrusion")(frame)
+
+    printer = FakePrinter()
+    Orchestrator(replace(CFG, mode="advisory"), printer, _replay(tmp_path), detector,
+                 SetExplainer("flow_low"), store).run()
+    assert _sent(printer) == ["M221 S108"]
 
 
 def test_cli_run_mode_overrides_config(tmp_path, monkeypatch):
