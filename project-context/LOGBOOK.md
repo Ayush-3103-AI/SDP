@@ -405,3 +405,28 @@ NEXT:      The team runs docs/gpu-runs/T-0023.md (`uv run pytest -m slow tests/t
            reports/gate_property.md showing 0 / 100000, then T-0023 closes. Separately, decide whether gate.py
            should clamp |round(x+Δ')−x| ≤ step for fractional setpoints (a small T-0022 follow-up: after
            round_half_up, step x2 back by 1 toward x when |x2 − x| > step).
+
+## 2026-10-26 — T-0033: Implement the orchestrator: baseline mode, critical-first handling, timings, CLI (parallel run)
+BUILT:     xqi/orchestrator.py has Orchestrator.run (the P1 loop) and handle_event (the critical and baseline
+           branches of P3), plus git_sha() ('nogit' if git fails) and new_run_id() (UTC stamp like
+           20261026T101500Z). xqi/__main__.py adds `run --config --mode --max-frames` (`--mode` overrides cfg.mode
+           via dataclasses.replace; printer.kind 'fake' gives a FakePrinter) and `ui --run R` (calls
+           xqi.ui.launch). tests/test_orchestrator.py has 8 tests.
+RESULT:    test_baseline_parity runs replay PNGs through open_source, a stub detector and a FakePrinter end to end
+           in about 0.2 s (< 10 s Done-when); an under_extrusion event sends exactly M104 S205, M220 S80, M221 S110.
+           test_critical_first: the printer has already received ['M112'] with 0 explanation rows when the stub
+           explainer is called, and action.t_disp < explanation.t_cause (FR-005). test_timings_logged: t0 <= t_conf
+           <= t_disp. Also covered: camera gap pauses + alert; 10 detector failures in a row pause, alert and raise;
+           --max-frames; the CLI override writes mode=baseline into the runs row. Merged t0033 into main with
+           --no-ff, no conflicts. `pytest -q` -> 174 passed, 3 deselected; ruff clean on the tracked tree
+           (--extend-exclude .claude).
+SURPRISE:  T-0037's runbook expects T-0033 to add the dashboard hook (save_latest_frame every 0.5 s) and the `ui`
+           dispatch, so both are here. The UI reads telemetry, so the loop polls get_state every printer.poll_s,
+           writes telemetry rows and keeps a 300-entry history that explain() needs. Risk for T-0036: the frame
+           source blocks, so the first YOLO call's CUDA warm-up counts as camera time; warm-up > max_gap_s (3 s)
+           can trigger a false camera_gap pause on the second frame.
+BROKE:     Nothing. In gated-recipe, auto and advisory modes a non-critical defect writes only its defect and
+           timing rows and sends nothing (T-0034 fills that branch). The CLI passes explainer=None for now.
+NEXT:      T-0034: gated-recipe, auto and advisory paths; move the critical explain_only call onto the worker
+           queue (synchronous for now, ponytail comment); wire the real Explainer into __main__. Operator-decision
+           processing and check_timeouts (FR-019) are also still open.
