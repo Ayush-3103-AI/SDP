@@ -311,3 +311,27 @@ BROKE:     Nothing. On Windows os.replace can fail while the UI holds latest.jpg
 NEXT:      When T-0033 merges: (1) Orchestrator.run calls ui_data.save_latest_frame(run_path, frame.image, dets)
            at most every 0.5 s; (2) __main__ `ui --run R` dispatches to xqi.ui.launch(R). Then the team laptop runs
            docs/gpu-runs/T-0037.md (replay run + screenshot to reports/img/ui_live.png) with T-0038.
+
+## 2026-10-26 — T-0031: Implement the confirmation tracker (with severity) (parallel run)
+BUILT:     ConfirmationTracker in xqi/detect.py, following 08 P2 line by line: per-class streak, first_ts, armed,
+           absent and a recent deque(maxlen=severity.window). Each ConfirmedDefect gets a uuid4 defect_id,
+           t0 = ts of the streak's first frame, t_conf = time.monotonic() (same clock as Frame.ts), severity from
+           the existing counterfactual.severity(), and critical = cls in the critical set. hits < 1 raises
+           ValueError. Tests in tests/test_confirm.py.
+RESULT:    tests/test_confirm.py 5/5: TTT fires once at frame 3; TFTT gives no event; no re-fire after a 4-frame
+           gap with rearm=5, re-fire at frame 11 after 5 misses; clog (hits=2, critical) and stringing (hits=3)
+           confirm in parallel; several boxes of one class -> the max-conf box supplies conf and area_frac.
+           Merged t0031 into main with --no-ff, no conflicts. `pytest -q` -> 148 passed, 2 deselected; ruff clean
+           on the tracked tree (--extend-exclude .claude). Done-when met.
+SURPRISE:  The 09 signature __init__(hits, rearm_frames, severity_cfg) can't receive cfg.critical, and
+           CriticalConfig is a slotted dataclass, so `cls in cfg.critical` wouldn't work on it anyway. Added an
+           optional kwarg critical=CRITICAL (defaults to CriticalConfig's field names: clog, layer_shift,
+           spaghetti); the 09 signature still holds. severity() takes the root cfg, so the tracker wraps
+           severity_cfg in SimpleNamespace(severity=...).
+BROKE:     Nothing. data/raw/reu_code does not exist, so the REU confirmation counts were not ported and
+           confirm.hits in config/default.yaml is unchanged.
+NEXT:      T-0034 orchestrator: ConfirmationTracker(cfg.confirm.hits, cfg.confirm.rearm_frames, cfg.severity).
+           08 P3's `cd.cls in cfg.critical` should use cd.critical, plus getattr(cfg.critical, cd.cls) for the
+           estop/pause action (CriticalConfig is not a dict). Optional 09 note:
+           `ConfirmationTracker.__init__(hits, rearm_frames, severity_cfg, critical=CRITICAL)`. Once T-0002
+           delivers data/raw/reu_code, port its hit counts into confirm.hits.
