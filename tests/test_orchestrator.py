@@ -10,6 +10,7 @@ import yaml
 from xqi import __main__ as cli
 from xqi.camera import open_source
 from xqi.config import load
+from xqi.explain.counterfactual import make_proposal
 from xqi.orchestrator import Orchestrator
 from xqi.printer import FakePrinter
 from xqi.store import Store
@@ -31,8 +32,8 @@ def _always(cls):
     return lambda frame: [Detection(frame.frame_id, cls, 0.9, (0.0, 0.0, 4.0, 4.0), 0.25)]
 
 
-def _run(tmp_path, mode, detector, explainer=None, source=None, max_frames=None):
-    printer = FakePrinter()
+def _run(tmp_path, mode, detector, explainer=None, source=None, max_frames=None, printer=None):
+    printer = printer or FakePrinter()
     store = Store(tmp_path / "run" / "events.sqlite")
     cfg = replace(CFG, mode=mode)
     orch = Orchestrator(cfg, printer, source or _replay(tmp_path), detector, explainer, store)
@@ -52,6 +53,112 @@ class StubExplainer:
         )
         est = CauseEstimate({"bed_temp_low": 1.0}, "bed_temp_low", 1.0)
         return est, CauseSet(("bed_temp_low",), 0.1, 0.5), (), []
+
+
+class SetExplainer:
+    """Fixed cause set; proposals from the latest state, like the real Explainer."""
+
+    def __init__(self, *members, p_top=0.9):
+        self.members, self.p_top = members, p_top
+
+    def explain(self, cd, frame, history):
+        probs = {c: self.p_top / len(self.members) for c in self.members}
+        est = CauseEstimate(probs, self.members[0], self.p_top)
+        props = [make_proposal(c, probs[c], cd.severity, history[-1], CFG, cd.defect_id)
+                 for c in self.members]
+        return est, CauseSet(self.members, 0.1, 0.5), (), [p for p in props if p]
+
+
+def _verdict(db):
+    return db.query("SELECT verdict, pending, deadline_ts, t_gate FROM verdicts")[0]
+
+
+def test_modes(tmp_path):
+    printer, db = _run(tmp_path / "a", "auto", _always("under_extrusion"), SetExplainer("flow_low"))
+    assert [line for _, line in printer.sent] == ["M221 S108"]  # severity 0.63 → +8.2 % (07 §2)
+    assert _verdict(db)["verdict"] == "APPLY"
+    assert db.query("SELECT source, proposal_id, ok FROM actions") == [
+        {"source": "auto", "proposal_id": db.query("SELECT proposal_id FROM proposals")[0]["proposal_id"],
+         "ok": 1}]
+
+    printer, db = _run(tmp_path / "b", "auto", _always("under_extrusion"),
+                       SetExplainer("flow_low", "speed_high"))
+    v = _verdict(db)
+    assert printer.sent == [] and v["verdict"] == "PROPOSE" and v["pending"] == 1
+    assert v["deadline_ts"] == pytest.approx(v["t_gate"] + CFG.hitl.timeout_s)
+    assert db.query("SELECT COUNT(*) AS n FROM proposals WHERE passed = 1")[0]["n"] == 2
+
+    printer, db = _run(tmp_path / "c", "advisory", _always("under_extrusion"), SetExplainer("flow_low"))
+    assert printer.sent == [] and _verdict(db)["verdict"] == "PROPOSE"
+    assert db.query("SELECT COUNT(*) AS n FROM actions")[0]["n"] == 0
+
+    printer, db = _run(tmp_path / "d", "auto", _always("under_extrusion"), SetExplainer("misalignment"))
+    assert printer.sent == [] and printer.state == "Paused"
+    assert _verdict(db)["verdict"] == "ESCALATE" and _verdict(db)["pending"] == 1
+
+    printer = FakePrinter()
+    printer.send_gcode(["M104 S210"])  # nozzle in cooldown → L2 blocks that recipe line
+    printer.sent.clear()
+    printer, db = _run(tmp_path / "e", "gated-recipe", _always("under_extrusion"), printer=printer)
+    assert [line for _, line in printer.sent] == ["M220 S90", "M221 S110"]  # L2-clipped survivors
+    assert _verdict(db)["verdict"] == "APPLY"
+    assert db.query("SELECT COUNT(*) AS n FROM proposals WHERE passed = 0")[0]["n"] == 1
+    assert db.query("SELECT COUNT(*) AS n FROM explanations")[0]["n"] == 0  # no cause model, no L4
+
+
+def test_apply_updates_state(tmp_path):
+    printer, db = _run(tmp_path, "auto", _always("under_extrusion"), SetExplainer("flow_low"))
+
+    state = printer.get_state()
+    (t_disp,) = [a["t_disp"] for a in db.query("SELECT t_disp FROM actions")]
+    assert state.flow_pct == 108 and state.last_change_ts["flow"] == pytest.approx(t_disp, abs=0.1)
+    assert db.query("SELECT COUNT(*) AS n FROM outcomes")[0]["n"] == 1  # Verifier.watch started
+
+
+class ModelDetector:
+    model = object()  # stands in for the YOLO backbone; eigencam is stubbed
+
+    def __call__(self, frame):
+        return _always("under_extrusion")(frame)
+
+
+def test_heatmap_after_dispatch(tmp_path, monkeypatch):
+    from xqi.explain import attribution
+
+    # 20 ms like a real pass; Windows' monotonic clock is too coarse to order two instant writes.
+    monkeypatch.setattr(attribution, "eigencam",
+                        lambda *a: time.sleep(0.02) or np.ones((4, 4), np.float32))
+    _, db = _run(tmp_path, "auto", ModelDetector(), SetExplainer("flow_low"))
+
+    (row,) = db.query("SELECT defect_id, heatmap_path FROM defects")
+    assert Path(row["heatmap_path"]) == tmp_path / "run" / "heatmaps" / f"{row['defect_id']}.png"
+    assert Path(row["heatmap_path"]).exists()
+    t = {r["stage"]: r["t"] for r in db.query("SELECT stage, t FROM timings")}
+    assert t["t_heatmap"] > db.query("SELECT t_disp FROM actions")[0]["t_disp"]
+
+
+class DeadPrinter(FakePrinter):
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def send_gcode(self, lines):
+        self.calls += 1
+        return False
+
+
+def test_dispatch_failure(tmp_path):
+    printer = DeadPrinter()
+    before = printer.get_state()
+    printer, db = _run(tmp_path, "auto", _always("under_extrusion"), SetExplainer("flow_low"),
+                       printer=printer)
+
+    assert printer.calls == 2  # one retry
+    assert db.query("SELECT ok FROM actions") == [{"ok": 0}]
+    after = printer.get_state()
+    assert (after.flow_pct, after.last_change_ts) == (before.flow_pct, before.last_change_ts)
+    assert [a["kind"] for a in db.query("SELECT kind FROM alerts")] == ["dispatch_failed"]
+    assert db.query("SELECT COUNT(*) AS n FROM outcomes")[0]["n"] == 0
 
 
 def test_critical_first(tmp_path):
