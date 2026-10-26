@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 
 REFRESH_S = 0.5
@@ -73,30 +75,39 @@ def main() -> None:
         for event in store.pending_events():
             card = ui_data.card_model(store, event["defect_id"])
             if card is not None:
-                proposal_card(card)
+                proposal_card(card, partial(decide, card), enabled=bool(operator))
 
         st.subheader("Last 50 events")
         st.dataframe(ui_data.last_events(store), hide_index=True)
 
-    def proposal_card(card: dict) -> None:
-        """FR-016. Every button only inserts an operator_decisions row; the loop re-gates and acts."""
-        d = card["defect_id"]
+    def decide(card: dict, choice: str, **kw) -> None:
+        if ui_data.insert_decision(store, card, choice, operator, **kw) is not None:
+            st.toast(f"{choice} sent for {card['defect_id']}")
 
-        def decide(choice: str, **kw) -> None:
-            if ui_data.insert_decision(store, card, choice, operator, **kw) is not None:
-                st.toast(f"{choice} sent for {d}")
+    operator = st.sidebar.text_input("Operator", key="operator").strip()
+    if not operator:
+        st.sidebar.warning("Enter your name to enable the card buttons.")
+    live()
 
-        with st.container(border=True):
-            left, right = st.columns([1, 2])
-            left.markdown(f"**{card['cls']}** · severity {card['severity']:.2f} · `{d}`")
-            images = [p for p in (card["crop_path"], card["heatmap_path"]) if p and Path(p).exists()]
-            if images:
-                left.image(images, width=160)
-            if not card["heatmap_path"]:
-                left.caption("Heatmap computing…")
-            if card["remaining_s"] is not None:
-                left.markdown(f"Timeout in **{card['remaining_s']:.0f} s**")
 
+def proposal_card(card: dict, decide: Callable[..., None], enabled: bool) -> None:
+    """FR-016. ``decide(choice, **kw)`` is every button's only effect (here: an operator_decisions row; the loop
+    re-gates and acts). Explanation fields missing from ``card`` are not drawn: the study's OFF cards (FR-025)."""
+    import streamlit as st
+
+    d = card["defect_id"]
+    with st.container(border=True):
+        left, right = st.columns([1, 2])
+        left.markdown(f"**{card['cls']}** · severity {card['severity']:.2f} · `{d}`")
+        images = [p for p in (card["crop_path"], card.get("heatmap_path")) if p and Path(p).exists()]
+        if images:
+            left.image(images, width=160)
+        if "heatmap_path" in card and not card["heatmap_path"]:
+            left.caption("Heatmap computing…")
+        if card.get("remaining_s") is not None:
+            left.markdown(f"Timeout in **{card['remaining_s']:.0f} s**")
+
+        if "causes" in card:
             alpha = f" (α = {card['alpha']:g})" if card["alpha"] is not None else ""
             right.markdown(f"**Cause set**{alpha}")
             for cause, p in card["causes"]:
@@ -105,36 +116,35 @@ def main() -> None:
             right.markdown(f"Sensor flags: {flags}")
             right.markdown(f"Not auto-applied: **{card['verdict']}**: {card['reason']}")
 
-            for p in card["proposals"]:
-                pid = p["proposal_id"]
-                x, to = p["from_value"], p["final_value"]  # final_value: what the G-code would set
-                layers = " ".join(f"{lay['layer']} {'✓' if lay['passed'] else '✗'}" for lay in p["layers"]) or "not gated"
-                st.markdown(f"**{p['var']}** {x:g} → {to:g} {p['unit']} ({to - x:+g}). Gate: {layers}")
-                for lay in p["layers"]:
-                    st.caption(lay["reason"])
+        for p in card["proposals"]:
+            pid = p["proposal_id"]
+            x, to = p["from_value"], p["final_value"]  # final_value: what the G-code would set
+            line = f"**{p['var']}** {x:g} → {to:g} {p['unit']} ({to - x:+g})"
+            if "layers" in p:
+                layers = " ".join(f"{lay['layer']} {'✓' if lay['passed'] else '✗'}" for lay in p["layers"])
+                line += f". Gate: {layers or 'not gated'}"
+            st.markdown(line)
+            for lay in p.get("layers", ()):
+                st.caption(lay["reason"])
+            if "counterfactual" in p:
                 st.markdown(p["counterfactual"])
-                a, m, s = st.columns([1, 2, 1])
-                if a.button("Apply", key=f"apply-{pid}", disabled=not operator):
-                    decide("apply", proposal_id=pid)
-                delta = m.number_input("Modify Δ", value=float(p["delta"]), key=f"delta-{pid}")
-                if s.button("Modify", key=f"modify-{pid}", disabled=not operator):
-                    decide("modify", proposal_id=pid, modified_delta=delta)
+            a, m, s = st.columns([1, 2, 1])
+            if a.button("Apply", key=f"apply-{pid}", disabled=not enabled):
+                decide("apply", proposal_id=pid)
+            delta = m.number_input("Modify Δ", value=float(p["delta"]), key=f"delta-{pid}")
+            if s.button("Modify", key=f"modify-{pid}", disabled=not enabled):
+                decide("modify", proposal_id=pid, modified_delta=delta)
 
-            r, pa, st_, c = st.columns(4)
-            if r.button("Reject", key=f"reject-{d}", disabled=not operator):
-                decide("reject")
-            if pa.button("Pause", key=f"pause-{d}", disabled=not operator):
-                decide("pause")
-            confirm = c.checkbox("Confirm Stop (M112)", key=f"confirm-{d}")
-            if st_.button("Stop", key=f"stop-{d}", type="primary", disabled=not operator):
-                decide("stop", confirm=confirm)
-                if not confirm:
-                    st.warning("Tick 'Confirm Stop (M112)' first.")
-
-    operator = st.sidebar.text_input("Operator", key="operator").strip()
-    if not operator:
-        st.sidebar.warning("Enter your name to enable the card buttons.")
-    live()
+        r, pa, st_, c = st.columns(4)
+        if r.button("Reject", key=f"reject-{d}", disabled=not enabled):
+            decide("reject")
+        if pa.button("Pause", key=f"pause-{d}", disabled=not enabled):
+            decide("pause")
+        confirm = c.checkbox("Confirm Stop (M112)", key=f"confirm-{d}")
+        if st_.button("Stop", key=f"stop-{d}", type="primary", disabled=not enabled):
+            decide("stop", confirm=confirm)
+            if not confirm:
+                st.warning("Tick 'Confirm Stop (M112)' first.")
 
 
 if __name__ == "__main__":

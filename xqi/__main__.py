@@ -26,12 +26,21 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--max-frames", type=int)
     ui = sub.add_parser("ui", help="open the dashboard")
     ui.add_argument("--run", default="latest")
+    study = sub.add_parser("study", help="operator study: replay cards with explanation on/off")
+    study.add_argument("--events", required=True, help="folder of runs/<run_id>/events.sqlite")
+    study.add_argument("--out", required=True)
+    study.add_argument("--campaign", default="docs/campaign.csv")
+    study.add_argument("--seed", type=int, default=0)
     args = parser.parse_args(argv)
 
     if args.cmd == "ui":
         from xqi.ui import launch
 
         return launch(args.run)
+    if args.cmd == "study":
+        from xqi.study import launch
+
+        return launch(args.events, args.out, args.campaign, args.seed)
 
     logging.basicConfig(level=logging.INFO)
     cfg = load(args.config)
