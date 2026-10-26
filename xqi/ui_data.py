@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
 
+from xqi.explain.counterfactual import UNIT
 from xqi.store import Store
-from xqi.types import Detection
+from xqi.types import Detection, OperatorDecision
 
 DB_NAME = "events.sqlite"
 LATEST_FRAME = Path("frames") / "latest.jpg"
@@ -78,6 +81,74 @@ def recent_alerts(store: Store, n: int = 5, window_s: float = ALERT_WINDOW_S) ->
         """,
         (window_s, n),
     )
+
+
+_CARD_SQL = """
+SELECT d.defect_id, d.cls, d.severity, d.conf, d.crop_path, d.heatmap_path,
+       v.verdict, v.reason, v.t_gate, v.deadline_ts, v.pending,
+       e.probs_json, e.set_json, e.flags_json,
+       (SELECT json_extract(cfg_json, '$.conformal.alpha') FROM runs LIMIT 1) AS alpha,
+       (SELECT MAX(ts) FROM telemetry) AS now
+FROM defects d JOIN verdicts v USING (defect_id) LEFT JOIN explanations e USING (defect_id)
+WHERE d.defect_id = ?
+"""
+
+
+def card_model(store: Store, defect_id: str) -> dict[str, Any] | None:
+    """Everything one proposal card shows (FR-016), or None for an unknown event.
+
+    ``remaining_s`` / ``latency_s`` use the latest telemetry ts as "now": the UI has no
+    access to the loop's monotonic clock, and telemetry is stamped on it every poll_s.
+    """
+    rows = store.query(_CARD_SQL, (defect_id,))
+    if not rows:
+        return None
+    card = rows[0]
+    probs = json.loads(card.pop("probs_json") or "{}")
+    members = json.loads(card.pop("set_json") or "[]")
+    card["causes"] = sorted(((c, probs.get(c, 0.0)) for c in members), key=lambda cp: -cp[1])
+    card["flags"] = json.loads(card.pop("flags_json") or "[]")
+    now = card.pop("now")
+    has_deadline = now is not None and card["deadline_ts"] is not None
+    card["remaining_s"] = max(0.0, card["deadline_ts"] - now) if has_deadline else None
+    card["latency_s"] = max(0.0, now - card["t_gate"]) if now is not None and card["t_gate"] is not None else 0.0
+
+    card["proposals"] = []
+    for p in store.query(
+        "SELECT proposal_id, cause, var, from_value, delta, to_value, counterfactual, gate_json, passed"
+        " FROM proposals WHERE defect_id = ? ORDER BY rowid",
+        (defect_id,),
+    ):
+        gate = json.loads(p.pop("gate_json") or "{}")
+        p["passed"] = None if p["passed"] is None else bool(p["passed"])
+        p["clipped"] = gate.get("clipped", False)
+        p["final_value"] = gate.get("final_value", p["to_value"])
+        p["layers"] = gate.get("layers", [])
+        p["unit"] = UNIT[p["var"]]
+        card["proposals"].append(p)
+    return card
+
+
+def insert_decision(
+    store: Store,
+    card: dict[str, Any],
+    choice: str,
+    operator: str,
+    *,
+    proposal_id: str | None = None,
+    modified_delta: float | None = None,
+    confirm: bool = False,
+) -> int | None:
+    """The card buttons' only effect: one operator_decisions row. The loop re-gates and acts (FR-017/018).
+
+    Stop (M112) needs ``confirm``; without it nothing is written and None is returned.
+    """
+    if choice == "stop" and not confirm:
+        return None
+    wall_iso = datetime.now(UTC).isoformat(timespec="seconds")
+    decision = OperatorDecision(proposal_id, card["defect_id"], choice, modified_delta, operator, wall_iso,
+                                card["latency_s"])
+    return store.insert_decision(decision)
 
 
 def save_latest_frame(
