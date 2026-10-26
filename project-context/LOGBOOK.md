@@ -619,3 +619,32 @@ NEXT:      A team laptop runs docs/gpu-runs/T-0038.md in the same sitting as T-0
            reports/img/ui_card.png; then verify and close #38. Gap outside this ticket: a ticket must wire the real
            Explainer (cause model + qhat) into `python -m xqi run`; the __main__.py comment says T-0034 would, but it
            did not.
+
+## 2026-10-26 — T-0043: Build the operator-study mode (replay cards with explanation on/off) (parallel run)
+BUILT:     xqi/study.py: `python -m xqi study --events R --out S [--campaign docs/campaign.csv] [--seed 0]` starts a
+           Streamlit page. It loads every non-critical event with proposals from runs/<id>/events.sqlite whose run has
+           a cause in campaign.csv that explains the defect class (09 §Data label rule). It draws 2 seeded blocks of
+           12 cards; even participant IDs get ON first, odd IDs OFF first. The page records choices (choice, chosen vs
+           known cause, correct, decision_s) plus 6 NASA-TLX sliders and 5 trust items per block into study.sqlite.
+           ui.proposal_card moved to module level so both pages share it; it skips explanation fields a card does not
+           have. Also docs/study_protocol.md (consent text, 30-min script, exclusion rules) and the pilot runbook
+           docs/gpu-runs/T-0043.md.
+RESULT:    tests/test_study.py 6 passed: counterbalancing by ID parity, the campaign.csv join and its filters,
+           reproducible per-seed selection independent of load order, ON/OFF card dicts that differ only in
+           EXPLANATION_FIELDS / PROPOSAL_EXPLANATION_FIELDS, the CLI, and an AppTest pilot (one participant through
+           both blocks; rows land off then on; the OFF block shows no p=/cause/counterfactual text). The runbook's
+           demo-data script was smoke-checked: 28 cards loaded, 12+12 selected. Merged t0043 (042d3f8) into main with
+           --no-ff, no conflicts. `pytest -q` -> 205 passed, 5 deselected in 80 s; ruff clean. Done-when (a pilot with
+           1 team member) needs a human at a Streamlit server. Status WAITING-GPU (no GPU needed).
+SURPRISE:  The loop never writes defects.crop_path and keeps no per-event frames, so real campaign cards would show no
+           frame or box, only the class and buttons. The runbook's synthetic data writes crops itself; the protocol
+           lists per-event crops as a prerequisite for the real study. Spec choices: known cause = docs/campaign.csv
+           joined on run folder name; severity shown in both conditions (detector output), gate checks and heatmap
+           hidden in OFF; correct = apply/modify on the proposal whose cause equals the known cause; the 5 trust items
+           are [assumed], adapted from Jian 2000 / Hoffman 2018. No merge conflicts.
+BROKE:     Nothing. The dashboard's proposal_card is now a module-level function taking (card, decide, enabled);
+           behaviour unchanged and all test_ui_data tests still pass. xqi/ui.py and xqi/__main__.py (additive `study`
+           subcommand) were edited outside the Files: line, as the spec requires.
+NEXT:      Human pilot per docs/gpu-runs/T-0043.md, same sitting as T-0037/T-0038; push reports/study/pilot.sqlite,
+           reports/img/study_off.png, reports/img/study_on.png, then verify and close #43. Before T-0041/T-0045: make
+           the loop save a crop per event (defects.crop_path).
