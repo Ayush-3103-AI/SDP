@@ -560,3 +560,32 @@ BROKE:     Nothing. No shared files were touched.
 NEXT:      The GPU laptop runs docs/gpu-runs/T-0036.md (needs models/yolo/best.pt from T-0002) and pushes
            reports/latency.md. Then verify the bench heading names the RTX 3050 and the three NFR lines are present,
            and close #36. NFR-002 will most likely read NO DATA until an auto-mode run store exists (T-0039 rig).
+
+## 2026-10-26 — T-0052: Write the 2-hour soak test on replay + FakePrinter (parallel run)
+BUILT:     tests/test_soak.py. _soak() writes N PNGs, loops the replay folder through open_source and restamps each
+           frame on a FastClock at 10 fps, so frames are not slept. It runs Orchestrator in auto mode with
+           FakePrinter(clock), a seeded StubDetector (seed 0, non-critical bursts) and a seeded RandomExplainer (1-2
+           causes, 10% misalignment, 10% none). A background operator thread answers about half the cards
+           (apply/modify/reject/pause) via Store.open_readonly().insert_decision and lets the rest time out. psutil
+           samples RSS every 1000 frames. Defects and the operator stop timeout_s+10 s before the end, so every card
+           resolves. test_soak_2h (@slow): 72,000 frames = 2 h. test_soak_smoke (default markers): 40 s, 10 s timeout,
+           20-frame folder. tests/conftest.py (new): FastClock and StubDetector, with the fast_clock and stub_detector
+           fixtures. Runbook docs/gpu-runs/T-0052.md.
+RESULT:    The smoke checks the same three Done-when asserts on CPU: no exception from the loop or the operator thread,
+           RSS growth < 200 MB, pending_events()==[] and new_decisions()==[]. A one-off smoke gave PROPOSE x2, one
+           operator apply and one timeout. Merged t0052 (2ab3f39) into main with --no-ff, no conflicts.
+           `pytest -q` -> 193 passed, 5 deselected in 71 s; ruff clean. Done-when (`uv run pytest -m slow
+           tests/test_soak.py`) is still open: it is a 10-20 min run that this laptop must not do, so it is handed
+           off through the runbook. Status WAITING-GPU (no GPU needed, any team laptop).
+SURPRISE:  On this Windows laptop cv2.imread of a freshly written tiny PNG costs about 17 ms (around 6 ms once cached),
+           and imwrite about 8 ms, probably because Defender scans new files. That disk I/O, not the loop, sets the
+           soak time: about 6-10 ms per frame, so 10-20 min for 72k frames. The smoke uses a 20-frame folder for this
+           reason; the first 200-frame version took 27 s. No merge conflicts.
+BROKE:     Nothing. The ticket asked to add psutil as a dev dependency, but pyproject/uv.lock edits were not allowed in
+           parallel mode. psutil is importable because ultralytics brings it in; a ponytail comment in test_soak.py
+           marks the dependency to declare. The 'stop' operator choice and critical classes are left out of the random
+           schedule on purpose: M112 latches FakePrinter in Error and would turn the rest of the soak into dispatch
+           failures.
+NEXT:      A team laptop runs runbook step 2 (CPU only, no data, no weights; fits in any GPU sitting) and pushes
+           reports/soak_T-0052.txt. Then verify the PASSED line and close #52. Add psutil to the dev dependency group
+           on the next uv lock.
