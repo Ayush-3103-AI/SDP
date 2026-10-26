@@ -589,3 +589,33 @@ BROKE:     Nothing. The ticket asked to add psutil as a dev dependency, but pypr
 NEXT:      A team laptop runs runbook step 2 (CPU only, no data, no weights; fits in any GPU sitting) and pushes
            reports/soak_T-0052.txt. Then verify the PASSED line and close #52. Add psutil to the dev dependency group
            on the next uv lock.
+
+## 2026-10-26 — T-0038: Build the dashboard proposal cards and operator buttons (parallel run)
+BUILT:     xqi/ui_data.py: card_model(store, defect_id) builds the whole FR-016 card from one SQL join plus the proposal
+           rows: cls, severity, crop/heatmap paths, the cause set's members sorted by p, alpha (from the run's cfg_json
+           conformal.alpha), sensor flags, the verdict reason, remaining_s, latency_s, and per proposal
+           from/to/final_value/delta/unit, the L-layers with their reasons and the counterfactual.
+           insert_decision(store, card, choice, operator, ...) is the buttons' only write; Stop without confirm=True
+           writes nothing. xqi/ui.py: one bordered card per pending event inside the live fragment, an Operator text
+           input in the sidebar (buttons disabled until it is filled), Apply and Modify (number input) per proposal,
+           and Reject / Pause / Stop with a Confirm checkbox. Runbook docs/gpu-runs/T-0038.md (screenshot).
+RESULT:    tests/test_ui_data.py 13 passed (6 new): card_model full dict, card_model with no explanation,
+           insert_decision row contents, Stop without confirm gives no row, an AppTest that clicks Apply then an
+           unconfirmed Stop (only the apply row, with the operator name), and an end-to-end test where Apply on a card
+           the replay Orchestrator built gives actions row {source: operator, gcode M221 S108, ok 1}. A stub-only demo
+           (20 frames) gave a PROPOSE card with flow 100->108 and nozzle 210->214, all gates ticked. Merged t0038
+           (30761c6) into main with --no-ff, no conflicts. `pytest -q` -> 199 passed, 5 deselected in 81 s; ruff clean.
+           Done-when is open only on the screenshot reports/img/ui_card.png, which needs a Streamlit server and a
+           running loop that this laptop must not run. Status WAITING-GPU (no GPU or best.pt needed).
+SURPRISE:  `python -m xqi run` still passes explainer=None (xqi/__main__.py), so a real replay run only gives ESCALATE
+           cards with no proposals. The runbook demo therefore uses a stub detector, a fixed two-cause explainer and
+           the FakePrinter. Nothing writes defects.crop_path, so the card shows the heatmap overlay (crop 0.6, heat
+           0.4) or 'Heatmap computing…'. The UI cannot read the loop's monotonic clock, so countdown and latency_s use
+           the latest telemetry ts as 'now' (accurate to within poll_s, 1 s). No merge conflicts.
+BROKE:     Nothing. ui.py's docstring 'read-only' became 'only write is insert_decision'.
+           test_live_view_shows_all_elements still passes. One parallel-run full suite had
+           test_camera.py::test_replay_fps_paces_playback fail on timing under machine load; it passes alone and on rerun.
+NEXT:      A team laptop runs docs/gpu-runs/T-0038.md in the same sitting as T-0037's runbook and pushes
+           reports/img/ui_card.png; then verify and close #38. Gap outside this ticket: a ticket must wire the real
+           Explainer (cause model + qhat) into `python -m xqi run`; the __main__.py comment says T-0034 would, but it
+           did not.

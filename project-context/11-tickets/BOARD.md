@@ -104,7 +104,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0035 Outcome verifier | C | MUST | DONE |
 | T-0036 Latency report | C | MUST | WAITING-GPU |
 | T-0037 Dashboard live view | C | MUST | WAITING-GPU |
-| T-0038 Proposal cards | C | MUST | TODO |
+| T-0038 Proposal cards | C | MUST | WAITING-GPU |
 | T-0039 HIL dry run | P | MUST | BLOCKED |
 | T-0040 Campaign protocol | C | MUST | BLOCKED |
 | T-0041 Run campaign | H | MUST | BLOCKED |
