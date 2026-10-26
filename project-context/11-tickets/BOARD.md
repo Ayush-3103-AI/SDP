@@ -80,7 +80,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0011 Cause model | C | MUST | TODO |
 | T-0012 Train fold 0 | P | MUST | BLOCKED |
 | T-0013 LOGO CV + K2 | P | MUST | BLOCKED |
-| T-0014 Conformal | C | MUST | TODO |
+| T-0014 Conformal | C | MUST | DONE |
 | T-0015 Conformal eval | C | MUST | BLOCKED |
 | T-0016 Proposals/counterfactual | C | MUST | TODO |
 | T-0017 CF fidelity eval | C | MUST | BLOCKED |

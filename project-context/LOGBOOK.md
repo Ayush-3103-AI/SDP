@@ -73,3 +73,22 @@ RESULT:    `uv run pytest` → 45 passed (+5: 3 load_causes rejections, CTE writ
 SURPRISE:  Nothing.
 BROKE:     Nothing.
 NEXT:      SEQUENCE step 6 = T-0021 (gate L1+L2). T-0002 (HUMAN) is still open.
+
+## 2026-10-26 — T-0014: Implement split-conformal calibration and prediction sets (parallel run)
+BUILT:     xqi/explain/conformal.py: calibrate (LAC score 1−p_y, np.quantile method=higher at ⌈(n+1)(1−α)⌉/n;
+           level > 1 gives 1.0; n < 20 raises ValueError), predict_set (label order, inclusive ties),
+           save_qhat/load_qhat as JSON {qhat, alpha, n}. Added an empty xqi/explain/__init__.py so the package
+           exists. tests/test_conformal.py covers coverage, n < 20, level > 1, ties and the save/load roundtrip.
+RESULT:    Dirichlet-calibrated categorical model, K=5, n_cal=5000, 20 000 test draws: coverage 0.9535 at α=0.05,
+           0.9085 at α=0.1, 0.80445 at α=0.2, all inside [1−α−0.01, 1−α+0.03]. Merged t0014 into main with
+           --no-ff, no conflicts. `pytest -q` → 52 passed; ruff clean on the tracked tree.
+SURPRISE:  - Checking p ≥ 1−qhat directly can drop an exact tie by one ulp, because 1−(1−p) ≠ p in floats.
+             predict_set compares the score 1−p ≤ qhat instead, the same expression calibrate uses, so ties are
+             included exactly.
+           - 09-interfaces doesn't fix what load_qhat returns. It returns {"qhat", "alpha", "n"} because CauseSet
+             needs both alpha and qhat.
+           - `ruff check .` from the repo root also lints the untracked agent worktrees under .claude/worktrees/
+             (there, isort doesn't treat xqi as first-party). With --extend-exclude .claude it's clean.
+BROKE:     Nothing.
+NEXT:      The Explainer fills CauseSet(alpha, qhat) from load_qhat. scripts/eval_conformal.py (empirical coverage on
+           LOGO folds) waits on real cause-model probs.
