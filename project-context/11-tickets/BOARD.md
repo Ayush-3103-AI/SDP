@@ -92,7 +92,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0023 Gate property + recipe audit | C | MUST | TODO |
 | T-0024 Derive L3 window | C | MUST | BLOCKED |
 | T-0025 Envelope sign-off | H | MUST | BLOCKED |
-| T-0026 Printer + FakePrinter | C | MUST | TODO |
+| T-0026 Printer + FakePrinter | C | MUST | DONE |
 | T-0027 OctoPrint client | C | MUST | TODO |
 | T-0028 OctoPrint smoke | P | MUST | BLOCKED |
 | T-0029 Frame sources | C | MUST | TODO |

@@ -136,3 +136,25 @@ SURPRISE:  - A target change comes from both last_change_ts (our own commands) a
 BROKE:     Nothing.
 NEXT:      The Explainer and event_verdict/L4 consume these flags: any flag blocks APPLY, and state_unavailable maps
            to ESCALATE per §4 row 4.
+
+## 2026-10-26 — T-0026: Implement the Printer protocol and the FakePrinter simulator (parallel run)
+BUILT:     New xqi/printer.py has a runtime_checkable Printer Protocol (get_state, send_gcode, pause, resume, estop)
+           and FakePrinter(clock=time.monotonic, nozzle_c=210, bed_c=60). FakePrinter parses the S value of
+           M104/M140/M220/M221, handles M112, keeps a `sent` list of (ts, line), tracks last_change_ts for each Var,
+           and runs a Printing/Paused/Error state machine. Thermal lag follows 07 §12 (tau 8 s nozzle, 60 s bed)
+           using explicit Euler in sub-steps of at most 0.1 s. Flow and speed change instantly.
+RESULT:    M104 S220 from 210 gives nozzle 216.34 after 8 s (expected 216.32, tolerance ±0.5). M221 S110 sets
+           flow_pct to 110 at once. After M112 the state is Error and send_gcode returns False. Also tested: the bed
+           tau, the `sent` contents, and pause/resume. Merged t0026 into main with --no-ff, no conflicts.
+           `pytest -q` → 88 passed (4 new); ruff clean on the tracked tree (--extend-exclude .claude).
+SURPRISE:  - Taken literally, "Euler at the call rate" with a single 8 s step gives dt/tau = 1, so the nozzle jumps
+             straight to 220 and the Done-when test fails; gaps longer than 2*tau would oscillate. Fixed by
+             splitting each gap into Euler sub-steps of at most 0.1 s, which still matches the closed form.
+           - last_change_ts starts at -inf ("never changed"), so the L2 cooldown does not block corrections at t=0
+             when the fake clock starts there.
+           - Unspecified but inside the 09 API: initial temps come from constructor kwargs (defaults 210/60, the
+             config nominal); progress_pct is None; pause/resume are not written to `sent` (G-code only); estop()
+             returns True once the printer is in Error.
+BROKE:     Nothing.
+NEXT:      OctoPrintClient (the real Printer, with mocked HTTP) and the gate/loop tickets can use FakePrinter as
+           their printer double.
