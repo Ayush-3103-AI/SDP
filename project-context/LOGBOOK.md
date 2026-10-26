@@ -238,3 +238,26 @@ BROKE:     Nothing. Only new files were added.
 NEXT:      Run `uv run pytest -m hw tests/test_camera.py` on the rig laptop with the webcam. The orchestrator
            (T-0030+) uses open_source(cfg.camera.source, cfg.camera.width, cfg.camera.height). A dead camera
            yields no frames, so the loop's max_gap_s check has to run on a timer outside the frame iterator.
+
+## 2026-10-26 — T-0011: Implement the cause model (architecture, predict, training step) (parallel run)
+BUILT:     xqi/explain/cause_model.py. The module docstring opens with the Gate 0 frame.
+           build_model(n_causes, n_defects, pretrained=True) is ResNet18 (IMAGENET1K_V1) with fc=Identity; the
+           512-d features are concatenated with the defect one-hot, then Linear -> n_causes.
+           train_one_epoch(model, loader, opt, class_weights) runs class-weighted CE over (image, defect_idx,
+           cause_idx) batches and returns (mean_loss, train_acc). CauseModel(weights, causes, defects, device,
+           input_px=224).predict(crop_bgr, defect) converts BGR to RGB, resizes to 224 with INTER_AREA, applies
+           ImageNet normalisation, softmaxes and returns CauseEstimate. New tests/test_cause_model.py.
+RESULT:    3 new tests, written first and seen failing (ModuleNotFoundError). Probs sum to 1 over all 9 CAUSES
+           and top/p_top match. inspect.signature(model.predict) is exactly ['crop_bgr', 'defect']. Done-when:
+           64 synthetic red/blue "causes", random-init ResNet18, AdamW lr 3e-4, batch 16, 5 CPU epochs reach
+           train accuracy > 0.9. Merged t0011 into main with --no-ff, no conflicts (xqi/explain/__init__.py
+           already existed on main). `pytest -q` -> 114 passed, 2 deselected; ruff clean on the tracked tree
+           (--extend-exclude .claude).
+SURPRISE:  Under parallel-agent CPU load, importing torch/torchvision costs about 60 s, and the overfit test took
+           about 24 s at both 64 px and 32 px, so contention dominates, not image size. Test images are 32 px
+           because the backbone is size-agnostic (adaptive pool). Production predict still uses 224.
+BROKE:     Nothing. Additive only: build_model gained an optional pretrained kwarg (default True, which matches
+           09) so tests and CauseModel loading never download ImageNet weights. CauseModel.__init__ takes an
+           optional input_px=224 so it can be wired from cfg.cause_model.input_px.
+NEXT:      T-0012 (LOGO training script) reuses build_model and train_one_epoch, with aug, early stop and fold
+           saving per 08 P5. The real training needs a GPU plus T-0005/6/7 data and gets a runbook then.

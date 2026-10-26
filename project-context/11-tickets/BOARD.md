@@ -77,7 +77,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0008 Detector baseline | C | MUST | BLOCKED |
 | T-0009 Crop dataset | C | MUST | BLOCKED |
 | T-0010 Eval harness + floor | C | MUST | BLOCKED |
-| T-0011 Cause model | C | MUST | TODO |
+| T-0011 Cause model | C | MUST | DONE |
 | T-0012 Train fold 0 | P | MUST | BLOCKED |
 | T-0013 LOGO CV + K2 | P | MUST | BLOCKED |
 | T-0014 Conformal | C | MUST | DONE |
