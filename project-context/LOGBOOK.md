@@ -507,3 +507,31 @@ BROKE:     Nothing. One behaviour change: in auto/advisory with no explainer wir
 NEXT:      Wire the Explainer (CauseModel weights + qhat_file) into xqi/__main__.py (outside this ticket's Files:
            line), so auto/advisory from the CLI stays a fail-safe that escalates every defect until then. Next in
            parallel run 2: T-0051.
+
+## 2026-10-26 — T-0051: Implement operator-decision processing and timeouts in the loop (parallel run)
+BUILT:     Orchestrator.process_operator_decisions() and check_timeouts() in xqi/orchestrator.py. The loop calls both on
+           every tick, after handle_event and before verifier.tick (08 P1). apply rebuilds the stored Proposal and
+           re-gates it on a fresh get_state(). modify builds a new Proposal (cause=operator, id <pid>-op<decision id>)
+           with the operator's delta measured from the current setpoint, gates it and writes it to proposals, so
+           gate_json holds the clip reason. reject is only logged. pause calls printer.pause() and stop calls
+           printer.estop(); both are logged as source=operator actions. Every decision is marked consumed and its
+           verdict's pending flag is cleared. Timeouts insert a choice=timeout decision row (operator 'loop',
+           latency = now - t_gate), mark it consumed, clear pending and run hitl.timeout_action (pause is logged as a
+           source=timeout action).
+RESULT:    7 new tests in tests/test_orchestrator.py: test_modify_regated (+15 °C → M104 S215, reason
+           'L2: clipped +15 → +5 °C'), test_apply_rechecks_cooldown (a flow change 5 s before → nothing sent,
+           decision_blocked alert 'L2: cooldown 5s < 20s'), test_pause_stop, test_timeout[noop|pause],
+           test_duplicate_decision_ignored (a double apply, a late modify and an unknown event → one dispatch and 3
+           decision_ignored alerts), and test_decisions_processed_in_loop (a decision inserted mid-run is picked up by
+           run()). Done-when (the decision tests pass) holds. Merged t0051 (acb589e) into main with --no-ff, no
+           conflicts. `pytest -q` -> 189 passed, 4 deselected in 34 s; ruff clean.
+SURPRISE:  - 09 §Store says the loop only sets `consumed` on operator_decisions, but the ticket, FR-019 and the
+             OperatorDecision choice 'timeout' in 09 §Types need the loop to insert the timeout row. Implemented per
+             the ticket and §Types: the loop inserts through insert_decision, under WAL plus busy_timeout. Candidate
+             one-line 09 note (needs user approval): "loop also inserts choice=timeout rows (consumed=1)".
+           - The store has no clear-pending API, so pending is cleared by rewriting the verdict row with
+             write_verdict(pending=False), which keeps t_gate and deadline_ts.
+           - apply dispatches the re-gated final_gcode, which equals the stored gated G-code when state is unchanged.
+BROKE:     Nothing. The existing 12 orchestrator tests still pass. If the detector raises on a frame, the decision and
+           timeout steps are skipped for that frame (the existing `continue`); this is bounded by the 10-failure pause.
+NEXT:      Take the next step from SEQUENCE.md. Open item: propose the 09 §Store timeout-row note as a DESCEND.

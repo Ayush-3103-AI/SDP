@@ -117,7 +117,7 @@ The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-
 | T-0048 Recalibrate (COULD) | C | COULD | TODO |
 | T-0049 Tiled inference (COULD) | C | COULD | BLOCKED |
 | T-0050 Leave-one-printer-out (COULD) | P | COULD | BLOCKED |
-| T-0051 Operator decisions + timeouts | C | MUST | TODO |
+| T-0051 Operator decisions + timeouts | C | MUST | DONE |
 | T-0052 Soak test | C | MUST | TODO |
 
 Statuses: TODO / BLOCKED (waiting on a dependency) / DOING / DONE / FAILED (a kill criterion fired → DESCEND).
