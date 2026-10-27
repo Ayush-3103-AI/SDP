@@ -5,7 +5,8 @@ PHASE:        5 — EXECUTE (re-planned; delta gate APPROVED by the user 2026-10
 LAST SESSION: 2026-10-27 — T-0057 DONE: CAXTON taxonomy in code (causes.yaml, MANUAL_ADVICE, EARLY_WARNING,
               SCHEMA_VERSION 2, use_defect=false cause model with checkpoint check, gate row 7 = manual causes,
               card advice). 221 passed; ruff clean.
-NEXT ACTION:  Step 30 T-0005 (CAXTON adapter, CODE). Then 31 T-0009 … per SEQUENCE.md Part B.
+NEXT ACTION:  Parallel run 3 (user-requested 2026-10-27): every CODE ticket that needs no teammate result.
+              Step 30 T-0005 (CAXTON adapter, CODE). Then 31 T-0009 … per SEQUENCE.md Part B.
               Parallel option: BOARD lists the unblocked CODE set (0060, 0005, 0058, 0059 → …).
               Teammates now: T-0065 Part 1 + the CPU runs (T-0023, T-0052, T-0037/38, T-0043/44).
 
@@ -76,10 +77,10 @@ Outdated, don't run: docs/gpu-runs/T-0030.md, T-0036.md (banners added).
 - psutil (soak test) comes via ultralytics; declare it in the dev group at the next deliberate `uv lock`.
 
 ## Questions for the human (recommended answer in brackets)
-- Q5 (ADR-0009) Does Dr. Meti accept CAXTON-based, leave-parts-out metrics and S5's [assumed] thresholds? [show her
-  ADR-0009 + 06 NFR-012 this week]
-- Q1 Semester end / demo date? [~mid-January 2027]
 - Q2 Who on the team owns T-0065 (download) and the GPU sittings? [the teammate with the RTX 3050 laptop]
+- Answered 2026-10-27: Q5 Dr. Meti signed off ADR-0009 (CAXTON, leave-parts-out, S5 thresholds).
+  Q1 demo is NEXT WEEK (~2026-11-03), not mid-January: T-0065 download is now urgent; the demo falls back to
+  synthetic replay + random-init/no-model path if CAXTON or the trained model is not ready.
 
 ## Highest unretired risk
 K1′: the CAXTON image archive's download location is unverified (the Apollo record lists only the label CSVs,

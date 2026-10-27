@@ -751,3 +751,11 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
 - BROKE: nothing. Not done (reviewer notes, deliberate): Causes.manual_advice is validated but runtime reads the
   types.py default (same pattern as CAUSE_ACTION); scripts/analyze_study.py selftest still names misalignment.
 - NEXT: step 30 T-0005 (CAXTON adapter). Parallel option: T-0060 has no open dependency.
+
+## 2026-10-27 — Decisions: Dr. Meti sign-off, demo next week; parallel run 3
+- RESULT: the user reports Dr. Meti signed off ADR-0009 (Q5). Demo date is next week (~2026-11-03), not mid-January.
+  The user asked to build everything that needs no teammate work now (parallel run 3). Same scheme as run 1:
+  lane agents in git worktrees, test-first, one commit per ticket; one integrator merges into main in
+  dependency order. SEQUENCE order unchanged.
+- RISK: the demo now depends on T-0065 (CAXTON images) + G2/G3 training within days. T-0066 must also run on
+  synthetic replay with the no-model fallback.
