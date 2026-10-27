@@ -1,5 +1,6 @@
 import json
 
+import cv2
 import numpy as np
 import pandas as pd
 import pytest
@@ -101,3 +102,51 @@ def test_floor_on_the_caxton_fixture(tmp_path):
     rows = [line for line in out.read_text(encoding="utf-8").splitlines() if line.startswith("| 0 ")]
     # fold 0 tests p0 (none 4 of 11 single-cause or none images; multi excluded); p1 + p2 train: none 6 is the majority
     assert rows == ["| 0 | none | none, flow_high, nozzle_temp_low | 11 | 0.364 | 0.364 |"]
+
+
+def test_rung_rule_needs_more_than_the_probe_std():
+    probe = [0.7, 0.8, 0.9]  # std 0.082
+    assert eval_cause.choose_rung([0.8, 0.8, 0.8], probe) == "probe"
+    assert eval_cause.choose_rung([0.87, 0.87, 0.87], probe) == "probe"
+    assert eval_cause.choose_rung([0.9, 0.9, 0.9], probe) == "finetune"
+
+
+def test_report_sections_rung_choice_and_copy(tmp_path, capsys):
+    ft_dir, crops, splits = _synthetic(tmp_path / "ft", acc_pair=(0.8, 0.9))
+    probe_dir, _, _ = _synthetic(tmp_path / "probe")
+    runtime, out = tmp_path / "runtime", tmp_path / "cause_eval.md"
+    assert eval_cause.main(["--model-dir", str(ft_dir), "--probe-dir", str(probe_dir), "--copy-to", str(runtime),
+                            "--crops", str(crops), "--splits", str(splits), "--out", str(out)]) == 0
+    lines = out.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "K2: PASS (top-1 = floor + 35.0 pp)"
+    assert lines[1].startswith("NFR-005: ") and "floor + 35.0 pp" in lines[1]
+    for h in ("## Frame", "## Baseline", "## Model", "## Result", "## Risks"):
+        assert h in lines
+    assert any(line.startswith("Rung: finetune") for line in lines)
+    assert sorted(p.name for p in runtime.iterdir()) == [f"preds_fold{k}.npz" for k in range(N_FOLDS)]
+    assert "train_cause.py --final" in capsys.readouterr().out
+
+
+def test_suspected_leakage_stops(tmp_path):
+    model_dir, crops, splits = _synthetic(tmp_path, acc_pair=(1.0, 1.0))
+    out = tmp_path / "cause_eval.md"
+    assert eval_cause.main(["--model-dir", str(model_dir), "--crops", str(crops), "--splits", str(splits),
+                            "--out", str(out)]) == 3
+    assert out.read_text(encoding="utf-8").splitlines()[1].startswith("suspected leakage: fold 0 top-1 = 1.000")
+
+
+def test_most_confident_wrong_crops_png(tmp_path):
+    rows = []
+    for i in range(3):
+        path = tmp_path / f"c{i}.jpg"
+        cv2.imwrite(str(path), np.full((16, 16, 3), 60 * i, np.uint8))
+        rows.append(("q", float(i), path.as_posix(), "none"))
+    rows.append(("t", 0.0, "", "flow_low"))  # a training print
+    crops = pd.DataFrame(rows, columns=["trial_id", "ts_s", "crop_path", "cause"])
+    probs = np.array([[0.9, 0.1], [0.2, 0.8], [0.4, 0.6]])  # rows 1 and 2 are wrong (true 0)
+    npz = {"labels": np.array(["none", "flow_low"]), "probs_test": probs, "y_test": np.array([0, 0, 0]),
+           "test_trial": np.array(["q"] * 3), "test_ts": np.arange(3.0)}
+    m = eval_cause.fold_metrics(npz, {"train_trials": ["t"]}, crops)
+    out = tmp_path / "cause_errors.png"
+    assert eval_cause.errors_png([(0, m)], crops, out) == 2
+    assert cv2.imread(str(out)) is not None

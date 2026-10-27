@@ -15,6 +15,9 @@ stop on calib loss (patience 3), use_defect=false. AMP on CUDA; a CUDA OOM halve
 Writes <out>/fold<k>.pt (best calib loss, via save_checkpoint), fold<k>.log, fold<k>.json and preds_fold<k>.npz
 (every calib + test image incl. `multi` rows, in ts order). A fold-0 run rewrites --report from every rung found
 next to <out>. Test predictions are written and reported, never used for a choice (no tuning on test).
+Checkpoints are the Gate 5 dict (state_dict, use_defect, causes, rung, input_px, normalisation, sha256 of logo.json
+and crops.csv, git SHA, seed, config, metrics). --final also writes the golden fixture (--golden, 8 calib crops and
+the model's CPU probabilities) that tests/test_cause_artifact.py checks.
 """
 import argparse
 import hashlib
@@ -40,10 +43,12 @@ from xqi.config import load_causes
 from xqi.explain.cause_model import (
     _MEAN,
     _STD,
+    CauseModel,
     build_model,
     save_checkpoint,
     train_one_epoch,
 )
+from xqi.types import DEFECTS
 
 CLS_COLS = ["flow_cls", "speed_cls", "z_cls", "nozzle_cls"]  # 09 §Data test_cls order
 LR, WD, PATIENCE, CALIB_FRAC, OVERFIT_STEPS, OVERFIT_LOSS = 3e-4, 1e-4, 3, 0.2, 100, 0.05
@@ -184,7 +189,6 @@ def run(name, train, calib, test, labels, a, device, meta, out: Path) -> dict:
         log(f"{name}: train {len(train)} crops in {train.trial_id.nunique()} prints · calib {len(cal_y)} · "
             f"test {len(test)} (incl. multi) · device {device}")
         model, curve = fit_halving(train, cal_y, n, a, device, log)
-        save_checkpoint(model, out / f"{name}.pt", **meta, causes=list(labels), input_px=a.px)
         p_cal, p_test = predict(model, calib, a, device, n), predict(model, test, a, device, n)
         np.savez(out / f"preds_{name}.npz", labels=np.array(labels), probs_calib=p_cal, y_calib=calib.y.to_numpy(),
                  calib_trial=calib.trial_id.to_numpy(str), calib_ts=calib.ts_s.to_numpy(float), probs_test=p_test,
@@ -198,8 +202,34 @@ def run(name, train, calib, test, labels, a, device, meta, out: Path) -> dict:
                    "test_top1": float((p_test[t].argmax(1) == y_t[t]).mean()) if t.any() else None,
                    "test_top3": float((top3 == y_t[t][:, None]).any(1).mean()) if t.any() else None}
         (out / f"{name}.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+        best = min(curve, key=lambda c: c["calib_loss"])
+        metrics = {"calib_loss": best["calib_loss"], "calib_top1": best["calib_acc"], "epochs": len(curve),
+                   **{k: summary[k] for k in ("test_top1", "test_top3", "floor_top1")}}
+        save_checkpoint(model, out / f"{name}.pt", **meta, causes=list(labels), input_px=a.px, metrics=metrics,
+                        normalisation={"mean": _MEAN.tolist(), "std": _STD.tolist()})  # Gate 5 artifact dict
         log(f"{name}: test top-1 {summary['test_top1']} · floor top-1 {summary['floor_top1']} ({labels[floor]})")
     return summary
+
+
+def write_golden(calib: pd.DataFrame, labels, weights: Path, px: int, golden: Path, n: int = 8) -> None:
+    """Gate 5 golden fixture: n calib crops (round-robin over causes) + the shipped model's CPU probabilities."""
+    queues = [list(zip(g.crop_path, g.cause)) for _, g in calib[calib.y >= 0].groupby("y")]
+    picks = []
+    while len(picks) < n and any(queues):
+        picks += [q.pop(0) for q in queues if q][: n - len(picks)]
+    model = CauseModel(weights, labels, DEFECTS, "cpu", input_px=px)
+    golden.mkdir(parents=True, exist_ok=True)
+    crops = []
+    for i, (src, cause) in enumerate(picks):
+        img = cv2.imread(src)
+        name = f"{i}_{cause}.png"  # lossless, so the test reads the exact pixels
+        cv2.imwrite(str(golden / name), img)
+        probs = model.predict(img, "unknown").probs
+        crops.append({"file": name, "cause": cause, "source": Path(src).as_posix(),
+                      "probs": [probs[c] for c in labels]})
+    (golden / "expected.json").write_text(json.dumps({"weights": "models/cause/final.pt", "causes": list(labels),
+                                                      "input_px": px, "crops": crops}, indent=1), encoding="utf-8")
+    print(f"wrote {golden} ({len(crops)} crops)")
 
 
 def diagnosis(s: dict) -> str:
@@ -268,6 +298,7 @@ def main(argv=None) -> int:
     ap.add_argument("--causes", default=str(ROOT / "config" / "causes.yaml"))
     ap.add_argument("--out", help="default: models/cause/probe | models/cause/finetune; --final: models/cause")
     ap.add_argument("--report", default="reports/cause_fold0.md", help="rewritten after a fold-0 run")
+    ap.add_argument("--golden", default="tests/fixtures/cause_golden", help="--final writes the golden fixture here")
     ap.add_argument("--epochs", type=int, default=15)
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--seed", type=int, default=0)
@@ -304,8 +335,9 @@ def main(argv=None) -> int:
         prints = sorted({t for f in folds[:1] for k in ("train_trials", "calib_trials", "test_trials") for t in f[k]})
         random.Random(a.seed).shuffle(prints)
         n_cal = max(1, round(CALIB_FRAC * len(prints)))
-        run("final", rows(crops, prints[n_cal:], a), rows(crops, prints[:n_cal], a), rows(crops, [], a), labels, a,
-            device, meta, out)
+        calib = rows(crops, prints[:n_cal], a)
+        run("final", rows(crops, prints[n_cal:], a), calib, rows(crops, [], a), labels, a, device, meta, out)
+        write_golden(calib, labels, out / "final.pt", a.px, Path(a.golden))
         return 0
     for k in range(len(folds)) if a.all else [a.fold]:
         f = folds[k]

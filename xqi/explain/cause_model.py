@@ -7,7 +7,7 @@ Gate 0 frame:
 - Metric: LOGO mean top-1 (NFR-005). Error cost: a wrong actionable cause proposes a
   wrong-direction change (bounded by the gate), so per-class recall on actionable causes
   is the main diagnostic.
-- Baseline: the floor, i.e. the majority cause per defect class (T-0010).
+- Baseline: the floor, i.e. the training prints' majority cause (T-0010; CAXTON has no defect class).
 
 Never feed setpoints or telemetry into this model: `predict` takes only (crop, defect), and with
 use_defect=false (the CAXTON default) it ignores the defect too.
@@ -117,6 +117,8 @@ class CauseModel:
         ckpt = torch.load(weights, map_location=self.device, weights_only=True)
         if ckpt.get("use_defect") is not use_defect:
             raise ValueError(f"{weights}: checkpoint use_defect={ckpt.get('use_defect')}, config {use_defect}")
+        if "causes" in ckpt and tuple(ckpt["causes"]) != self.causes:
+            raise ValueError(f"{weights}: checkpoint causes {ckpt['causes']} differ from config {self.causes}")
         self.model = build_model(len(self.causes), len(self.defects) if use_defect else 0, pretrained=False)
         self.model.load_state_dict(ckpt["state_dict"])
         self.model.to(self.device).eval()
