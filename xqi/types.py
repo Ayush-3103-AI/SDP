@@ -415,6 +415,31 @@ class Outcome:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class CauseWarning:
+    cause: str
+    p: float  # smoothed p̄_c (07 §13)
+    ts: float
+    probs: dict[str, float]
+
+    def to_dict(self) -> dict:
+        return {
+            "cause": self.cause,
+            "p": self.p,
+            "ts": self.ts,
+            "probs": dict(self.probs),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "CauseWarning":
+        return cls(
+            cause=data["cause"],
+            p=data["p"],
+            ts=data["ts"],
+            probs=dict(data["probs"]),
+        )
+
+
 DEFECTS = (
     "clog",
     "layer_shift",

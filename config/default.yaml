@@ -119,3 +119,14 @@ verify:
 attribution:
   enabled: true
   layer: "backbone.layer4"   # cause-model ResNet18 last block (07 §11); "model.model.9" = YOLO11 SPPF
+
+proactive:            # early warning, 07 §13
+  enabled: true
+  every_n: 1          # frames between evaluations (CAXTON is ~2.5 fps)
+  roi: null           # [x1, y1, x2, y2] px of the nozzle; null = whole frame
+  beta: 0.8
+  theta_on: 0.60      # chosen in T-0063
+  theta_off: 0.40
+  m: 3
+  cooldown_s: 60
+  max_gap_s: 10

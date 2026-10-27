@@ -137,6 +137,19 @@ class AttributionConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class ProactiveConfig:
+    enabled: bool
+    every_n: int
+    roi: tuple[int, int, int, int] | None
+    beta: float
+    theta_on: float
+    theta_off: float
+    m: int
+    cooldown_s: float
+    max_gap_s: float
+
+
+@dataclass(frozen=True, slots=True)
 class Config:
     mode: str
     run_dir: str
@@ -155,6 +168,7 @@ class Config:
     hitl: HitlConfig
     verify: VerifyConfig
     attribution: AttributionConfig
+    proactive: ProactiveConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -404,6 +418,8 @@ def _build_config(data: dict[str, Any]) -> Config:
         layer=str(attribution_data["layer"]),
     )
 
+    proactive = _build_proactive(_require(data, "proactive"))
+
     return Config(
         mode=mode,
         run_dir=str(data["run_dir"]),
@@ -425,7 +441,38 @@ def _build_config(data: dict[str, Any]) -> Config:
         hitl=hitl,
         verify=verify,
         attribution=attribution,
+        proactive=proactive,
     )
+
+
+def _build_proactive(data: dict[str, Any]) -> ProactiveConfig:
+    roi = data.get("roi")
+    if roi is not None:
+        if not isinstance(roi, (list, tuple)) or len(roi) != 4:
+            raise ConfigError("proactive.roi: expected [x1, y1, x2, y2] or null")
+        roi = tuple(int(v) for v in roi)
+    cfg = ProactiveConfig(
+        enabled=bool(data["enabled"]),
+        every_n=int(data["every_n"]),
+        roi=roi,
+        beta=float(data["beta"]),
+        theta_on=float(data["theta_on"]),
+        theta_off=float(data["theta_off"]),
+        m=int(data["m"]),
+        cooldown_s=float(data["cooldown_s"]),
+        max_gap_s=float(data["max_gap_s"]),
+    )
+    if not 0 <= cfg.theta_on <= 1:
+        raise ConfigError("proactive.theta_on: must be in [0, 1]")
+    if not 0 <= cfg.theta_off < cfg.theta_on:
+        raise ConfigError("proactive.theta_off: must be >= 0 and < proactive.theta_on")
+    if not 0 <= cfg.beta < 1:
+        raise ConfigError("proactive.beta: must be in [0, 1)")
+    if cfg.m < 1:
+        raise ConfigError("proactive.m: must be >= 1")
+    if cfg.every_n < 1:
+        raise ConfigError("proactive.every_n: must be >= 1")
+    return cfg
 
 
 def _build_causes(data: dict[str, Any]) -> Causes:

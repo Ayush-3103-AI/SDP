@@ -6,6 +6,7 @@ import pytest
 from xqi.types import (
     CauseEstimate,
     CauseSet,
+    CauseWarning,
     ConfirmedDefect,
     Detection,
     EventVerdict,
@@ -133,10 +134,16 @@ def sample_objects():
             r_after=0.2,
             window_s=120.0,
         ),
+        CauseWarning(
+            cause="flow_low",
+            p=0.72,
+            ts=12.4,
+            probs={"none": 0.2, "flow_low": 0.8},
+        ),
     ]
 
 
-@pytest.mark.parametrize("index", range(12))
+@pytest.mark.parametrize("index", range(13))
 def test_dataclass_json_round_trip(sample_objects, index):
     original = sample_objects[index]
 
