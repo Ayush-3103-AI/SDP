@@ -98,7 +98,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0052 Write the 2-hour soak test on replay + FakePrinter | C | MUST | WAITING-GPU (teammate CPU run) |
 | T-0057 Adapt the explain stack to the CAXTON taxonomy (no defect input, manual z-offset causes, SCHEMA_VERSION 2) | C | MUST | DONE |
 | T-0058 Wire the Explainer into `xqi run` (with a no-model fallback) and write defects.crop_path | C | MUST | TODO |
-| T-0059 Run EigenCAM on the cause-model backbone | C | SHOULD | TODO |
+| T-0059 Run EigenCAM on the cause-model backbone | C | SHOULD | DOING (defect heatmaps done; warning heatmaps close with T-0061) |
 | T-0060 Implement the early-warning module (EWMA + hysteresis) | C | MUST | TODO |
 | T-0061 Add the proactive path to the loop (early-warning events, optional detector) | C | MUST | TODO |
 | T-0062 Add the CAXTON replay source and process-seeded FakePrinter | C | MUST | TODO |

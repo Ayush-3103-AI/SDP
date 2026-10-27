@@ -776,3 +776,15 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   → one-line 09 addition proposed (user approval pending). Fixture windows collapse to points (expected).
 - BROKE: nothing. No file written under data/.
 - NEXT: teammate T-0065 Part 1 → Part 2; then verify K1′ (T-0006), the window (T-0024), logo.json (T-0007).
+
+## 2026-10-27 — Parallel run 3, explain lane: T-0059 EigenCAM on the cause backbone (partial, refs #59)
+- BUILT: eigencam on the cause net's backbone.layer4 over exactly predict's input (new cause_model.to_input shared
+  by both). The heatmap job runs on a deepcopy of the cause net over the classified crop (no shared-model lock;
+  model_lock removed). attribution.layer default → backbone.layer4; the YOLO path is kept (gpu test names
+  model.model.9).
+- RESULT: random-weight CauseModel → 224² heatmap in [0,1], peak in the bright square. Cherry-picked onto main;
+  45 targeted tests pass; ruff clean.
+- SURPRISE: black background + ImageNet norm lights the zero-padded border (19/24 localisation); grey 24/24.
+- BROKE: nothing.
+- NEXT: Done-when's "heatmaps for warnings" needs T-0061 (not a listed dependency): close #59 when T-0061 queues
+  _heatmap(cd, replace(frame, image=roi)) for warnings.
