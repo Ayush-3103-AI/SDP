@@ -701,3 +701,17 @@ BROKE:     The data-lane tickets (T-0005…T-0017, T-0024, T-0040, T-0041) are i
            the Phase 2/4 deltas. The built software is unaffected.
 NEXT:      Gate on ADR-0008 + answers to Q-A…Q-E. Then the Phase 2 delta (06–09), then the Phase 4 delta (tickets,
            SEQUENCE).
+
+## 2026-10-27 — DESCEND (second pass): software-only scope → ADR-0009 supersedes ADR-0008
+BUILT:     Nothing in code. 05-decisions/ADR-0009.md (proposed), ADR-0008 marked superseded, charter Amendment 2
+           (proposed; Amendment 1 superseded), STATE re-pointed to the ADR-0009 gate, project memory updated.
+RESULT:    User directive: we build only the model software (causability, explainability, proactive HITL). The
+           printer connection, protocol and hardware go to another team. With no own printing possible, cause
+           ground truth must come from a public dataset. Verified: Cambridge "Data set for 'Generalisable 3D printing
+           error detection and correction via multi-head neural networks'" (Apollo handle 1810/339869):
+           ~1.27 M images, 192 parts, labelled with flow, lateral speed, Z offset, temperatures, timestamps.
+           Its own licence is not confirmed yet (Q1/K1′).
+SURPRISE:  ADR-0008 lasted one exchange. Scope boundaries (who owns hardware) belonged in the Phase 0 charter
+           and weren't asked. Out-of-scope rig tickets (T-0025/28/39/40/41/42/50) are now to be dropped at Phase 4.
+BROKE:     Nothing. Built code stays valid; the OctoPrint client becomes an unsupported reference.
+NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.

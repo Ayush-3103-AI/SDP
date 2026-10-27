@@ -1,16 +1,18 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice)
 
 PHASE:        DESCEND → 0/1 (re-charter) — gate pending. Phase 5 execution of the data lane is paused.
-LAST SESSION: 2026-10-27 — the user confirmed the Drive camera roll is the ENTIRE REU hand-over: no labels, no
-              induction log, no YOLO11-S. K1 fired for REU data. Wrote ADR-0008 (proposed) + charter Amendment 1
-              (proposed) + updated A1/A2/A7. The software built on 2026-10-26 is unaffected.
-NEXT ACTION:  GATE: user approves / revises ADR-0008 and answers Q-A…Q-E in it (printers, camera, team hours,
-              dates, Dr. Meti). Then, in fresh sessions:
-              1. Phase 2 delta: edit 06–09 per ADR-0008 "Specs to change" (+ D2–D4 below).
-              2. Phase 4 delta: new/rewritten tickets + re-ordered SEQUENCE (check_sequence.py OK).
-              3. Execute: `xqi record` + `xqi induce` + pre-annotation script (CODE) in parallel with rig bring-up
-                 (T-0025, T-0028; HUMAN/PAIR).
-              Meanwhile teams can still run the no-GPU runbooks (T-0023, T-0052, T-0037/38, T-0043/44).
+LAST SESSION: 2026-10-27 — the camera roll is the ENTIRE REU hand-over (K1 fired). User directive: SOFTWARE ONLY
+              (model, causability, explainability, proactive HITL). Hardware, printer link, protocol and Pi/camera
+              belong to another team. Wrote ADR-0009 (proposed; supersedes ADR-0008) + charter Amendment 2
+              (proposed). Cause data = public Cambridge CAXTON set (~1.27 M images, 192 parts, parameter labels).
+NEXT ACTION:  GATE: user approves / revises ADR-0009 and answers its Q1–Q5 (public data OK, detector pluggable,
+              meaning of "proactive", hand-off contents, Dr. Meti). Then, in fresh sessions:
+              1. Phase 2 delta: edit 06–09 per ADR-0009 (cause labels from CAXTON bins, proactive-warning FR + math,
+                 leave-parts-out, hand-off API; fold in D2–D5 below).
+              2. Phase 4 delta: drop the rig tickets, rewrite the data-lane tickets, add proactive + hand-off tickets,
+                 re-order SEQUENCE (check_sequence.py OK).
+              3. Execute: the CAXTON subset download + preprocessing runbook (GPU laptop) and the CAXTON adapter (CODE).
+              Still useful now: the no-GPU runbooks T-0023, T-0052, T-0037/38, T-0043/44.
 
 ## Load for next session
 - project-context/STATE.md (this file)
@@ -104,9 +106,9 @@ Done-when, close the ticket (CLAUDE.md GPU step 6).
 - Q4 Does Dr. Meti accept the charter thresholds S1–S5? [accept; revisit at the T-0013 gate review]
 
 ## Highest unretired risk
-Rig + people, now on the critical path: a real printer with OctoPrint and a fixed camera by week 5, ~30 printer-hours
-and ~30 labelling person-hours in weeks 5–7 (ADR-0008 Q-A…Q-C). If not, DESCEND to simulation-only (ADR-0008 option 2).
-Second: small data (64 trials, 4 LOGO folds) → K2 risk high; the prior-based floor keeps S1 reportable.
+K1′: CAXTON access and licence (dataset licence not yet confirmed; size is large, so a stratified subset goes on the
+GPU laptop). Second: domain gap. CAXTON is a nozzle close-up; the integrating team's camera may be whole-bed, so the
+cause model may need their data later. The report must state this.
 
 ## Kill criteria watch
 - K1 at T-0006 · K2 at T-0013 · K3 at week 6 (T-0028 / T-0039)

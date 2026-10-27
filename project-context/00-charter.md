@@ -2,7 +2,7 @@
 FILE:     00-charter.md
 PHASE:    0 — CHARTER
 UPDATED:  2026-10-27
-STATUS:   amended (Amendment 1 proposed, awaiting gate; see ADR-0008)
+STATUS:   amended (Amendment 2 proposed, awaiting gate; see ADR-0009. Amendment 1 superseded)
 SUMMARY:  SDP = a UG-scale piece of CARR Topic 4.1.3. It adds an explanation
           layer (cause expressed in process variables, conformal set of causes),
           a 4-layer safety gate and a recommend-then-act operator dashboard to the
@@ -64,7 +64,7 @@ Unknown: KLE Tech SDP rubric or CARR lab standards (STATE.md Q3). Until answered
 | Literature refresh if needed | `lit-survey` | [have] |
 | FFF process physics / envelope judgement | none | [gap]: handled inline via `07-math.md` + `config/default.yaml`; not built (fails the reuse test for a UG timeline) |
 
-## Amendment 1 (proposed 2026-10-27, awaiting gate) — the REU data does not exist; we generate our own (ADR-0008)
+## Amendment 1 (SUPERSEDED by Amendment 2, 2026-10-27) — the REU data does not exist; we generate our own (ADR-0008)
 The full REU hand-over is 5,490 unlabelled frames of one print on a different printer. K1 fires for the inherited
 data. Instead of the K1 pivot as written (which leaves S1/S2 unmeasurable), we generate cause-labelled data
 ourselves. Proposed changes, pending the gate:
@@ -80,3 +80,21 @@ ourselves. Proposed changes, pending the gate:
 | K1 | REU join rate < 60 % → pivot | FIRED for REU data (2026-10-27). Re-evaluated on own data at T-0006; on FAIL → ADR-0002 option 1 |
 | K3 | no printer by week 6 | No printer + OctoPrint + fixed camera by week 5 → data campaign impossible; DESCEND again (simulation-only, option 2 in ADR-0008) |
 | Safety | all printer commands through gate() | Plus one human-invoked exception: `xqi induce` during data-campaign trials only, operator present, L1 still enforced |
+
+## Amendment 2 (proposed 2026-10-27, awaiting gate) — software-only scope (ADR-0009)
+User directive: we build only the model software (causability, explainability, proactive human-in-the-loop).
+Hardware, printer connection, communication protocol and module choices belong to another team.
+- §1 Problem: unchanged in intent. Delivered as software with a Printer-protocol hand-off boundary.
+- §2 Success metrics: replaced by ADR-0009 §Metrics:
+  - S1/S2 on CAXTON, leave-parts-out
+  - S3 software gate
+  - S4 offline explanation latency
+  - S5 proactive warning (new)
+  - S6 counterfactual direction
+  - S7 HITL study (SHOULD)
+- §3 Kill criteria: K1′ (dataset access), K2 unchanged, K3 dropped.
+- §4 Hard constraints:
+  - Hardware: RTX 3050 laptop for training/eval only. Ender 5 Plus, Kobra 2 Neo and Pi HQ are out of scope.
+  - Inherited stack: replaced by the CAXTON public dataset (licence to confirm) + the inherited models as
+    placeholders. OctoPrint becomes the other team's concern.
+- §5 Project type: software + research evaluation (no rig).
