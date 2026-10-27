@@ -1,6 +1,6 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice), software only
 
-PHASE:        5 — EXECUTE (re-planned). ADR-0009 accepted 2026-10-27; Phase 2 + 3 + 4 deltas done in one session at
+PHASE:        5 — EXECUTE (re-planned; delta gate APPROVED by the user 2026-10-27). Phase 2 + 3 + 4 deltas done at
               the user's request ("go with all your recommendations and create specs and tickets").
 LAST SESSION: 2026-10-27 — specs 06–10 rewritten for the software-only scope (CAXTON causes, proactive early
               warning, leave-parts-out, hand-off). SCHEMA_VERSION → 2 (spec; code in T-0057). 11 new tickets

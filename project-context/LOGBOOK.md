@@ -733,3 +733,6 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   at T-0057 to keep ticket = issue.
 - BROKE: nothing (docs only; code untouched; tests not re-run this session).
 - NEXT: step 29 T-0057. Teammates: T-0065 Part 1 + the CPU runs.
+
+## 2026-10-27 — Gate approved
+- RESULT: the user approved the Phase 2/3/4 delta gate (ADR-0009 re-plan). Next: step 29 T-0057.
