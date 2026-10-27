@@ -48,11 +48,11 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0002 Collect the inheritance package from the REU team | H | MUST | DONE |
 | T-0003 Implement the contracts module (dataclasses, constants, JSON round-trip) | C | MUST | DONE |
 | T-0004 Implement the config loader with validation, plus default.yaml and causes.yaml | C | MUST | DONE |
-| T-0005 Write the CAXTON adapter (canonical trials.csv / images.csv, label rule, part-stratified subset) | C | MUST | TODO |
-| T-0006 Write the data audit report (cause coverage per print, single-deviation share, kill check K1′) | C | MUST | TODO |
-| T-0007 Freeze the cause taxonomy and the leave-parts-out splits | P | MUST | TODO |
+| T-0005 Write the CAXTON adapter (canonical trials.csv / images.csv, label rule, part-stratified subset) | C | MUST | DONE |
+| T-0006 Write the data audit report (cause coverage per print, single-deviation share, kill check K1′) | C | MUST | WAITING-DATA (T-0065: K1′ on the real audit) |
+| T-0007 Freeze the cause taxonomy and the leave-parts-out splits | P | MUST | WAITING-DATA (T-0065 step 5 writes logo.json; causes.yaml edit after approval) |
 | T-0008 Reproduce the detector baseline on the REU split | C | MUST | DROPPED |
-| T-0009 Build the nozzle-ROI crop dataset from images.csv | C | MUST | TODO |
+| T-0009 Build the nozzle-ROI crop dataset from images.csv | C | MUST | DONE |
 | T-0010 Build the cause evaluation harness and the majority floor | C | MUST | TODO |
 | T-0011 Implement the cause model (architecture, predict, training step) | C | MUST | DONE |
 | T-0012 Train the cause model on leave-parts-out fold 0 (early read on A3) | P | MUST | BLOCKED |
@@ -67,7 +67,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0021 Implement safety gate layers L2 (rate/cooldown) and L1 (physical limits) | C | MUST | DONE |
 | T-0022 Implement gate layer L3 and the event-verdict truth table (with L4) | C | MUST | DONE |
 | T-0023 Write the randomised gate property test and the deck-recipe audit | C | MUST | WAITING-GPU (teammate CPU run) |
-| T-0024 Derive the L3 process window from CAXTON's "good" class ranges | C | MUST | TODO |
+| T-0024 Derive the L3 process window from CAXTON's "good" class ranges | C | MUST | WAITING-DATA (T-0065: real window, then a config commit after user review) |
 | T-0025 Confirm the envelope numbers and get sign-off | H | MUST | DROPPED |
 | T-0026 Implement the Printer protocol and the FakePrinter simulator | C | MUST | DONE |
 | T-0027 Implement the OctoPrint REST client | C | MUST | DONE |

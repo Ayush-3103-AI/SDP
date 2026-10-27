@@ -759,3 +759,20 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   dependency order. SEQUENCE order unchanged.
 - RISK: the demo now depends on T-0065 (CAXTON images) + G2/G3 training within days. T-0066 must also run on
   synthetic replay with the no-model fallback.
+
+## 2026-10-27 — Parallel run 3, data lane: T-0005, T-0009 (DONE); T-0006, T-0024, T-0007 (WAITING-DATA)
+- BUILT: scripts/adapt_caxton.py (07 §15 label rule, print ≥ 183 and z < 0.08 exclusions, per-print stratified
+  subset, --list-needed, exit 2 on missing columns or class values outside {0,1,2}; also writes
+  data/adapt_counts.json for the audit's exclusion counts). scripts/build_crops.py (320 box clamped in-frame →
+  224 JPEG, resumable, atomic writes, crops_missing.txt). scripts/audit_data.py (line 1 = K1′ verdict: licence
+  filled AND ≥ 4 setpoint causes with ≥ 200 single-cause images in ≥ 5 prints). scripts/derive_window.py (p1–p99
+  of good-class setpoints, nozzle from target; config untouched). scripts/make_splits.py (hand-rolled
+  GroupKFold by print, calib 20 %, sha256; refuses to overwrite logo.json once git tracks it). Fixture:
+  tests/fixtures/caxton_sample/ (40 rows, real column layout); JPEGs generated at test time.
+- RESULT: 258 passed, 5 deselected in the lane worktree; fast-forwarded into main; ruff clean.
+  docs/gpu-runs/T-0065.md Part 2 updated (adapt_counts.json, --list-needed, licence before audit, 2 fixes).
+- SURPRISE: the first T-0005 test run came after the scripts existed (uv sync in the new worktree), so no red run
+  was seen for it. T-0006's "exclusions by reason" needs data/adapt_counts.json, which 09 §Data doesn't list
+  → one-line 09 addition proposed (user approval pending). Fixture windows collapse to points (expected).
+- BROKE: nothing. No file written under data/.
+- NEXT: teammate T-0065 Part 1 → Part 2; then verify K1′ (T-0006), the window (T-0024), logo.json (T-0007).
