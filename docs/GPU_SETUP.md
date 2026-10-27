@@ -39,10 +39,9 @@ Open **PowerShell** (not as admin unless noted).
    uv run python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
    ```
    Expected output: `<version>+cu126 True NVIDIA GeForce RTX 3050 Laptop GPU`. If it prints `False`, see Troubleshooting.
-6. **Data and weights.** These are gitignored, so copy them yourself from the shared folder listed in `docs/inherited/HANDOVER.md`:
-   - REU dataset → `SDP\data\raw\dataset\`
-   - induction log → `SDP\data\raw\induction\`
-   - YOLO11-S weights → `SDP\models\yolo\best.pt`
+6. **Data and weights.** Nothing to copy (2026-10-27, ADR-0009): the REU dataset, induction log and YOLO11-S
+   weights never existed. The dataset is CAXTON, which you download yourself with `docs/gpu-runs/T-0065.md`
+   (raw data stays on your laptop, gitignored). There are no detector weights; the detector is the integrating team's.
 
 ---
 
