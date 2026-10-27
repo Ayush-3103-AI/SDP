@@ -49,6 +49,15 @@ def _explain(probs, qhat=0.8, history=HISTORY):
     return model, *out
 
 
+def test_estimate_is_cause_model_only():
+    model = StubCauseModel({"flow_low": 0.7, "none": 0.3})
+    roi = np.zeros((40, 50, 3), np.uint8)
+
+    est = Explainer(model, 0.8, CAUSES, CFG).estimate(roi)
+
+    assert est.top == "flow_low" and model.calls == [((40, 50, 3), "early_warning")]
+
+
 def test_two_member_set_gives_two_proposals_by_probability():
     model, est, cset, flags, props = _explain(
         {"nozzle_temp_low": 0.3, "flow_low": 0.6, "none": 0.1}

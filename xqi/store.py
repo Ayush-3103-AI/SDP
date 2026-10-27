@@ -379,12 +379,18 @@ class Store:
 
         self._conn.execute(
             """
-            INSERT OR REPLACE INTO defects (
+            INSERT INTO defects (
                 defect_id, schema_version, run_id, cls, frame_id,
                 t0, t_conf, conf, bbox_json, severity, critical,
                 crop_path, heatmap_path
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(defect_id) DO UPDATE SET
+                cls = excluded.cls, frame_id = excluded.frame_id, t0 = excluded.t0,
+                t_conf = excluded.t_conf, conf = excluded.conf, bbox_json = excluded.bbox_json,
+                severity = excluded.severity, critical = excluded.critical,
+                crop_path = COALESCE(excluded.crop_path, crop_path),
+                heatmap_path = COALESCE(excluded.heatmap_path, heatmap_path)
             """,
             (
                 obj.defect_id,

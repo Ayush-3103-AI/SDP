@@ -10,6 +10,7 @@ from pathlib import Path
 from xqi.camera import open_source
 from xqi.config import load
 from xqi.detect import Detector
+from xqi.explain import build_explainer
 from xqi.orchestrator import Orchestrator, new_run_id
 from xqi.printer import FakePrinter, OctoPrintClient
 from xqi.store import Store
@@ -55,8 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     detector = Detector(d.weights, d.imgsz, d.conf, d.device)
     source = open_source(cfg.camera.source, cfg.camera.width, cfg.camera.height)
     store = Store(Path(cfg.run_dir) / new_run_id() / "events.sqlite")
-    # Explainer (cause model + conformal) is wired in by T-0034; critical/baseline paths need none.
-    Orchestrator(cfg, printer, source, detector, None, store).run(args.max_frames)
+    Orchestrator(cfg, printer, source, detector, build_explainer(cfg), store).run(args.max_frames)
     return 0
 
 

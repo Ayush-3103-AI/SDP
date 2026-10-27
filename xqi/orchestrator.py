@@ -18,6 +18,8 @@ from functools import partial
 from itertools import islice
 from types import SimpleNamespace
 
+import cv2
+
 from xqi import ui_data
 from xqi.detect import ConfirmationTracker
 from xqi.explain import crop
@@ -134,13 +136,13 @@ class Orchestrator:
         if action is not None:  # FR-005: act before any other work
             ok = self.printer.estop() if action == "estop" else self.printer.pause()
             t_disp = self.clock()
-            self._log_defect(cd)
+            self._log_defect(cd, frame)
             self._log_action(cd, "critical", ["M112"] if action == "estop" else ["pause"], ok, t_disp)
             self.store.write_verdict(EventVerdict(cd.defect_id, "CRITICAL", action, ()), t_gate=t_disp)
             self._explain_only(cd, frame)
             return
 
-        self._log_defect(cd)
+        self._log_defect(cd, frame)
         if self.cfg.mode == "baseline":  # FR-023: deck recipe as absolute setpoints, no gate
             lines = [line for var, value in DECK_RECIPES[cd.cls].items() for line in gcode(var, value)]
             t_disp = self._dispatch(cd, "baseline", lines)
@@ -288,8 +290,13 @@ class Orchestrator:
         store.write_defect(cd, heatmap_path=str(path))
         store.write_timing(cd.defect_id, "t_heatmap", self.clock())
 
-    def _log_defect(self, cd: ConfirmedDefect) -> None:
-        self.store.write_defect(cd)
+    def _log_defect(self, cd: ConfirmedDefect, frame: Frame) -> None:
+        # The crop the Explainer sees (D5); saved for every defect so the card has an image without a model.
+        path = self.store.path.parent / "crops" / f"{cd.defect_id}.jpg"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        box = crop(frame.image, cd.xyxy, self.cfg.cause_model.crop_pad)
+        ok = box.size > 0 and cv2.imwrite(str(path), box)
+        self.store.write_defect(cd, crop_path=str(path) if ok else None)
         self.store.write_timing(cd.defect_id, "t0", cd.t0)
         self.store.write_timing(cd.defect_id, "t_conf", cd.t_conf)
 

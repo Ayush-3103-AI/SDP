@@ -153,6 +153,17 @@ def test_heatmap_after_dispatch(tmp_path, monkeypatch):
     assert t["t_heatmap"] > db.query("SELECT t_disp FROM actions")[0]["t_disp"]
 
 
+def test_crop_path_written(tmp_path):
+    _, db = _run(tmp_path / "a", "advisory", _always("under_extrusion"), SetExplainer("flow_low"))
+    (row,) = db.query("SELECT defect_id, crop_path FROM defects")
+    assert Path(row["crop_path"]) == tmp_path / "a" / "run" / "crops" / f"{row['defect_id']}.jpg"
+    assert cv2.imread(row["crop_path"]).shape[:2] == (4, 4)  # the box; crop_pad 0.2 truncates to 0 px here
+
+    _, db = _run(tmp_path / "b", "advisory", _always("under_extrusion"))  # no explainer: still saved
+    (row,) = db.query("SELECT crop_path FROM defects")
+    assert Path(row["crop_path"]).exists()
+
+
 class DeadPrinter(FakePrinter):
     def __init__(self):
         super().__init__()

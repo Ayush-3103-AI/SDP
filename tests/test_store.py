@@ -210,6 +210,10 @@ def test_defect_round_trip(tmp_path):
     assert row["crop_path"] == "crops/d1.png"
     assert row["heatmap_path"] == "heatmaps/d1.png"
 
+    store.write_defect(defect, heatmap_path="heatmaps/d1b.png")  # the worker's later rewrite
+    row = store.query("SELECT crop_path, heatmap_path FROM defects")[0]
+    assert row == {"crop_path": "crops/d1.png", "heatmap_path": "heatmaps/d1b.png"}
+
     store.close()
 
 
