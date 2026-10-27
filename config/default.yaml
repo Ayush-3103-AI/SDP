@@ -118,4 +118,4 @@ verify:
 
 attribution:
   enabled: true
-  layer: "model.model.9"
+  layer: "backbone.layer4"   # cause-model ResNet18 last block (07 §11); "model.model.9" = YOLO11 SPPF

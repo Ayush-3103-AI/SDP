@@ -8,7 +8,8 @@ import torch
 from torch import nn
 
 from xqi.explain.attribution import eigencam, save_heatmap_png
-from xqi.types import Frame
+from xqi.explain.cause_model import CauseModel, build_model, save_checkpoint
+from xqi.types import CAUSES, DEFECTS, Frame
 
 
 class TinyCNN(nn.Module):
@@ -73,6 +74,27 @@ def test_save_heatmap_png(tmp_path):
     assert not np.array_equal(out[:, :15], out[:, 15:])
 
 
+def test_cause_model_backbone(tmp_path):
+    torch.manual_seed(0)
+    weights = tmp_path / "cause.pt"
+    save_checkpoint(build_model(len(CAUSES), 0, pretrained=False), weights)
+    cause_model = CauseModel(weights, CAUSES, DEFECTS, "cpu")
+    # Grey ≈ the ImageNet mean, so the background normalises to ~0 (black would light up the zero-padded border).
+    image = np.full((224, 224, 3), 128, np.uint8)
+    image[96:160, 32:96] = 255  # one bright square
+    seen = []
+    cause_model.model.register_forward_pre_hook(lambda _m, args: seen.append(args[0]))
+
+    heat = eigencam(cause_model.model, frame(image), "backbone.layer4", (0, 0, 224, 224))
+    cause_model.predict(image, "under_extrusion")
+
+    assert heat.shape == (224, 224) and heat.dtype == np.float32
+    assert heat.min() >= 0.0 and 0.9 < heat.max() <= 1.0  # max 1 on the 7x7 map; the 32x upsample shaves the peak
+    y, x = np.unravel_index(np.argmax(heat), heat.shape)
+    assert 96 <= y < 160 and 32 <= x < 96
+    torch.testing.assert_close(seen[0], seen[1])  # the same tensor CauseModel.predict classifies
+
+
 @pytest.mark.gpu
 def test_real_best_pt_heatmap_fast():
     weights = Path("models/yolo/best.pt")
@@ -80,18 +102,16 @@ def test_real_best_pt_heatmap_fast():
         pytest.skip("models/yolo/best.pt not present (T-0002 / T-0008)")
     from ultralytics import YOLO
 
-    from xqi.config import load
-
-    cfg = load("config/default.yaml")
+    layer = "model.model.9"  # YOLO11 SPPF; cfg.attribution.layer now names the cause model's layer (T-0059)
     model = YOLO(str(weights))
     model.to("cuda")
     image = np.random.default_rng(0).integers(0, 255, (720, 1280, 3), np.uint8)
     xyxy = (400, 200, 700, 500)
     for _ in range(3):  # warm-up: predictor setup, cuDNN autotune
-        eigencam(model, frame(image), cfg.attribution.layer, xyxy)
+        eigencam(model, frame(image), layer, xyxy)
 
     t0 = time.perf_counter()
-    heat = eigencam(model, frame(image), cfg.attribution.layer, xyxy)
+    heat = eigencam(model, frame(image), layer, xyxy)
     dt = time.perf_counter() - t0
 
     assert heat.shape == (300, 300) and heat.dtype == np.float32

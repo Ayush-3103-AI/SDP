@@ -10,10 +10,11 @@ import cv2
 import numpy as np
 import torch
 
+from xqi.explain.cause_model import _CauseNet, to_input
 from xqi.types import Frame
 
 
-def _activations(model, image: np.ndarray, layer: str) -> np.ndarray:
+def _activations(model, image: np.ndarray, layer: str, input_px: int) -> np.ndarray:
     """Run one forward pass and return the (C, h, w) output of `layer`."""
     captured = []
     handle = attrgetter(layer)(model).register_forward_hook(
@@ -26,17 +27,23 @@ def _activations(model, image: np.ndarray, layer: str) -> np.ndarray:
             model.predict(image, verbose=False)
         else:
             device = next(model.parameters()).device
-            x = torch.from_numpy(image[..., ::-1].copy()).to(device)  # BGR -> RGB
+            if isinstance(model, _CauseNet):  # the tensor CauseModel.predict classifies
+                x = to_input(image, input_px)
+            else:
+                x = torch.from_numpy(image[..., ::-1].copy()).permute(2, 0, 1)[None].float() / 255  # BGR -> RGB
             with torch.no_grad():
-                model(x.permute(2, 0, 1)[None].float() / 255)
+                model(x.to(device))
     finally:
         handle.remove()
     return captured[-1].float().cpu().numpy()
 
 
-def eigencam(model, frame: Frame, layer: str, xyxy: Sequence[float]) -> np.ndarray:
-    """Return a float32 heatmap in [0, 1], the size of the bbox crop of `frame`."""
-    act = _activations(model, frame.image, layer)
+def eigencam(model, frame: Frame, layer: str, xyxy: Sequence[float], input_px: int = 224) -> np.ndarray:
+    """Return a float32 heatmap in [0, 1], the size of the bbox crop of `frame`.
+
+    For the cause model, pass the crop it classified as `frame`, the full-crop box and cfg.cause_model.input_px.
+    """
+    act = _activations(model, frame.image, layer, input_px)
     c, h, w = act.shape
     a = act.reshape(c, h * w).T
     a_bar = a - a.mean(axis=0)

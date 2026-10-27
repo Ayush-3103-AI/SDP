@@ -54,6 +54,14 @@ def build_model(n_causes: int, n_defects: int, pretrained: bool = True) -> nn.Mo
     return _CauseNet(n_causes, n_defects, pretrained)
 
 
+def to_input(crop_bgr: np.ndarray, input_px: int) -> torch.Tensor:
+    """BGR crop -> the (1, 3, input_px, input_px) ImageNet-normalised RGB tensor the net classifies."""
+    rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
+    rgb = cv2.resize(rgb, (input_px, input_px), interpolation=cv2.INTER_AREA)
+    x = (rgb.astype(np.float32) / 255.0 - _MEAN) / _STD
+    return torch.from_numpy(x.transpose(2, 0, 1)).unsqueeze(0)
+
+
 def save_checkpoint(model: nn.Module, path: str | Path) -> None:
     """Save {"use_defect", "state_dict"} so CauseModel can refuse a mismatched config."""
     torch.save({"use_defect": model.n_defects > 0, "state_dict": model.state_dict()}, path)
@@ -104,10 +112,7 @@ class CauseModel:
         self.model.to(self.device).eval()
 
     def predict(self, crop_bgr: np.ndarray, defect: str) -> CauseEstimate:
-        rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
-        rgb = cv2.resize(rgb, (self.input_px, self.input_px), interpolation=cv2.INTER_AREA)
-        x = (rgb.astype(np.float32) / 255.0 - _MEAN) / _STD
-        x = torch.from_numpy(x.transpose(2, 0, 1)).unsqueeze(0).to(self.device)
+        x = to_input(crop_bgr, self.input_px).to(self.device)
         d = torch.tensor([self.defects.index(defect)], device=self.device) if self.use_defect else None
         with torch.no_grad():
             p = torch.softmax(self.model(x, d), dim=1)[0].cpu().tolist()

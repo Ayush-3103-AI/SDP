@@ -2,6 +2,7 @@ import json
 import time
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import cv2
 import numpy as np
@@ -123,21 +124,28 @@ def test_apply_updates_state(tmp_path):
     assert db.query("SELECT COUNT(*) AS n FROM outcomes")[0]["n"] == 1  # Verifier.watch started
 
 
-class ModelDetector:
-    model = object()  # stands in for the YOLO backbone; eigencam is stubbed
-
-    def __call__(self, frame):
-        return _always("under_extrusion")(frame)
+class NetExplainer(SetExplainer):
+    cause_model = SimpleNamespace(model=SimpleNamespace(name="cause net"))  # eigencam is stubbed
 
 
 def test_heatmap_after_dispatch(tmp_path, monkeypatch):
     from xqi.explain import attribution
 
-    # 20 ms like a real pass; Windows' monotonic clock is too coarse to order two instant writes.
-    monkeypatch.setattr(attribution, "eigencam",
-                        lambda *a: time.sleep(0.02) or np.ones((4, 4), np.float32))
-    _, db = _run(tmp_path, "auto", ModelDetector(), SetExplainer("flow_low"))
+    calls = []
 
+    def fake_eigencam(model, frame, layer, xyxy, input_px):
+        calls.append((model, frame.image.shape, layer, xyxy, input_px))
+        time.sleep(0.02)  # like a real pass; Windows' monotonic clock is too coarse to order two instant writes
+        return np.ones((4, 4), np.float32)
+
+    monkeypatch.setattr(attribution, "eigencam", fake_eigencam)
+    explainer = NetExplainer("flow_low")
+    _, db = _run(tmp_path, "auto", _always("under_extrusion"), explainer)
+
+    # The cause net's own copy, on the crop the cause model classified (4 px box at the corner, pad clipped).
+    ((model, shape, layer, xyxy, input_px),) = calls
+    assert model is not explainer.cause_model.model and model.name == "cause net"
+    assert (shape, layer, xyxy, input_px) == ((4, 4, 3), "backbone.layer4", (0, 0, 4, 4), 224)
     (row,) = db.query("SELECT defect_id, heatmap_path FROM defects")
     assert Path(row["heatmap_path"]) == tmp_path / "run" / "heatmaps" / f"{row['defect_id']}.png"
     assert Path(row["heatmap_path"]).exists()

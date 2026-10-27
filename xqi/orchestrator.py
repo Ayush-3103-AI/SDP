@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import math
@@ -11,7 +12,7 @@ import threading
 import time
 import uuid
 from collections import deque
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from functools import partial
 from itertools import islice
@@ -74,9 +75,10 @@ class Orchestrator:
         self.verifier = Verifier(cfg.verify.window_s, cfg.verify.settle_s)
         self.history = deque(maxlen=HISTORY_LEN)
         self.jobs = queue.Queue()  # off-latency-path work (FR-009 heatmaps)
-        # ponytail: one lock serialises detector and heatmap passes on the shared YOLO model;
-        # give the heatmap its own model copy if this ever stalls frames.
-        self.model_lock = threading.Lock()
+        # The heatmap worker gets its own copy of the cause net (07 §11), so its forward hook never
+        # sees the explainer's passes on the loop thread and neither waits for the other.
+        net = getattr(getattr(explainer, "cause_model", None), "model", None)
+        self.heat_model = copy.deepcopy(net) if net is not None else None
 
     def run(self, max_frames: int | None = None) -> None:
         run = {"mode": self.cfg.mode, "cfg": self.cfg, "git_sha": git_sha(), "started_iso": _iso()}
@@ -96,8 +98,7 @@ class Orchestrator:
                     self._state()
 
                 try:
-                    with self.model_lock:
-                        dets = self.detector(frame)
+                    dets = self.detector(frame)
                 except Exception:
                     failures += 1
                     log.exception("detector failed on frame %d (%d in a row)", frame.frame_id, failures)
@@ -177,9 +178,9 @@ class Orchestrator:
             self._dispatch(cd, "auto", lines, ids[0] if len(ids) == 1 else None)
         elif verdict.verdict == "ESCALATE" and not self.printer.pause():
             self.store.write_alert(self.clock(), "pause_failed", f"escalate {verdict.reason} for {cd.cls}")
-        model = getattr(self.detector, "model", None)
-        if self.cfg.mode != "gated-recipe" and self.cfg.attribution.enabled and model is not None:
-            self.jobs.put(partial(self._heatmap, cd, frame, model))  # FR-009: after dispatch
+        if self.cfg.mode != "gated-recipe" and self.cfg.attribution.enabled and self.heat_model is not None:
+            roi = crop(frame.image, cd.xyxy, self.cfg.cause_model.crop_pad)  # the crop the cause model classified
+            self.jobs.put(partial(self._heatmap, cd, replace(frame, image=roi)))  # FR-009: after dispatch
 
     def process_operator_decisions(self) -> None:
         """FR-017/018: the UI is untrusted, so every apply/modify is re-gated on the current state."""
@@ -274,14 +275,16 @@ class Orchestrator:
         finally:
             store.close()
 
-    def _heatmap(self, cd, frame, model, store) -> None:
+    def _heatmap(self, cd, roi: Frame, store) -> None:
+        """EigenCAM on the cause net; roi.image is the crop it classified (a defect's box or a warning's ROI)."""
         # Lazy: keeps the torch import off the start-up path.
         from xqi.explain import attribution
 
-        with self.model_lock:
-            heat = attribution.eigencam(model, frame, self.cfg.attribution.layer, cd.xyxy)
+        h, w = roi.image.shape[:2]
+        heat = attribution.eigencam(self.heat_model, roi, self.cfg.attribution.layer, (0, 0, w, h),
+                                    self.cfg.cause_model.input_px)
         path = self.store.path.parent / "heatmaps" / f"{cd.defect_id}.png"
-        attribution.save_heatmap_png(heat, crop(frame.image, cd.xyxy, 0.0), path)
+        attribution.save_heatmap_png(heat, roi.image, path)
         store.write_defect(cd, heatmap_path=str(path))
         store.write_timing(cd.defect_id, "t_heatmap", self.clock())
 
