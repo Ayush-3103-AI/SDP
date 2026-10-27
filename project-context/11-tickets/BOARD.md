@@ -79,7 +79,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0033 Implement the orchestrator: baseline mode, critical-first handling, timings, CLI | C | MUST | DONE |
 | T-0034 Implement the orchestrator's gated-recipe, auto and advisory action paths | C | MUST | DONE |
 | T-0035 Implement the outcome verifier | C | MUST | DONE |
-| T-0036 Write the latency and VRAM report (offline bench) | C | MUST | TODO |
+| T-0036 Write the latency and VRAM report (offline bench) | C | MUST | WAITING-GPU (G4 with T-0066: docs/gpu-runs/T-0036.md) |
 | T-0037 Build the dashboard live view (read-only) | C | MUST | WAITING-GPU (teammate CPU run) |
 | T-0038 Build the dashboard proposal cards and operator buttons | C | MUST | WAITING-GPU (teammate CPU run) |
 | T-0039 Hardware-in-the-loop dry run on the Ender 5 Plus (no induced defects) | P | MUST | DROPPED |
@@ -101,7 +101,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0059 Run EigenCAM on the cause-model backbone | C | SHOULD | DONE |
 | T-0060 Implement the early-warning module (EWMA + hysteresis) | C | MUST | DONE |
 | T-0061 Add the proactive path to the loop (early-warning events, optional detector) | C | MUST | DONE |
-| T-0062 Add the CAXTON replay source and process-seeded FakePrinter | C | MUST | TODO |
+| T-0062 Add the CAXTON replay source and process-seeded FakePrinter | C | MUST | DONE |
 | T-0063 Evaluate proactive warnings on held-out prints (time-to-warning, recall, false-warning rate) | C | MUST | TODO |
 | T-0064 Write the hand-off package (HANDOFF.md + Printer conformance test) | C | MUST | DONE |
 | T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | TODO |

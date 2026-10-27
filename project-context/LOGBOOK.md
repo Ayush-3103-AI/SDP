@@ -820,3 +820,21 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   CF deviation join crops.csv on (trial_id, ts_s). The SHOULD random-by-image leakage reference is not built.
 - BROKE: nothing.
 - NEXT: teammate: T-0065 Part 2 → G2 → G3 (K2) → T-0015 → T-0017. Then verify K2 here.
+
+## 2026-10-27 — Parallel run 3, replay + bench lane: T-0062 (DONE); T-0036 (WAITING-GPU)
+- BUILT: `caxton:<crops.csv>#<trial>[@fps]` source (one print in ts_s order, paced by logged gaps or 1/fps,
+  FakePrinter.set_process(flow, speed, nozzle_target) before each frame; set_process sends nothing and leaves
+  last_change_ts alone). config/caxton_demo.yaml (fake printer, no detector, proactive on, advisory); `xqi run`
+  passes the printer to open_source. eval_latency --bench rewritten for the CAXTON scope (crop → cause →
+  conformal → gate p50/p95/p99; EigenCAM timed apart; VRAM; synthetic crops/random-init when absent; CPU = smoke).
+  docs/gpu-runs/T-0036.md rewritten (Outdated banner removed).
+- RESULT: rebased onto main; 322 passed, 1 skipped, 5 deselected; ruff clean. Fixture e2e smoke: FakePrinter
+  telemetry followed the logged setpoints. CPU smoke bench p95 34.4 ms (no verdicts on CPU).
+- SURPRISE: Frame.ts must stay monotonic, so replay sleeps through logged gaps. A caxton source with
+  OctoPrintClient AttributeErrors (no set_process) — fine, offline only.
+- SPEC CONTRADICTION (DESCEND proposed, user approval pending): 06 defines NFR-002 as frame → verdict (offline
+  replay) and NFR-003 as event → card visible; 07 §7 defines NFR-002 via t_disp (OctoPrint 2xx, never happens
+  in advisory) and NFR-003 via a UI first-render ts that nothing records (09 §Store has no field). Blocks the
+  NFR-002/003 part of T-0036 --runs and T-0066. Proposal: 07 §7 NFR-002 = t_gate − t0; NFR-003 = new recorded
+  UI first-render ts in 09 §Store; adjust eval_latency --runs in T-0066.
+- NEXT: T-0063 (build-ahead), T-0046 acceptance script; T-0066 after the DESCEND decision.
