@@ -1,13 +1,16 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice)
 
-PHASE:        5 — EXECUTE
-LAST SESSION: 2026-10-26 — camera-roll audit (T-0002 item 2 partial); parallel runs 1–2 built every CODE ticket that
-              needs no REU data and no printer (24 tickets): 16 DONE, 8 WAITING-GPU (team runs). One DESCEND (07 §11).
-NEXT ACTION:  Nothing CODE-only is left before the data arrives. In order:
-              1. User decides D2–D4 (below).
-              2. Team runs the waiting runbooks (docs/gpu-runs/): T-0023 now; T-0037/0038/0043/0052 any laptop;
-                 T-0030/0036 (+ T-0018 gpu test, T-0008) once best.pt arrives.
-              3. T-0002 hand-over unblocks SEQUENCE step 27 (T-0005) and the rest of the data lane.
+PHASE:        DESCEND → 0/1 (re-charter) — gate pending. Phase 5 execution of the data lane is paused.
+LAST SESSION: 2026-10-27 — the user confirmed the Drive camera roll is the ENTIRE REU hand-over: no labels, no
+              induction log, no YOLO11-S. K1 fired for REU data. Wrote ADR-0008 (proposed) + charter Amendment 1
+              (proposed) + updated A1/A2/A7. The software built on 2026-10-26 is unaffected.
+NEXT ACTION:  GATE: user approves / revises ADR-0008 and answers Q-A…Q-E in it (printers, camera, team hours,
+              dates, Dr. Meti). Then, in fresh sessions:
+              1. Phase 2 delta: edit 06–09 per ADR-0008 "Specs to change" (+ D2–D4 below).
+              2. Phase 4 delta: new/rewritten tickets + re-ordered SEQUENCE (check_sequence.py OK).
+              3. Execute: `xqi record` + `xqi induce` + pre-annotation script (CODE) in parallel with rig bring-up
+                 (T-0025, T-0028; HUMAN/PAIR).
+              Meanwhile teams can still run the no-GPU runbooks (T-0023, T-0052, T-0037/38, T-0043/44).
 
 ## Load for next session
 - project-context/STATE.md (this file)
