@@ -1,16 +1,22 @@
-"""Per-stage latency from run stores, plus the GPU action-path and VRAM bench (T-0036, 07 §7).
+"""Per-stage latency from run stores, plus the offline action-path and VRAM bench (T-0036, 07 §7).
 
     python scripts/eval_latency.py --runs runs/<id>/events.sqlite ... --out reports/latency.md
-    python scripts/eval_latency.py --runs ... --bench --out reports/latency.md   # GPU laptop
+    python scripts/eval_latency.py --bench [--crops data/crops.csv] [--limit 500] --out reports/latency.md  # GPU
     python scripts/eval_latency.py --selftest
+
+--bench without CUDA (or with cause_model.device: cpu) is a CPU smoke run: timings are reported, NFR-001/011 are not.
 """
 import argparse
+import copy
+import csv
 import sys
 import tempfile
 import time
 from dataclasses import asdict
+from itertools import islice
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,8 +39,9 @@ from xqi.types import (
 NFR_001_P95_S = 0.030  # added action path (crop + cause model + conformal + gate)
 NFR_002_P95_S = 0.30  # first defect frame -> dispatch, auto mode
 NFR_002_CRIT_P95_S = 0.27  # same, critical classes
-NFR_011_GB = 3.5  # YOLO11-S + cause model at inference
+NFR_011_GB = 3.5  # cause model (+ detector when configured) at inference
 BENCH_N = 500
+SYNTH_PX = 224  # build_crops --px
 
 # One row per defect; actions only count once OctoPrint returned 2xx (07 §7 t_disp).
 SQL = """
@@ -87,25 +94,38 @@ def stages(db_paths) -> dict[str, list[float]]:
 
 
 def summarise(times: dict[str, list[float]]) -> dict[str, dict]:
-    """{stage: {n, p50, p95, max}} in seconds; numpy's default (linear) percentiles."""
+    """{stage: {n, p50, p95, p99, max}} in seconds; numpy's default (linear) percentiles."""
     out = {}
     for k, xs in times.items():
         a = np.asarray(xs, dtype=float)
         out[k] = {"n": len(a)} | (
-            {"p50": float(np.percentile(a, 50)), "p95": float(np.percentile(a, 95)), "max": float(a.max())}
+            {"p50": float(np.percentile(a, 50)), "p95": float(np.percentile(a, 95)),
+             "p99": float(np.percentile(a, 99)), "max": float(a.max())}
             if len(a) else {}
         )
     return out
 
 
-def bench_added(explainer, cfg, n=BENCH_N, warmup=20, seed=0) -> tuple[list[float], set[str]]:
-    """Time crop + cause model + conformal + sensors + proposals + gate + verdict on n random boxes.
+def load_crops(path, n: int, seed: int = 0) -> tuple[list[np.ndarray], str]:
+    """n crops from crops.csv (its first rows, cycled if fewer), else n random 224 px crops; plus their source.
 
     Random pixels are timing-equivalent: the cost does not depend on what the crop shows.
     """
+    if path is not None and Path(path).exists():
+        with open(path, newline="", encoding="utf-8") as f:
+            images = [im for r in islice(csv.DictReader(f), n) if (im := cv2.imread(r["crop_path"])) is not None]
+        if images:
+            return [images[i % len(images)] for i in range(n)], f"CAXTON crops ({len(images)} distinct, {path})"
     rng = np.random.default_rng(seed)
-    w, h = cfg.camera.width, cfg.camera.height
-    frame = Frame(0, 0.0, "", rng.integers(0, 256, (h, w, 3), dtype=np.uint8))
+    crops = [rng.integers(0, 256, (SYNTH_PX, SYNTH_PX, 3), dtype=np.uint8) for _ in range(n)]
+    return crops, f"synthetic {SYNTH_PX} px crops (no crops.csv)"
+
+
+def bench_added(explainer, cfg, crops, warmup=20) -> tuple[list[float], set[str]]:
+    """Time crop + cause model + conformal + sensors + proposals + gate + verdict once per crop, after warm-up.
+
+    Each crop is the event's frame and its box is the whole crop, as for a CAXTON nozzle ROI.
+    """
     nom = cfg.printer.nominal
     state = PrinterState(
         0.0, "Printing", nom["nozzle_temp"], nom["nozzle_temp"], nom["bed_temp"], nom["bed_temp"],
@@ -114,11 +134,11 @@ def bench_added(explainer, cfg, n=BENCH_N, warmup=20, seed=0) -> tuple[list[floa
     critical = asdict(cfg.critical)
     classes = [d for d in DEFECTS if d not in critical]
     times, verdicts = [], set()
-    for i in range(warmup + n):
-        bw, bh = rng.uniform(64, 480, size=2)
-        x1, y1 = rng.uniform(0, w - bw), rng.uniform(0, h - bh)
-        box = (x1, y1, x1 + bw, y1 + bh)
-        cd = ConfirmedDefect(f"bench-{i}", classes[i % len(classes)], i, 0.0, 0.0, 0.9, box, bw * bh / (w * h), 3, 0.5, False)
+    for i in range(warmup + len(crops)):  # the timed passes see every crop once
+        image = crops[i % len(crops)]
+        frame = Frame(i, 0.0, "", image)
+        box = (0, 0, image.shape[1], image.shape[0])
+        cd = ConfirmedDefect(f"bench-{i}", classes[i % len(classes)], i, 0.0, 0.0, 0.9, box, 1.0, 3, 0.5, False)
         t = time.perf_counter()
         est, cset, flags, props = explainer.explain(cd, frame, [state])
         decisions = [gate(p, state, 0.0, cfg) for p in props]
@@ -130,45 +150,68 @@ def bench_added(explainer, cfg, n=BENCH_N, warmup=20, seed=0) -> tuple[list[floa
     return times, verdicts
 
 
-def run_bench(cfg) -> dict:
-    """GPU laptop only: YOLO loaded and run once, then the action-path bench, then peak VRAM."""
+def run_bench(cfg, crops_csv, limit: int = BENCH_N) -> dict:
+    """Action path on `limit` crops, then EigenCAM on the same crops, then the detector if configured.
+
+    Peak VRAM is read twice: cause model only (plus the loop's EigenCAM copy), then with the detector resident.
+    Without CUDA, or with cause_model.device: cpu, it is a smoke run: no VRAM numbers, no NFR verdicts.
+    """
     import torch
 
-    from xqi.detect import Detector
+    from xqi.explain import attribution
     from xqi.explain.cause_model import CauseModel, build_model, save_checkpoint
     from xqi.explain.conformal import load_qhat
 
-    if not torch.cuda.is_available():
-        raise SystemExit("--bench needs CUDA (run it on the GPU laptop)")
-    torch.cuda.reset_peak_memory_stats()
-    d = cfg.detector
-    detector = Detector(d.weights, d.imgsz, d.conf, d.device)
-    frame = Frame(0, 0.0, "", np.zeros((cfg.camera.height, cfg.camera.width, 3), np.uint8))
-    detector(frame)
+    gpu = cfg.cause_model.device.startswith("cuda") and torch.cuda.is_available()
+    notes = [] if gpu else ["CPU smoke run (no CUDA or device cpu): not the RTX 3050's numbers"]
+    if gpu:
+        torch.cuda.reset_peak_memory_stats()
     causes = load_causes(cfg.causes_file).causes
-    weights, note = Path(cfg.cause_model.weights), ""
+    weights = Path(cfg.cause_model.weights)
     if not weights.exists():  # latency does not depend on the trained weights; say so in the report
         weights = Path(tempfile.mkdtemp()) / "random.pt"
         n_defects = len(DEFECTS) if cfg.cause_model.use_defect else 0
         save_checkpoint(build_model(len(causes), n_defects, pretrained=False), weights)
-        note = f"{cfg.cause_model.weights} missing, random-init cause model (same timing)"
-    cm = CauseModel(weights, causes, DEFECTS, cfg.cause_model.device, cfg.cause_model.input_px,
-                    cfg.cause_model.use_defect)
+        notes.append(f"{cfg.cause_model.weights} missing, random-init cause model (same timing)")
+    m = cfg.cause_model
+    cm = CauseModel(weights, causes, DEFECTS, m.device if gpu else "cpu", m.input_px, m.use_defect)
+    heat_net = copy.deepcopy(cm.model)  # the loop's EigenCAM worker holds its own copy (orchestrator)
     qfile = Path(cfg.conformal.qhat_file)
     qhat = load_qhat(qfile)["qhat"] if qfile.exists() else 1 - cfg.conformal.alpha
     if not qfile.exists():
-        note = "; ".join(filter(None, [note, f"{qfile} missing, qhat = 1 − α"]))
-    times, verdicts = bench_added(Explainer(cm, qhat, causes, cfg), cfg)
-    for _ in range(5):  # YOLO and the cause model both resident, as in the loop
-        detector(frame)
-    torch.cuda.synchronize()
+        notes.append(f"{qfile} missing, qhat = 1 − α")
+    crops, source = load_crops(crops_csv, limit)
+    times, verdicts = bench_added(Explainer(cm, qhat, causes, cfg), cfg, crops)
+    eig = []
+    for image in crops:  # off the action path: it runs after dispatch (07 §11)
+        t = time.perf_counter()
+        attribution.eigencam(heat_net, Frame(0, 0.0, "", image), cfg.attribution.layer,
+                             (0, 0, image.shape[1], image.shape[0]), m.input_px)
+        eig.append(time.perf_counter() - t)
+    peak = torch.cuda.max_memory_allocated() / 1e9 if gpu else None
+
+    peak_det, d = None, cfg.detector
+    if d.weights and gpu:
+        from xqi.detect import Detector
+
+        detector = Detector(d.weights, d.imgsz, d.conf, d.device)
+        frame = Frame(0, 0.0, "", np.zeros((cfg.camera.height, cfg.camera.width, 3), np.uint8))
+        for _ in range(5):  # detector and cause models both resident, as in the loop
+            detector(frame)
+        torch.cuda.synchronize()
+        peak_det = torch.cuda.max_memory_allocated() / 1e9
+    elif d.weights:
+        notes.append("detector configured but skipped off the GPU")
     return {
-        "gpu": torch.cuda.get_device_name(0),
+        "device": torch.cuda.get_device_name(0) if gpu else "CPU",
+        "gpu": gpu,
+        "source": source,
         "times": times,
+        "eigencam": eig,
         "verdicts": sorted(verdicts),
-        "max_allocated_gb": torch.cuda.max_memory_allocated() / 1e9,
-        "max_reserved_gb": torch.cuda.max_memory_reserved() / 1e9,
-        "note": note,
+        "peak_gb": peak,
+        "peak_det_gb": peak_det,
+        "note": "; ".join(notes),
     }
 
 
@@ -198,26 +241,37 @@ def render(stats: dict, bench: dict | None, runs) -> str:
         lines.append(f"| {label} | {s['n']} | {_ms(s, 'p50')} | {_ms(s, 'p95')} | {_ms(s, 'max')} |")
 
     if bench:
-        b = summarise({"bench": bench["times"]})["bench"]
+        s = summarise({"bench": bench["times"], "eigencam": bench["eigencam"]})
+        b, e, dev = s["bench"], s["eigencam"], bench["device"]
+        peak, peak_det = bench["peak_gb"], bench["peak_det_gb"]
+        mem = "n/a (CPU)" if peak is None else f"{peak:.2f} GB"
+        det = "detector: not configured" if peak_det is None else f"with the detector resident: {peak_det:.2f} GB"
         lines += [
             "",
-            f"## Bench: {b['n']} crops through cause model + conformal + gate on {bench['gpu']}",
+            f"## Bench: {b['n']} {bench['source']} through crop + cause model + conformal + gate on {dev}",
             "",
             (
-                f"p50 {_ms(b, 'p50')} ms · p95 {_ms(b, 'p95')} ms · max {_ms(b, 'max')} ms · "
-                f"verdicts seen: {', '.join(bench['verdicts'])}"
+                f"Action path: p50 {_ms(b, 'p50')} ms · p95 {_ms(b, 'p95')} ms · p99 {_ms(b, 'p99')} ms · "
+                f"max {_ms(b, 'max')} ms · verdicts seen: {', '.join(bench['verdicts'])}"
             ),
             "",
             (
-                f"torch.cuda.max_memory_allocated with YOLO loaded: {bench['max_allocated_gb']:.2f} GB "
-                f"(reserved {bench['max_reserved_gb']:.2f} GB)"
+                f"EigenCAM (after dispatch, not in NFR-001): p50 {_ms(e, 'p50')} ms · p95 {_ms(e, 'p95')} ms · "
+                f"p99 {_ms(e, 'p99')} ms"
             ),
+            "",
+            f"Peak VRAM (torch.cuda.max_memory_allocated), cause model + EigenCAM copy: {mem}; {det}",
         ]
         if bench["note"]:
             lines += ["", f"Note: {bench['note']}"]
-        nfr1 = f"{_verdict(b, NFR_001_P95_S)} (bench p95 {_ms(b, 'p95')} ms ≤ 30 ms on {bench['gpu']})"
-        ok = bench["max_allocated_gb"] <= NFR_011_GB
-        nfr11 = f"{'PASS' if ok else 'FAIL'} ({bench['max_allocated_gb']:.2f} GB ≤ 3.5 GB on {bench['gpu']})"
+        if bench["gpu"]:
+            nfr1 = f"{_verdict(b, NFR_001_P95_S)} (bench p95 {_ms(b, 'p95')} ms ≤ 30 ms on {dev})"
+            used = peak if peak_det is None else peak_det
+            what = "cause model" if peak_det is None else "cause model + detector"
+            ok = "PASS" if used <= NFR_011_GB else "FAIL"
+            nfr11 = f"{ok} ({used:.2f} GB ≤ 3.5 GB, {what}, on {dev})"
+        else:
+            nfr1 = nfr11 = "NO DATA (CPU smoke run; run --bench on the RTX 3050)"
     else:
         nfr1 = "NO DATA (run --bench on the RTX 3050)"
         nfr11 = "NO DATA (run --bench on the RTX 3050)"
@@ -283,17 +337,19 @@ def selftest() -> int:
     return 0
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", nargs="*", default=[], help="runs/<id>/events.sqlite files")
     ap.add_argument("--config", default="config/default.yaml")
-    ap.add_argument("--bench", action="store_true", help="GPU: 500-crop action path + peak VRAM")
+    ap.add_argument("--bench", action="store_true", help="action path + EigenCAM + peak VRAM (GPU; CPU = smoke)")
+    ap.add_argument("--crops", default="data/crops.csv", help="bench crops; synthetic if the file is absent")
+    ap.add_argument("--limit", type=int, default=BENCH_N, help="bench crops")
     ap.add_argument("--out", default="reports/latency.md")
     ap.add_argument("--selftest", action="store_true")
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
-    bench = run_bench(load(a.config)) if a.bench else None
+    bench = run_bench(load(a.config), a.crops, a.limit) if a.bench else None
     text = render(summarise(stages(a.runs)), bench, a.runs)
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)

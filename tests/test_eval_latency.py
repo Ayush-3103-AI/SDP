@@ -1,6 +1,10 @@
 import importlib.util
 from pathlib import Path
 
+import cv2
+import numpy as np
+import yaml
+
 from xqi.config import load
 from xqi.explain import Explainer
 from xqi.types import CAUSES, CauseEstimate
@@ -32,6 +36,37 @@ class StubCauseModel:
 
 def test_bench_added_times_the_whole_action_path():
     explainer = Explainer(StubCauseModel(), 0.5, CAUSES, CFG)
-    times, verdicts = eval_latency.bench_added(explainer, CFG, n=12, warmup=2)
-    assert len(times) == 12 and all(t > 0 for t in times)
+    crops, source = eval_latency.load_crops(None, 12)
+    times, verdicts = eval_latency.bench_added(explainer, CFG, crops, warmup=2)
+    assert source.startswith("synthetic") and len(times) == 12 and all(t > 0 for t in times)
     assert verdicts == {"APPLY"}  # one confident actionable cause → one passing proposal in auto mode
+
+
+def test_load_crops_cycles_crops_csv(tmp_path):
+    lines = ["crop_path,trial_id,ts_s"]
+    for i in range(3):
+        cv2.imwrite(str(tmp_path / f"{i}.jpg"), np.full((8, 8, 3), 50 * i, np.uint8))
+        lines.append(f"{(tmp_path / f'{i}.jpg').as_posix()},p0,{i}")
+    (tmp_path / "crops.csv").write_text("\n".join(lines) + "\n")
+
+    crops, source = eval_latency.load_crops(tmp_path / "crops.csv", 5)
+    assert len(crops) == 5 and crops[0].shape == (8, 8, 3) and "CAXTON crops (3 distinct" in source
+    assert [int(c[0, 0, 0]) for c in crops] == [0, 50, 100, 0, 50]
+
+
+def test_cpu_bench_smoke(tmp_path):
+    """CPU `--bench --limit`: random-init cause model, synthetic crops, EigenCAM timed, no NFR verdicts off the GPU."""
+    raw = yaml.safe_load((ROOT / "config" / "default.yaml").read_text(encoding="utf-8"))
+    raw["causes_file"] = str(ROOT / "config" / "causes.yaml")
+    raw["cause_model"] |= {"weights": str(tmp_path / "none.pt"), "device": "cpu"}
+    raw["conformal"]["qhat_file"] = str(tmp_path / "none.json")
+    (tmp_path / "cfg.yaml").write_text(yaml.safe_dump(raw), encoding="utf-8")
+    out = tmp_path / "latency.md"
+
+    rc = eval_latency.main(["--bench", "--limit", "5", "--config", str(tmp_path / "cfg.yaml"),
+                            "--crops", str(tmp_path / "none.csv"), "--out", str(out)])
+    text = out.read_text(encoding="utf-8")
+    assert rc == 0
+    assert "## Bench: 5 synthetic" in text and "p99" in text and "EigenCAM" in text
+    assert "random-init cause model" in text and "detector: not configured" in text
+    assert "NFR-001: NO DATA" in text and "NFR-011: NO DATA" in text
