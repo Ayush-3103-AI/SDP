@@ -804,3 +804,19 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   T-0060/T-0064 red runs not seen (raced / reference impl passes by construction).
 - BROKE: tests/test_detect.py gpu test read the now-null detector.weights → it now skips when null (integrator).
 - NEXT: notes — CPU `xqi run` with a real checkpoint needs cause_model.device: cpu; local runs need printer.kind fake.
+
+## 2026-10-27 — Parallel run 3, model lane: T-0010 (DONE); T-0012, T-0013, T-0015, T-0017 (WAITING-GPU)
+- BUILT: scripts/eval_cause.py (--floor training-print majority; --model-dir per-fold + mean ± std top-1/top-3,
+  bootstrap CI over prints, per-class recall, confusion, ECE, gap to floor; K2 line first; leakage stop at
+  fold top-1 > 0.98 → exit 3). scripts/train_cause.py (P5: AdamW, train-print class weights, ≤ 300 img/print/
+  epoch, early stop on calib loss, probe/finetune rungs, AMP + OOM batch-halving, provenance in checkpoint
+  via save_checkpoint(**meta), preds npz per 09, --final writes the golden fixture). CauseModel refuses a
+  causes-order mismatch. scripts/eval_conformal.py (qhat on calib prints, coverage at α .05/.10/.20, qhat.json),
+  scripts/eval_counterfactual.py (confident-event direction fidelity + confident fraction, NFR-007 line).
+  Runbooks docs/gpu-runs/T-0012, 0013, 0015, 0017.md (one sitting ≈ 3.5–4 h, mostly unattended, ~1.5 GB VRAM).
+- RESULT: rebased onto main (conflict in cause_model.py: kept T-0059's to_input + the meta save_checkpoint);
+  316 passed, 1 skipped (golden check waits for final.pt), 5 deselected; ruff clean. CPU smoke 14 s.
+- SURPRISE: frozen probe still adapts BN stats (ponytail-marked). npz lacks crop paths/setpoints → error grid and
+  CF deviation join crops.csv on (trial_id, ts_s). The SHOULD random-by-image leakage reference is not built.
+- BROKE: nothing.
+- NEXT: teammate: T-0065 Part 2 → G2 → G3 (K2) → T-0015 → T-0017. Then verify K2 here.

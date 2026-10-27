@@ -53,14 +53,14 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0007 Freeze the cause taxonomy and the leave-parts-out splits | P | MUST | WAITING-DATA (T-0065 step 5 writes logo.json; causes.yaml edit after approval) |
 | T-0008 Reproduce the detector baseline on the REU split | C | MUST | DROPPED |
 | T-0009 Build the nozzle-ROI crop dataset from images.csv | C | MUST | DONE |
-| T-0010 Build the cause evaluation harness and the majority floor | C | MUST | TODO |
+| T-0010 Build the cause evaluation harness and the majority floor | C | MUST | DONE |
 | T-0011 Implement the cause model (architecture, predict, training step) | C | MUST | DONE |
-| T-0012 Train the cause model on leave-parts-out fold 0 (early read on A3) | P | MUST | BLOCKED |
-| T-0013 Run the full leave-parts-out cross-validation and the K2 kill check | P | MUST | BLOCKED |
+| T-0012 Train the cause model on leave-parts-out fold 0 (early read on A3) | P | MUST | WAITING-GPU (G2: docs/gpu-runs/T-0012.md) |
+| T-0013 Run the full leave-parts-out cross-validation and the K2 kill check | P | MUST | WAITING-GPU (G3 + K2: docs/gpu-runs/T-0013.md) |
 | T-0014 Implement split-conformal calibration and prediction sets | C | MUST | DONE |
-| T-0015 Evaluate conformal coverage on the leave-parts-out folds and save the runtime qhat | C | MUST | TODO |
+| T-0015 Evaluate conformal coverage on the leave-parts-out folds and save the runtime qhat | C | MUST | WAITING-GPU (after G3, CPU: docs/gpu-runs/T-0015.md) |
 | T-0016 Implement proposal and counterfactual generation (severity-scaled Δ, G-code, sentence) | C | MUST | DONE |
-| T-0017 Evaluate counterfactual direction fidelity on confident events | C | MUST | TODO |
+| T-0017 Evaluate counterfactual direction fidelity on confident events | C | MUST | WAITING-GPU (after G3, CPU: docs/gpu-runs/T-0017.md) |
 | T-0018 Implement EigenCAM attribution on the YOLO11 backbone | C | SHOULD | DONE |
 | T-0019 Implement the telemetry sensor checks | C | MUST | DONE |
 | T-0020 Assemble the Explainer (cause model → conformal set → sensor flags → proposals) | C | MUST | DONE |
