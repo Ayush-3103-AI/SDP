@@ -262,6 +262,7 @@ def test_apply_on_loop_card_dispatches(tmp_path):
     from xqi.printer import FakePrinter
 
     cfg = replace(load(Path(__file__).resolve().parents[1] / "config" / "default.yaml"), mode="advisory")
+    cfg = replace(cfg, proactive=replace(cfg.proactive, enabled=False))  # FlowExplainer has no estimate()
     folder = tmp_path / "frames_in"
     folder.mkdir()
     for i in range(6):

@@ -98,7 +98,11 @@ def proposal_card(card: dict, decide: Callable[..., None], enabled: bool) -> Non
     d = card["defect_id"]
     with st.container(border=True):
         left, right = st.columns([1, 2])
-        left.markdown(f"**{card['cls']}** · severity {card['severity']:.2f} · `{d}`")
+        warning = card.get("early_warning")
+        if warning:
+            left.markdown(f"**Early warning** · p̄ {warning['p']:.2f} · `{d}`")
+        else:
+            left.markdown(f"**{card['cls']}** · severity {card['severity']:.2f} · `{d}`")
         images = [p for p in (card["crop_path"], card.get("heatmap_path")) if p and Path(p).exists()]
         if images:
             left.image(images, width=160)
@@ -117,6 +121,8 @@ def proposal_card(card: dict, decide: Callable[..., None], enabled: bool) -> Non
             flags = ", ".join(card["flags"]) or "No sensor flags"
             right.markdown(f"Sensor flags: {flags}")
             right.markdown(f"Not auto-applied: **{card['verdict']}**: {card['reason']}")
+        if warning:
+            right.caption("Raw probabilities: " + ", ".join(f"{c} {p:.2f}" for c, p in warning["probs"] if p >= 0.01))
 
         for p in card["proposals"]:
             pid = p["proposal_id"]

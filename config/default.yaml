@@ -20,7 +20,7 @@ camera:
   max_gap_s: 3.0
 
 detector:
-  weights: models/yolo/best.pt
+  weights: null   # null = no detector (proactive path only); the integrating team sets theirs
   imgsz: 1088
   conf: 0.25
   device: "cuda:0"

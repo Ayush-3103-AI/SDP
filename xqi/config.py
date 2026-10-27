@@ -31,7 +31,7 @@ class CameraConfig:
 
 @dataclass(frozen=True, slots=True)
 class DetectorConfig:
-    weights: str
+    weights: str | None  # None = no detector (proactive path only)
     imgsz: int
     conf: float
     device: str
@@ -239,7 +239,7 @@ def _build_config(data: dict[str, Any]) -> Config:
 
     detector_data = _require(data, "detector")
     detector = DetectorConfig(
-        weights=str(detector_data["weights"]),
+        weights=None if detector_data["weights"] is None else str(detector_data["weights"]),
         imgsz=int(detector_data["imgsz"]),
         conf=float(detector_data["conf"]),
         device=str(detector_data["device"]),

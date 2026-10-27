@@ -25,9 +25,12 @@ from xqi.detect import ConfirmationTracker
 from xqi.explain import crop
 from xqi.explain.counterfactual import gcode, recipe_to_proposals
 from xqi.gate import event_verdict, gate
+from xqi.proactive import EarlyWarning
 from xqi.store import Store
 from xqi.types import (
     DECK_RECIPES,
+    EARLY_WARNING,
+    CauseEstimate,
     ConfirmedDefect,
     EventVerdict,
     Frame,
@@ -75,6 +78,8 @@ class Orchestrator:
             cfg.confirm.hits, cfg.confirm.rearm_frames, cfg.severity, critical=self.critical
         )
         self.verifier = Verifier(cfg.verify.window_s, cfg.verify.settle_s)
+        proactive = cfg.proactive.enabled and explainer is not None  # FR-029 needs the cause model
+        self.early_warning = EarlyWarning(explainer.labels, cfg.proactive) if proactive else None
         self.history = deque(maxlen=HISTORY_LEN)
         self.jobs = queue.Queue()  # off-latency-path work (FR-009 heatmaps)
         # The heatmap worker gets its own copy of the cause net (07 §11), so its forward hook never
@@ -100,7 +105,7 @@ class Orchestrator:
                     self._state()
 
                 try:
-                    dets = self.detector(frame)
+                    dets = self.detector(frame) if self.detector is not None else []
                 except Exception:
                     failures += 1
                     log.exception("detector failed on frame %d (%d in a row)", frame.frame_id, failures)
@@ -117,6 +122,8 @@ class Orchestrator:
                     ui_data.save_latest_frame(self.store.path.parent, frame.image, dets)
                 for cd in self.tracker.update(frame, dets):
                     self.handle_event(cd, frame)
+                if self.early_warning is not None and frame.frame_id % self.cfg.proactive.every_n == 0:
+                    self._proactive(frame)
                 self.process_operator_decisions()
                 self.check_timeouts()
                 for outcome in self.verifier.tick(frame.ts, {d.cls for d in dets}):
@@ -131,18 +138,37 @@ class Orchestrator:
             worker.join()
             self.store.close()
 
-    def handle_event(self, cd: ConfirmedDefect, frame: Frame) -> None:
+    def _proactive(self, frame: Frame) -> None:
+        """08 P1: cause model on the nozzle ROI; a warning becomes a P3 event with cls early_warning."""
+        roi = self.cfg.proactive.roi
+        image = frame.image if roi is None else crop(frame.image, roi, 0.0)
+        try:
+            est = self.explainer.estimate(image)
+        except Exception:
+            log.exception("estimate failed on frame %d", frame.frame_id)
+            return
+        for w in self.early_warning.update(frame.ts, est.probs):
+            # No box; severity = p̄ (07 §1).
+            cd = ConfirmedDefect(str(uuid.uuid4()), EARLY_WARNING, frame.frame_id, w.ts, self.clock(), w.p,
+                                 (), 0.0, 0, w.p, False)
+            self.handle_event(cd, frame, roi=image, est=est)
+
+    def handle_event(self, cd: ConfirmedDefect, frame: Frame, roi=None, est: CauseEstimate | None = None) -> None:
+        """08 P3. An early warning passes its ROI and the estimate that raised it."""
         action = self.critical.get(cd.cls)
         if action is not None:  # FR-005: act before any other work
             ok = self.printer.estop() if action == "estop" else self.printer.pause()
             t_disp = self.clock()
-            self._log_defect(cd, frame)
+            self._log_defect(cd, frame, roi)
             self._log_action(cd, "critical", ["M112"] if action == "estop" else ["pause"], ok, t_disp)
             self.store.write_verdict(EventVerdict(cd.defect_id, "CRITICAL", action, ()), t_gate=t_disp)
             self._explain_only(cd, frame)
             return
 
-        self._log_defect(cd, frame)
+        warning = cd.cls == EARLY_WARNING
+        self._log_defect(cd, frame, roi)
+        if warning and self.cfg.mode in ("baseline", "gated-recipe"):  # recipes are per defect class (P3)
+            return
         if self.cfg.mode == "baseline":  # FR-023: deck recipe as absolute setpoints, no gate
             lines = [line for var, value in DECK_RECIPES[cd.cls].items() for line in gcode(var, value)]
             t_disp = self._dispatch(cd, "baseline", lines)
@@ -151,14 +177,18 @@ class Orchestrator:
             return
 
         state = self._state()
-        est = cset = None
+        raw, est, cset = est, None, None
         flags, props = (), []
         if self.cfg.mode == "gated-recipe":  # 07 §4 row 3: L1–L3 on the recipe, no cause model, no L4
             if state is not None:
                 props = recipe_to_proposals(cd.cls, state, cd.defect_id)
         elif self.explainer is not None:
             try:
-                est, cset, flags, props = self.explainer.explain(cd, frame, list(self.history))
+                history = list(self.history)
+                if warning:
+                    est, cset, flags, props = self.explainer.explain_estimate(cd, raw, history)
+                else:
+                    est, cset, flags, props = self.explainer.explain(cd, frame, history)
             except Exception:  # no cause set → 07 §4 row 5 escalates
                 log.exception("explanation failed for %s", cd.defect_id)
             else:
@@ -178,10 +208,11 @@ class Orchestrator:
             ids = verdict.proposal_ids
             lines = [line for g in decisions if g.proposal_id in ids for line in g.final_gcode]
             self._dispatch(cd, "auto", lines, ids[0] if len(ids) == 1 else None)
-        elif verdict.verdict == "ESCALATE" and not self.printer.pause():
+        elif verdict.verdict == "ESCALATE" and not warning and not self.printer.pause():  # a warning: card only
             self.store.write_alert(self.clock(), "pause_failed", f"escalate {verdict.reason} for {cd.cls}")
         if self.cfg.mode != "gated-recipe" and self.cfg.attribution.enabled and self.heat_model is not None:
-            roi = crop(frame.image, cd.xyxy, self.cfg.cause_model.crop_pad)  # the crop the cause model classified
+            if roi is None:  # a warning brings its nozzle ROI; a defect, the crop the cause model classified
+                roi = crop(frame.image, cd.xyxy, self.cfg.cause_model.crop_pad)
             self.jobs.put(partial(self._heatmap, cd, replace(frame, image=roi)))  # FR-009: after dispatch
 
     def process_operator_decisions(self) -> None:
@@ -262,7 +293,8 @@ class Orchestrator:
         ok = self.printer.send_gcode(lines) or self.printer.send_gcode(lines)  # P3: one retry
         t_disp = self.clock()
         action_id = self._log_action(cd, source, lines, ok, t_disp, proposal_id)
-        if ok:  # the printer client updates tracked setpoints / last_change_ts only on success
+        # A warning has no detector class to rate before/after (07 §6); T-0063 evaluates warnings offline.
+        if ok and cd.cls != EARLY_WARNING:  # the printer client updates setpoints / last_change_ts only on success
             self.verifier.watch(action_id, cd.defect_id, cd.cls, t_disp)
         return t_disp
 
@@ -290,11 +322,11 @@ class Orchestrator:
         store.write_defect(cd, heatmap_path=str(path))
         store.write_timing(cd.defect_id, "t_heatmap", self.clock())
 
-    def _log_defect(self, cd: ConfirmedDefect, frame: Frame) -> None:
-        # The crop the Explainer sees (D5); saved for every defect so the card has an image without a model.
+    def _log_defect(self, cd: ConfirmedDefect, frame: Frame, roi=None) -> None:
+        # The crop the Explainer sees (D5; a warning's ROI); saved for every defect so the card has an image.
         path = self.store.path.parent / "crops" / f"{cd.defect_id}.jpg"
         path.parent.mkdir(parents=True, exist_ok=True)
-        box = crop(frame.image, cd.xyxy, self.cfg.cause_model.crop_pad)
+        box = roi if roi is not None else crop(frame.image, cd.xyxy, self.cfg.cause_model.crop_pad)
         ok = box.size > 0 and cv2.imwrite(str(path), box)
         self.store.write_defect(cd, crop_path=str(path) if ok else None)
         self.store.write_timing(cd.defect_id, "t0", cd.t0)

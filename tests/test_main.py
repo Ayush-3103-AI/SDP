@@ -28,6 +28,7 @@ def _config(tmp_path, monkeypatch, with_model):
     data = yaml.safe_load((ROOT / "config" / "default.yaml").read_text(encoding="utf-8"))
     data.update(mode="advisory", run_dir=str(tmp_path / "runs"), causes_file=str(ROOT / "config" / "causes.yaml"))
     data["printer"]["kind"] = "fake"
+    data["detector"]["weights"] = "stub.pt"  # Detector is monkeypatched below
     data["camera"]["source"] = f"replay:{frames}"
     data["cause_model"].update(weights=str(tmp_path / "final.pt"), device="cpu")
     data["conformal"]["qhat_file"] = str(tmp_path / "qhat.json")

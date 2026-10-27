@@ -14,7 +14,7 @@ import numpy as np
 
 from xqi.explain.counterfactual import UNIT
 from xqi.store import Store
-from xqi.types import MANUAL_ADVICE, Detection, OperatorDecision
+from xqi.types import EARLY_WARNING, MANUAL_ADVICE, Detection, OperatorDecision
 
 DB_NAME = "events.sqlite"
 LATEST_FRAME = Path("frames") / "latest.jpg"
@@ -108,6 +108,8 @@ def card_model(store: Store, defect_id: str) -> dict[str, Any] | None:
     members = json.loads(card.pop("set_json") or "[]")
     card["causes"] = sorted(((c, probs.get(c, 0.0)) for c in members), key=lambda cp: -cp[1])
     card["advice"] = [(c, MANUAL_ADVICE[c]) for c, _ in card["causes"] if c in MANUAL_ADVICE]
+    if card["cls"] == EARLY_WARNING:  # FR-030: severity is the smoothed p̄; probs_json is the raw p(t)
+        card["early_warning"] = {"p": card["severity"], "probs": sorted(probs.items(), key=lambda cp: -cp[1])}
     card["flags"] = json.loads(card.pop("flags_json") or "[]")
     now = card.pop("now")
     has_deadline = now is not None and card["deadline_ts"] is not None

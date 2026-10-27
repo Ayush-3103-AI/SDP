@@ -29,6 +29,7 @@ from xqi.types import (
 
 ROOT = Path(__file__).resolve().parents[1]
 CFG = load(ROOT / "config" / "default.yaml")
+CFG = replace(CFG, proactive=replace(CFG.proactive, enabled=False))  # RandomExplainer has no estimate()
 FPS = 10
 N_REPLAY = 200
 RSS_EVERY = 1000  # frames

@@ -2,6 +2,7 @@ import math
 
 from xqi.config import Config
 from xqi.types import (
+    EARLY_WARNING,
     MANUAL_ADVICE,
     CauseEstimate,
     CauseSet,
@@ -131,6 +132,8 @@ def event_verdict(
         return out("ESCALATE", f"manual:{manual[0]}")
     if not passed:  # 8
         return out("ESCALATE", "outside_envelope")
+    if cd.cls == EARLY_WARNING:  # 9 never applies a warning (FR-030) → 10
+        return out("PROPOSE", "early_warning", passed)
     l4 = _l4_fail(cset, est, flags, cfg)
     if mode == "auto" and not l4 and len(passed) == 1:  # 9
         return out("APPLY", "L4: pass", passed)

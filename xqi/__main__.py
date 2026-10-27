@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         printer = OctoPrintClient(cfg)
     d = cfg.detector
-    detector = Detector(d.weights, d.imgsz, d.conf, d.device)
+    detector = Detector(d.weights, d.imgsz, d.conf, d.device) if d.weights else None
     source = open_source(cfg.camera.source, cfg.camera.width, cfg.camera.height)
     store = Store(Path(cfg.run_dir) / new_run_id() / "events.sqlite")
     Orchestrator(cfg, printer, source, detector, build_explainer(cfg), store).run(args.max_frames)

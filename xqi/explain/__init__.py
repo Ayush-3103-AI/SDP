@@ -48,7 +48,12 @@ class Explainer:
         self, cd: ConfirmedDefect, frame: Frame, history: Sequence[PrinterState]
     ) -> tuple[CauseEstimate, CauseSet, tuple[str, ...], list[Proposal]]:
         box = crop(frame.image, cd.xyxy, self.cfg.cause_model.crop_pad)
-        est = self.cause_model.predict(box, cd.cls)
+        return self.explain_estimate(cd, self.cause_model.predict(box, cd.cls), history)
+
+    def explain_estimate(
+        self, cd: ConfirmedDefect, est: CauseEstimate, history: Sequence[PrinterState]
+    ) -> tuple[CauseEstimate, CauseSet, tuple[str, ...], list[Proposal]]:
+        """explain() from a given estimate: an early warning's raw p(t) (08 P3)."""
         probs = np.array([est.probs[c] for c in self.labels])
         members = conformal.predict_set(probs, self.qhat, self.labels)
         cset = CauseSet(members=members, alpha=self.cfg.conformal.alpha, qhat=self.qhat)

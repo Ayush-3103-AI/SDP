@@ -10,13 +10,16 @@ import pytest
 import yaml
 
 from xqi import __main__ as cli
+from xqi import ui_data
 from xqi.camera import open_source
 from xqi.config import load
+from xqi.explain import Explainer
 from xqi.explain.counterfactual import make_proposal
 from xqi.orchestrator import Orchestrator
 from xqi.printer import FakePrinter
 from xqi.store import Store
 from xqi.types import (
+    CAUSES,
     CauseEstimate,
     CauseSet,
     ConfirmedDefect,
@@ -27,6 +30,8 @@ from xqi.types import (
 
 ROOT = Path(__file__).resolve().parents[1]
 CFG = load(ROOT / "config" / "default.yaml")
+PCFG = CFG  # proactive on (the default); the stub explainers below have no estimate(), so the rest turn it off
+CFG = replace(CFG, proactive=replace(CFG.proactive, enabled=False))
 
 
 def _replay(tmp_path, n=6):
@@ -397,6 +402,7 @@ def test_decisions_processed_in_loop(tmp_path):
 def test_cli_run_mode_overrides_config(tmp_path, monkeypatch):
     data = yaml.safe_load((ROOT / "config" / "default.yaml").read_text(encoding="utf-8"))
     data["printer"]["kind"] = "fake"
+    data["detector"]["weights"] = "stub.pt"
     data["camera"]["source"] = f"replay:{tmp_path / 'frames_in'}"
     data["run_dir"] = str(tmp_path / "runs")
     _replay(tmp_path)
@@ -411,3 +417,123 @@ def test_cli_run_mode_overrides_config(tmp_path, monkeypatch):
     db = Store.open_readonly(db_path)
     assert db.query("SELECT mode FROM runs")[0]["mode"] == "baseline"
     assert db.query("SELECT source FROM actions") == [{"source": "baseline"}]
+
+
+class RampModel:
+    """Cause-model stub: p(cause) rises 0.1 per call up to 0.95; `none` takes the rest."""
+
+    def __init__(self, cause="flow_low"):
+        self.cause, self.k = cause, 0
+
+    def predict(self, crop_bgr, defect):
+        self.k += 1
+        p = min(0.95, 0.1 * self.k)
+        probs = dict.fromkeys(CAUSES, 0.0) | {"none": 1 - p, self.cause: p}
+        top = max(probs, key=probs.get)
+        return CauseEstimate(probs, top, probs[top])
+
+
+def _ramp_run(tmp_path, mode, cause="flow_low", cfg=PCFG, on_frame=None, n=30, model=None):
+    """Detector-less loop on n frames 0.4 s apart; the Explainer's cause model ramps toward `cause`."""
+    printer = FakePrinter()
+    store = Store(tmp_path / "run" / "events.sqlite")
+    now = time.monotonic()
+
+    def source():
+        for f in _frames([now + 0.4 * i for i in range(n)]):
+            if on_frame:
+                on_frame(f, printer, store)
+            yield f
+
+    explainer = Explainer(model or RampModel(cause), 0.5, CAUSES, cfg)
+    Orchestrator(replace(cfg, mode=mode), printer, source(), None, explainer, store).run()
+    return printer, Store.open_readonly(store.path)
+
+
+def test_early_warning_never_auto(tmp_path):
+    before_apply = []
+
+    def operator(frame, printer, store):  # the operator clicks Apply on the warning card at frame 25
+        if frame.frame_id == 25:
+            before_apply.extend(_sent(printer))
+            ui = Store.open_readonly(store.path)
+            (p,) = ui.query("SELECT proposal_id, defect_id FROM proposals")
+            ui.insert_decision(OperatorDecision(p["proposal_id"], p["defect_id"], "apply", None, "op", "", 1.0))
+            ui.close()
+
+    printer, db = _ramp_run(tmp_path, "auto", on_frame=operator)
+
+    assert before_apply == []  # auto mode, 1 surviving proposal, L4 pass: still not applied (FR-030)
+    (v,) = db.query("SELECT verdict, reason FROM verdicts")
+    assert v == {"verdict": "PROPOSE", "reason": "early_warning"}
+    (line,) = _sent(printer)
+    assert line.startswith("M221 S10")
+    assert db.query("SELECT source FROM actions") == [{"source": "operator"}]
+
+
+def test_detector_optional(tmp_path, monkeypatch):
+    data = yaml.safe_load((ROOT / "config" / "default.yaml").read_text(encoding="utf-8"))
+    assert data["detector"]["weights"] is None  # 09 §Config default: no detector
+    data["printer"]["kind"] = "fake"
+    data["camera"]["source"] = f"replay:{tmp_path / 'frames_in'}"
+    data["run_dir"] = str(tmp_path / "runs")
+    _replay(tmp_path, n=12)
+    config = tmp_path / "cfg.yaml"
+    config.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    def no_detector(*a, **k):
+        raise AssertionError("Detector built with weights: null")
+
+    monkeypatch.setattr(cli, "Detector", no_detector)
+    monkeypatch.setattr(cli, "build_explainer", lambda cfg: Explainer(RampModel(), 0.5, CAUSES, cfg))
+
+    assert cli.main(["run", "--config", str(config)]) == 0
+
+    (db_path,) = (tmp_path / "runs").glob("*/events.sqlite")
+    db = Store.open_readonly(db_path)
+    assert db.query("SELECT COUNT(*) AS n FROM detections")[0]["n"] == 0  # reactive path idle
+    assert db.query("SELECT cls FROM defects") == [{"cls": "early_warning"}]  # proactive path ran
+
+
+def test_warning_card_rows(tmp_path):
+    cfg = replace(PCFG, proactive=replace(PCFG.proactive, roi=(0, 0, 4, 4)))
+    _, db = _ramp_run(tmp_path / "a", "advisory", cfg=cfg)
+
+    (d,) = db.query("SELECT defect_id, cls, bbox_json, severity, conf, crop_path FROM defects")
+    assert d["cls"] == "early_warning" and json.loads(d["bbox_json"]) is None
+    assert PCFG.proactive.theta_on <= d["severity"] == d["conf"] < 0.95  # severity = p̄ (07 §1)
+    assert cv2.imread(d["crop_path"]).shape[:2] == (4, 4)  # the ROI it explained
+    card = ui_data.card_model(db, d["defect_id"])
+    assert card["early_warning"]["p"] == d["severity"]
+    raw = dict(card["early_warning"]["probs"])
+    assert set(raw) == set(CAUSES) and raw["flow_low"] > d["severity"]  # raw p(t) leads the smoothed p̄
+    assert card["verdict"] == "PROPOSE" and card["pending"] == 1
+    assert [p["cause"] for p in card["proposals"]] == ["flow_low"]
+
+    # A manual cause escalates with a card but does not pause: nothing is visibly wrong yet (07 §4).
+    printer, db = _ramp_run(tmp_path / "b", "auto", cause="z_offset_low")
+    (v,) = db.query("SELECT defect_id, verdict, reason FROM verdicts")
+    assert (v["verdict"], v["reason"]) == ("ESCALATE", "manual:z_offset_low")
+    assert printer.state == "Printing" and printer.sent == []
+    assert ui_data.card_model(db, v["defect_id"])["advice"][0][0] == "z_offset_low"
+
+
+class NetRampModel(RampModel):
+    model = SimpleNamespace(name="cause net")  # eigencam is stubbed
+
+
+def test_warning_heatmap(tmp_path, monkeypatch):
+    from xqi.explain import attribution
+
+    calls = []
+    monkeypatch.setattr(attribution, "eigencam",
+                        lambda model, frame, layer, xyxy, input_px: calls.append((frame.image.shape, xyxy))
+                        or np.ones((4, 6), np.float32))
+    cfg = replace(PCFG, proactive=replace(PCFG.proactive, roi=(0, 0, 6, 4)))
+    _, db = _ramp_run(tmp_path, "advisory", cfg=cfg, model=NetRampModel())
+
+    assert calls == [((4, 6, 3), (0, 0, 6, 4))]  # EigenCAM on the nozzle ROI the warning came from
+    (row,) = db.query("SELECT defect_id, cls, crop_path, heatmap_path FROM defects")
+    assert row["cls"] == "early_warning"
+    assert Path(row["heatmap_path"]) == tmp_path / "run" / "heatmaps" / f"{row['defect_id']}.png"
+    assert Path(row["heatmap_path"]).exists() and Path(row["crop_path"]).exists()

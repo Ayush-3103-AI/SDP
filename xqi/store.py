@@ -401,7 +401,7 @@ class Store:
                 obj.t0,
                 obj.t_conf,
                 obj.conf,
-                self._json(obj.xyxy),
+                self._json(obj.xyxy or None),
                 obj.severity,
                 int(obj.critical),
                 crop_path,
