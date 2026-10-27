@@ -72,3 +72,26 @@ def test_pause_resume_and_estop():
     assert not printer.send_gcode(["M221 S110"])
     assert not printer.resume()
     assert printer.get_state().flow_pct == 100.0
+
+
+def test_set_process():
+    clock = FakeClock()
+    printer = FakePrinter(clock=clock)
+
+    printer.set_process(62.0, 120.0, 220.0)
+    state = printer.get_state()
+    assert (state.flow_pct, state.speed_pct, state.nozzle_target_c) == (62.0, 120.0, 220.0)
+    assert state.nozzle_actual_c == 210.0  # the nozzle still lags (07 §12)
+    clock.t = 8.0
+    assert printer.get_state().nozzle_actual_c == pytest.approx(210 + 10 * (1 - math.exp(-1)), abs=0.5)
+
+    # Outside the gate: no command recorded, no cooldown started.
+    assert printer.sent == []
+    assert all(t == float("-inf") for t in printer.get_state().last_change_ts.values())
+    # A gated command still applies and is recorded; the next logged row overwrites it.
+    assert printer.send_gcode(["M221 S72"])
+    assert printer.get_state().flow_pct == 72.0
+    assert printer.get_state().last_change_ts["flow"] == 8.0
+    printer.set_process(62.0, 120.0, 220.0)
+    assert printer.get_state().flow_pct == 62.0
+    assert printer.sent == [(8.0, "M221 S72")]

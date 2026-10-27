@@ -130,6 +130,14 @@ class FakePrinter(Printer):
                 self.last_change_ts[sp[0]] = now
         return True
 
+    def set_process(self, flow: float, speed: float, nozzle_target: float) -> None:
+        """CAXTON replay seeding (07 §12): the dataset's own setpoints, outside the gate.
+
+        Not a command: nothing goes to `sent` and last_change_ts is untouched, so gating is unchanged.
+        """
+        self._advance()  # integrate the old nozzle target up to now
+        self.target.update(flow=flow, speed=speed, nozzle_temp=nozzle_target)
+
     def pause(self) -> bool:
         if self.state != "Printing":
             return False
