@@ -89,7 +89,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0043 Build the operator-study mode (replay cards with explanation on/off) | C | SHOULD | WAITING-GPU (teammate CPU run) |
 | T-0044 Write the operator-study analysis script | C | SHOULD | WAITING-GPU (teammate CPU run) |
 | T-0045 Run the operator study sessions | H | SHOULD | BLOCKED |
-| T-0046 Generate the acceptance report (every FR and NFR → PASS/FAIL with evidence) | C | MUST | BLOCKED |
+| T-0046 Generate the acceptance report (every FR and NFR → PASS/FAIL with evidence) | C | MUST | WAITING-DATA (run after all reports + T-0066 land) |
 | T-0047 Draft the SDP report and paper | P | MUST | BLOCKED |
 | T-0048 (COULD) Recalibrate qhat from labelled logged events | C | COULD | TODO |
 | T-0049 (COULD) Test tiled inference for under-extrusion | C | COULD | DROPPED |
@@ -102,7 +102,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0060 Implement the early-warning module (EWMA + hysteresis) | C | MUST | DONE |
 | T-0061 Add the proactive path to the loop (early-warning events, optional detector) | C | MUST | DONE |
 | T-0062 Add the CAXTON replay source and process-seeded FakePrinter | C | MUST | DONE |
-| T-0063 Evaluate proactive warnings on held-out prints (time-to-warning, recall, false-warning rate) | C | MUST | TODO |
+| T-0063 Evaluate proactive warnings on held-out prints (time-to-warning, recall, false-warning rate) | C | MUST | WAITING-GPU (CPU, after T-0015/17: docs/gpu-runs/T-0063.md) |
 | T-0064 Write the hand-off package (HANDOFF.md + Printer conformance test) | C | MUST | DONE |
 | T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | TODO |
 | T-0066 Run the offline end-to-end HITL demo on held-out CAXTON prints | P | MUST | TODO |

@@ -838,3 +838,17 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   NFR-002/003 part of T-0036 --runs and T-0066. Proposal: 07 §7 NFR-002 = t_gate − t0; NFR-003 = new recorded
   UI first-render ts in 09 §Store; adjust eval_latency --runs in T-0066.
 - NEXT: T-0063 (build-ahead), T-0046 acceptance script; T-0066 after the DESCEND decision.
+
+## 2026-10-27 — Parallel run 3, eval lane: T-0063 (WAITING-GPU), T-0046 (WAITING-DATA); run 3 closed
+- BUILT: scripts/eval_proactive.py (per-print replay through EarlyWarning, θ_on per fold from calib prints only
+  {0.5..0.8}, β=0 floor, NFR-012 line first; tie rule when no θ ≤ 1 false/h: fewest false/h then lower median
+  ttw), runbook docs/gpu-runs/T-0063.md. scripts/acceptance.py (10-done matrix rows → PASS/FAIL/NO DATA from
+  report verdict lines, gate/soak parsers, junit pytest; FR-009/FR-025 also accept reports/img/demo_*.png and
+  reports/operator_study.md because runs/ and *.sqlite are gitignored).
+- RESULT: 328 passed, 1 skipped, 5 deselected; ruff clean. Hand-computed proactive tests (ttw 10 s EWMA / 6 s
+  floor; 2 false/h). Acceptance dry run on the repo: 23 PASS · 0 FAIL · 15 NO DATA of 38 rows.
+- SURPRISE: preds npz has test_cls but no calib_cls → calib labels joined from crops.csv (optional 09 addition).
+  θ_on per fold (a pooled θ would leak other folds' test prints).
+- BROKE: nothing.
+- NEXT: run 3 closed. Open: user decisions on the NFR-002/003 DESCEND (blocks T-0066) and the adapt_counts.json
+  09 line. Then T-0066 (demo code). Teammate: T-0065 → G2 → G3 → 0015/0017/0063 → G4.
