@@ -62,15 +62,19 @@ def to_input(crop_bgr: np.ndarray, input_px: int) -> torch.Tensor:
     return torch.from_numpy(x.transpose(2, 0, 1)).unsqueeze(0)
 
 
-def save_checkpoint(model: nn.Module, path: str | Path) -> None:
-    """Save {"use_defect", "state_dict"} so CauseModel can refuse a mismatched config."""
-    torch.save({"use_defect": model.n_defects > 0, "state_dict": model.state_dict()}, path)
+def save_checkpoint(model: nn.Module, path: str | Path, **meta) -> None:
+    """Save {"use_defect", "state_dict", **meta} so CauseModel can refuse a mismatched config.
+
+    meta = provenance (seed, config, git SHA, data sha256 ...); plain types only, so weights_only loading works.
+    """
+    torch.save({"use_defect": model.n_defects > 0, "state_dict": model.state_dict(), **meta}, path)
 
 
-def train_one_epoch(model, loader, opt, class_weights) -> tuple[float, float]:
+def train_one_epoch(model, loader, opt, class_weights, scaler=None) -> tuple[float, float]:
     """One pass of class-weighted CE over (image, defect_idx, cause_idx) batches.
 
-    Returns (mean loss, accuracy) over the epoch, measured in train mode.
+    scaler = a torch.amp.GradScaler turns on float16 autocast (CUDA AMP). Returns (mean loss, accuracy) over the
+    epoch, measured in train mode.
     """
     device = next(model.parameters()).device
     weight = None if class_weights is None else class_weights.to(device)
@@ -78,11 +82,17 @@ def train_one_epoch(model, loader, opt, class_weights) -> tuple[float, float]:
     loss_sum, correct, n = 0.0, 0, 0
     for x, defect, y in loader:
         x, defect, y = x.to(device), defect.to(device), y.to(device)
-        logits = model(x, defect)
-        loss = F.cross_entropy(logits, y, weight=weight)
+        with torch.autocast(device.type, enabled=scaler is not None):
+            logits = model(x, defect)
+            loss = F.cross_entropy(logits.float(), y, weight=weight)
         opt.zero_grad()
-        loss.backward()
-        opt.step()
+        if scaler is None:
+            loss.backward()
+            opt.step()
+        else:
+            scaler.scale(loss).backward()
+            scaler.step(opt)
+            scaler.update()
         loss_sum += loss.item() * len(y)
         correct += (logits.argmax(1) == y).sum().item()
         n += len(y)
