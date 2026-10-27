@@ -2,7 +2,7 @@
 FILE:     00-charter.md
 PHASE:    0 — CHARTER
 UPDATED:  2026-10-27
-STATUS:   amended (Amendment 2 proposed, awaiting gate; see ADR-0009. Amendment 1 superseded)
+STATUS:   amended (Amendment 2 accepted 2026-10-27, ADR-0009. Amendment 1 superseded)
 SUMMARY:  SDP = a UG-scale piece of CARR Topic 4.1.3. It adds an explanation
           layer (cause expressed in process variables, conformal set of causes),
           a 4-layer safety gate and a recommend-then-act operator dashboard to the
@@ -81,7 +81,7 @@ ourselves. Proposed changes, pending the gate:
 | K3 | no printer by week 6 | No printer + OctoPrint + fixed camera by week 5 → data campaign impossible; DESCEND again (simulation-only, option 2 in ADR-0008) |
 | Safety | all printer commands through gate() | Plus one human-invoked exception: `xqi induce` during data-campaign trials only, operator present, L1 still enforced |
 
-## Amendment 2 (proposed 2026-10-27, awaiting gate) — software-only scope (ADR-0009)
+## Amendment 2 (accepted 2026-10-27) — software-only scope (ADR-0009)
 User directive: we build only the model software (causability, explainability, proactive human-in-the-loop).
 Hardware, printer connection, communication protocol and module choices belong to another team.
 - §1 Problem: unchanged in intent. Delivered as software with a Printer-protocol hand-off boundary.

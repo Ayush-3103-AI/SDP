@@ -1,14 +1,14 @@
 <!-- HEAD
 FILE:     08-pseudocode.md
-PHASE:    2 — SPECIFY
-UPDATED:  2026-10-03
-STATUS:   draft (awaiting gate)
-SUMMARY:  Six algorithms with failure notes:
-          P1 the main loop tick (single thread; the action path is synchronous; heatmap and
-          outcome work go on a worker queue); P2 confirmation tracker; P3 handle_event
-          (critical-first, then explain → gate → verdict); P4 gate; P5 LOGO train + conformal
-          calibrate; P6 outcome verifier.
-          Failure rules: OctoPrint errors never crash the loop; missing state → ESCALATE;
+PHASE:    2 — SPECIFY (delta 2026-10-27, ADR-0009)
+UPDATED:  2026-10-27
+STATUS:   accepted delta
+SUMMARY:  Eight algorithms with failure notes:
+          P1 main loop tick (+ proactive evaluation every n frames; detector optional); P2 confirmation
+          tracker; P3 handle_event (critical-first, then explain → gate → verdict; early warnings never
+          APPLY); P4 gate; P5 leave-parts-out training + conformal calibration on CAXTON ROI crops;
+          P6 outcome verifier; P7 early warning (EWMA + hysteresis); P8 CAXTON adapter + crops.
+          Failure rules: printer errors never crash the loop; missing state → ESCALATE;
           camera loss → pause after cfg.camera.max_gap_s.
 OPEN:     none
 -->
@@ -24,10 +24,15 @@ for frame in source:                                   # blocking iterator
     if now() - last_frame_ts > cfg.camera.max_gap_s:   # camera stalled
         printer.pause(); store.alert("camera_gap")
     last_frame_ts = frame.ts
-    dets = detector(frame)                              # list[Detection]
+    dets = detector(frame) if detector else []          # list[Detection]; detector is optional (FR-003)
     store.write_detections(frame, dets)                 # batched every N frames
     for cd in tracker.update(frame, dets):              # ConfirmedDefect(s)
         handle_event(cd, frame)                         # P3, synchronous
+    if proactive and frame.frame_id % every_n == 0:     # FR-029
+        roi = crop_roi(frame.image, cfg.proactive.roi)  # null → whole frame
+        est = explainer.estimate(roi)                   # cause model only
+        for w in early_warning.update(frame.ts, est.probs):   # P7, 0 or 1 warning
+            handle_event(warning_event(w, frame, roi), frame) # P3 with cd.cls = "early_warning"
     process_operator_decisions()                        # read new operator_decisions rows; re-gate Modify
     check_timeouts()                                    # FR-019
     verifier.tick(frame.ts)                             # P6, cheap counters
@@ -62,19 +67,20 @@ if cd.cls in cfg.critical:                               # FR-005: act first
     printer.estop() if cfg.critical[cd.cls]=="estop" else printer.pause()
     store.write_action(...); worker_queue.put(explain_only(cd, frame)); return
 state = printer.get_state()                              # may raise → state=None
+if mode in (baseline, gated-recipe) and cd.cls == "early_warning": return   # recipes are per defect class
 if mode == baseline: send recipe raw; return
 if mode == gated-recipe: proposals = recipe_to_proposals(cd.cls, state); gate each; send survivors; return
-probs  = cause_model.predict(crop(frame, cd.xyxy), cd.cls)          # t_cause
+probs  = early-warning raw probs if cd.cls == "early_warning" else cause_model.predict(crop(frame, cd.xyxy), cd.cls)  # t_cause
 C      = conformal.predict_set(probs)
 flags  = sensors.check(state_history)
 props  = [make_proposal(c, cd.severity, state) for c in C if actionable(c)]
 gated  = [gate(p, state, C, probs, flags, cfg, now()) for p in props]
-verdict = event_verdict(mode, cd, C, gated, state)                  # 07 §4, t_gate
+verdict = event_verdict(mode, cd, C, gated, state)                  # 07 §4, t_gate; early warning → never APPLY (row 9)
 store.write_explanation(...); store.write_proposals(gated); store.write_verdict(verdict)
 match verdict:
     APPLY    -> dispatch(gated.final_gcode); tracker_state.update; verifier.watch(action)
     PROPOSE  -> store.mark_pending(event_id, deadline=now()+timeout_s)
-    ESCALATE -> printer.pause(); store.mark_pending(...)
+    ESCALATE -> (printer.pause() unless early warning); store.mark_pending(...)
     NOOP     -> pass
 worker_queue.put(heatmap_job(cd, frame))                             # FR-009, after dispatch
 ```
@@ -97,22 +103,28 @@ def event_verdict(...)   # 07 §4 table, rows in order; L4 evaluated here
 Numerical notes: compare after rounding x2 to integers (G-code is integer). If rounding pushes x2 out of L1, reject. No floats in G-code strings.
 
 ## P5 — Cause model training + conformal calibration (`scripts/train_cause.py`, `scripts/eval_cause.py`)
+Data: data/crops.csv (P8): 224 px nozzle-ROI crops, cause ∈ CAUSES (07 §15; `multi` rows excluded), one group = one print.
 ```
-for fold g in splits.folds:                          # LOGO
-    train_trials, calib_trials = split_by_trial(trials not in g, 0.8, seed=fold)
-    model = ResNet18(imagenet) + Linear(512+|DEFECTS| -> |CAUSES|)
-    train with AdamW lr 3e-4, wd 1e-4, batch 32, 15 epochs, class-weighted CE,
-          aug: color jitter 0.2, random resized crop (0.8–1.0), hflip; no vertical flip (gravity-dependent defects)
-    early stop on calib loss (patience 3); save models/cause/fold{g}.pt
-    probs_cal = predict(calib); qhat[g] = conformal.calibrate(probs_cal, y_cal, alpha)
-    probs_test = predict(geometry g) → metrics (07 §9) per fold
-report mean ± std over folds, plus floor and gap-to-oracle
-final runtime model: retrain on all geometries with calib split → models/cause/final.pt + qhat.json
+for fold k in splits.folds:                          # leave-parts-out, 5 folds (logo.json)
+    train_prints, calib_prints = fold.train_trials, fold.calib_trials      # calib = 20 % of training prints
+    model = ResNet18(imagenet) + Linear(512 [+|DEFECTS| if use_defect] -> |CAUSES|)   # use_defect=false for CAXTON
+    train with AdamW lr 3e-4, wd 1e-4, batch 32, ≤ 15 epochs, class-weighted CE (weights from train prints only),
+          aug: color jitter 0.2, random resized crop (0.8–1.0), hflip; no vertical flip (gravity-dependent extrudate)
+    per epoch: sample ≤ cfg max_per_print images per print (default 300) so long prints don't dominate
+    early stop on calib loss (patience 3); save models/cause/fold{k}.pt
+    probs_cal = predict(calib); qhat[k] = conformal.calibrate(probs_cal, y_cal, alpha)
+    probs_test = predict(test prints) → metrics (07 §9) per fold
+    also predict EVERY image of the calib and test prints, including `multi` rows, in ts order
+          → preds_fold{k}.npz (for 07 §14 proactive eval and the replay)
+report mean ± std over folds + bootstrap CI over prints, plus floor and gap-to-oracle
+final runtime model: retrain on all training prints with a calib split → models/cause/final.pt + qhat.json
 ```
 Failure notes:
-- A class with < 10 training crops in a fold → merge it into `other`, or drop it and record that in the report. Never silently.
+- A cause with < 200 training crops or < 5 training prints in a fold → drop it from the taxonomy at T-0007 (decided
+  once on the audit, recorded in the report). Never silently per fold.
 - VRAM 4 GB → batch 32 at 224 px fits ResNet18 (~1.5 GB). On OOM, halve the batch.
 - Seeds fixed (python, numpy, torch); cudnn deterministic off for speed, with the seed recorded.
+- Normalisation = ImageNet mean/std (the backbone's). The CAXTON dataset mean/std is recorded but not used.
 
 ## P6 — Outcome verifier (`xqi/verify.py`)
 ```
@@ -121,3 +133,41 @@ tick(ts): for w in pending: if ts >= w.t_a + S + W: classify per 07 §6 → stor
 on run end: remaining → "unknown"
 ```
 Needs a per-class ring buffer of (ts, present) covering the last S + 2W seconds. Memory ≈ 25 fps × 270 s × 7 classes of booleans: negligible.
+
+## P7 — Early warning (`xqi/proactive.py: EarlyWarning.update`, pure; 07 §13)
+```
+state: pbar=None, last_ts=None, run[c]=0, armed[c]=True, last_warn[c]=-inf   for c in CAUSES \ {none}
+def update(ts, probs) -> list[Warning]:
+    if last_ts is not None and ts - last_ts > max_gap_s: reset()
+    last_ts = ts
+    pbar = probs if pbar is None else beta*pbar + (1-beta)*probs
+    ready = []
+    for c in causes:
+        run[c] = run[c] + 1 if pbar[c] >= theta_on else 0
+        if pbar[c] < theta_off: armed[c] = True
+        if armed[c] and run[c] >= m and ts - last_warn[c] >= T_w: ready.append(c)
+    if not ready: return []
+    c = argmax over ready of pbar[c]
+    armed[c] = False; last_warn[c] = ts
+    return [Warning(cause=c, p=pbar[c], ts=ts, probs=probs)]
+```
+Edge cases: probs must cover every cause (KeyError otherwise); θ_off ≥ θ_on → config validation error.
+
+## P8 — CAXTON adapter + crops (`scripts/adapt_caxton.py`, `scripts/build_crops.py`)
+```
+adapt_caxton.py --csv <caxton_dataset_filtered.csv> --root <dir holding caxton_dataset/> --out data/
+                [--per-print N=500] [--seed 0] [--keep-z-suspect] [--list-needed needed.txt]
+    rows = read csv; check required columns (09 §Data) → missing → exit 2 naming them
+    drop print_id >= 183 and z_offset < 0.08 (unless --keep-z-suspect); count both
+    cause = label(row) per 07 §15
+    subset: per print, keep every image of `multi`/`none`/single rows up to N, stratified by cause
+            (take all of a rare cause first, then fill with the rest in ts order)
+    write data/trials.csv (one row per print) and data/images.csv (one row per kept image)
+    --list-needed: write the kept img_path values only (lets the teammate fetch just those images if the
+                   archive is per print); never touches the network itself
+build_crops.py --images data/images.csv --root <dir> --out data/crops [--size 320] [--px 224] [--workers 4]
+    for each row: read image; box = 320×320 centred on (nozzle_x, nozzle_y), shifted to stay inside the frame;
+                  resize to 224; write data/crops/<print>/<image>.jpg (quality 95); skip if it exists (resumable)
+    write data/crops.csv; missing or unreadable images are counted, listed in data/crops_missing.txt, not fatal
+```
+Cost: ~100 k JPEG decodes + writes, ≈ 20–40 min on a laptop CPU with 4 workers; output ≈ 1.5–2 GB.

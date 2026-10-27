@@ -1,16 +1,16 @@
 <!-- HEAD
 FILE:     06-requirements.md
-PHASE:    2 — SPECIFY
-UPDATED:  2026-10-03
-STATUS:   draft (awaiting gate)
-SUMMARY:  25 MUST/SHOULD FRs, 3 COULD, 1 WON'T block; 11 NFRs, each with a number.
-          Pipeline: frames -> YOLO11-S -> confirm -> (critical: estop/pause) | cause
-          model -> conformal set -> proposals -> 4-layer gate -> APPLY / PROPOSE /
-          ESCALATE / NOOP -> dashboard -> outcome check. Floor = majority cause per
-          defect class; oracle = induced cause; frozen eval = LOGO by trial,
-          thresholds in §Frozen eval. Latency: added action path <= 30 ms p95,
-          end-to-end auto p95 <= 0.30 s.
-OPEN:     Thresholds are proposals until Dr. Meti signs the gate.
+PHASE:    2 — SPECIFY (delta 2026-10-27, ADR-0009 software-only)
+UPDATED:  2026-10-27
+STATUS:   accepted delta (user approved ADR-0009 recommendations 2026-10-27)
+SUMMARY:  Software only. Two paths share one explain → gate → HITL stack:
+          reactive (pluggable detector → confirm → explain) and proactive (cause model on the nozzle
+          ROI every n frames → EWMA early warning → proposal card, never auto-applied, FR-029/030).
+          Cause ground truth = CAXTON parameter classes (FR-031); eval = leave-parts-out folds.
+          Hardware, printer link and rig runs belong to the integrating team (hand-off FR-032).
+          Floor = training-fold majority cause. NFR-001 ≤ 30 ms p95 action path (offline bench);
+          NFR-012 proactive warning. Rig NFRs (old 002/003/010) re-scoped to the offline replay.
+OPEN:     Thresholds marked [assumed] until Dr. Meti signs (ADR-0009 Q5).
 -->
 
 # Requirements
@@ -22,26 +22,29 @@ Notation: `cfg.x` = key in `config/default.yaml` (09-interfaces §Config). Formu
 ```
 FR-001 | Run in one of four modes: baseline, gated-recipe, auto, advisory
   Priority:   MUST
-  Rationale:  ADR-0001; every claim is an A/B on the same rig
+  Rationale:  ADR-0001; the integrating team picks the mode for their rig; offline we A/B on replay
   Acceptance: GIVEN cfg.mode=X WHEN `python -m xqi run --config ...` starts THEN the run
               header row in the store records mode=X and only X's action path executes
   Verified by: tests/test_orchestrator.py::test_modes
 ```
 ```
-FR-002 | Acquire frames from an OpenCV camera index or a replay folder (sorted by filename)
+FR-002 | Acquire frames from an OpenCV camera index, a replay folder (sorted by filename), or a CAXTON print
+         (`caxton:<crops.csv>#<trial_id>`, rows in timestamp order)
   Priority:   MUST
-  Rationale:  rig runs + offline/CI runs
+  Rationale:  offline/CI runs and the CAXTON HITL replay; the camera index is for the integrating team
   Acceptance: GIVEN cfg.camera.source="replay:<dir>" WHEN iterated THEN yields Frame objects in
-              filename order with monotonically increasing ts, then stops
+              filename order with monotonically increasing ts, then stops. GIVEN "caxton:<csv>#p7" THEN yields
+              print p7's crops in ts order, and the FakePrinter's process values follow each row (T-0062)
   Verified by: tests/test_camera.py
 ```
 ```
-FR-003 | Detect defects with the YOLO11-S weights at cfg.detector.imgsz and conf >= cfg.detector.conf
+FR-003 | Detect defects with whatever YOLO weights cfg.detector.weights names (pluggable; null = no detector)
   Priority:   MUST
-  Rationale:  inherited detector
+  Rationale:  ADR-0009 D3: detection is an input the integrating team supplies; AM_1 is a placeholder.
+              We train no detector (no box labels exist).
   Acceptance: GIVEN a frame WHEN detect() runs THEN returns list[Detection] with cls in DEFECTS,
               conf in [0,1], xyxy in pixel coords, area_frac in (0,1]
-  Verified by: tests/test_detect.py (fake model) + scripts/eval_detector.py (real weights)
+  Verified by: tests/test_detect.py (fake model); real weights are the integrating team's check (docs/HANDOFF.md)
 ```
 ```
 FR-004 | Confirm a defect after cfg.confirm.hits[cls] consecutive frames; fire once per episode
@@ -69,7 +72,8 @@ FR-006 | Compute severity s in [0,1] for every confirmed defect (07 §1)
 ```
 FR-007 | Predict a probability vector over CAUSES from (crop, defect class)
   Priority:   MUST
-  Rationale:  ADR-0002
+  Rationale:  ADR-0002. CAXTON has no defect class, so cfg.cause_model.use_defect=false drops the defect
+              one-hot (the predict signature is unchanged; the argument is ignored)
   Acceptance: GIVEN a crop WHEN predict() THEN probs sum to 1±1e-5 over cfg CAUSES order; no
               telemetry or setpoint enters the model
   Verified by: tests/test_cause_model.py (signature test asserts the inputs)
@@ -81,7 +85,8 @@ FR-008 | Return a conformal cause set at risk cfg.conformal.alpha using a stored
   Verified by: tests/test_conformal.py
 ```
 ```
-FR-009 | Save an EigenCAM heatmap PNG per non-critical confirmed defect, computed after dispatch
+FR-009 | Save an EigenCAM heatmap PNG (cause-model backbone, cfg.attribution.layer) per non-critical event
+         (confirmed defect or early warning), computed after dispatch
   Priority:   SHOULD
   Rationale:  "where" evidence for the operator; D10 keeps it off the latency path
   Acceptance: GIVEN a confirmed defect WHEN processed THEN runs/<id>/heatmaps/<defect_id>.png
@@ -102,8 +107,9 @@ FR-011 | Generate one Proposal per actionable cause in the set (07 §2), with G-
   Priority:   MUST
   Rationale:  "range of solutions"
   Acceptance: GIVEN set {flow_low, nozzle_temp_low} WHEN proposals generated THEN two proposals
-              (M221 up, M104 up) with Δ per 07 §2; `none` → no proposal; `misalignment` → no setpoint
-              proposal, forces ESCALATE
+              (M221 up, M104 up) with Δ per 07 §2; `none` → no proposal; a manual cause (z_offset_low/high,
+              misalignment; 09 MANUAL_ADVICE) → no setpoint proposal, its advice text goes on the card and
+              the event ESCALATEs (07 §4 row 7)
   Verified by: tests/test_counterfactual.py
 ```
 ```
@@ -142,7 +148,7 @@ FR-017 | An operator Modify value is re-gated in the loop process before dispatc
   Verified by: tests/test_orchestrator.py::test_modify_regated
 ```
 ```
-FR-018 | Pause → OctoPrint job pause; Stop → M112 only after a confirm dialog
+FR-018 | Pause → Printer.pause(); Stop → Printer.estop() (M112) only after a confirm dialog
   Priority:   MUST
   Verified by: tests/test_orchestrator.py::test_pause_stop
 ```
@@ -172,8 +178,8 @@ FR-023 | Baseline mode reproduces deck behaviour: deck recipes (absolute setpoin
   Verified by: tests/test_orchestrator.py::test_baseline_parity
 ```
 ```
-FR-024 | Offline evaluation scripts write reports/*.md: detector, data audit, cause (floor vs model),
-         conformal, counterfactual fidelity, recipe audit, latency, rig results, study, acceptance
+FR-024 | Offline evaluation scripts write reports/*.md: data audit, L3 window, cause (floor vs model),
+         conformal, counterfactual fidelity, proactive warning, recipe audit, latency, demo, study, acceptance
   Priority:   MUST
   Verified by: each script's ticket
 ```
@@ -188,50 +194,94 @@ FR-026 | Recalibrate qhat from newly labelled logged events (`python -m xqi reca
   Priority:   COULD
 ```
 ```
-FR-027 | Tiled (SAHI-style) inference experiment for under-extrusion
+FR-027 | (dropped 2026-10-27, ADR-0009: detector work belongs to the integrating team)
+  Priority:   WON'T
+```
+```
+FR-028 | Domain-shift check: run the final cause model on the inherited camera roll (whole-bed view, other
+         printer) and report set sizes and the cause distribution (ADR-0009 D6)
   Priority:   COULD
 ```
 ```
-FR-028 | Leave-one-printer-out cause evaluation (Kobra 2 Neo)
-  Priority:   COULD
+FR-029 | Proactive early warning: every cfg.proactive.every_n frames, run the cause model on the nozzle ROI
+         (cfg.proactive.roi; null = whole frame), smooth per-cause probabilities and raise an early warning
+         for cause c per 07 §13, with no confirmed defect needed
+  Priority:   MUST
+  Rationale:  ADR-0009 D4: "proactiveness" = warn and propose before a defect is visible to the detector
+  Acceptance: GIVEN p_flow_low = 0.9 for m consecutive evaluations WHEN updated THEN exactly one warning
+              (cause=flow_low); none again until p̄ < θ_off and the cooldown has passed; `none` never warns
+  Verified by: tests/test_proactive.py
+```
+```
+FR-030 | An early warning becomes an event (defects row, cls = "early_warning") that goes through the same
+         conformal set → proposals → gate path and is always shown as PROPOSE (or ESCALATE), never APPLY
+  Priority:   MUST
+  Rationale:  ADR-0009 Q3: proactive actions need human approval; the gate still applies
+  Acceptance: GIVEN mode=auto and a warning whose proposal passes L1–L4 WHEN handled THEN verdict = PROPOSE and
+              no G-code is sent until an operator Apply
+  Verified by: tests/test_orchestrator.py::test_early_warning_never_auto
+```
+```
+FR-031 | Adapt CAXTON to the canonical data files: per-print trials.csv, per-image images.csv with the four
+         parameter classes and a single cause label, a part-stratified subset, and 224 px nozzle-ROI crops
+  Priority:   MUST
+  Rationale:  ADR-0009 D2: the only cause-labelled source
+  Acceptance: per 09 §Data; label rule 07 §15; prints 183–191 and z_offset < 0.08 mm excluded by default and counted
+  Verified by: tests/test_adapt_caxton.py, tests/test_build_crops.py (synthetic fixtures)
+```
+```
+FR-032 | Hand-off package for the integrating team: docs/HANDOFF.md (Printer protocol, Detector contract,
+         recommendation/store contract, the config keys they own) and a Printer conformance test they run
+         against their own implementation
+  Priority:   MUST
+  Rationale:  ADR-0009 D1/Q4: the Printer protocol is the boundary
+  Verified by: tests/test_printer_contract.py passes for FakePrinter
 ```
 
 ## Non-functional (each has a number)
 | ID | Requirement | Number | Verified by |
 |---|---|---|---|
-| NFR-001 | Added action-path latency (crop + cause model + conformal + gate) | p95 ≤ **30 ms** on the RTX 3050 4 GB | scripts/eval_latency.py (T-0036) |
-| NFR-002 | First defect frame → command dispatched, auto mode | p95 ≤ **0.30 s**; critical path p95 ≤ **0.27 s** | T-0036, T-0039 rig |
-| NFR-003 | Confirmation → card visible in the dashboard | p95 ≤ **1.0 s** | T-0039 rig (store timestamps) |
-| NFR-004 | Post-gate envelope violations | **0** in 100 000 random cases + all rig runs | T-0023, T-0042 |
-| NFR-005 | Cause top-1 (LOGO mean) / top-3 | ≥ floor + **10 pp** / ≥ **0.90** | T-0013 |
+| NFR-001 | Added action-path latency (crop + cause model + conformal + gate) | p95 ≤ **30 ms** on the RTX 3050 4 GB | scripts/eval_latency.py --bench (T-0036) |
+| NFR-002 | Frame → verdict, offline replay (CAXTON source + FakePrinter, real model) | p95 ≤ **0.30 s** | T-0066 store timings |
+| NFR-003 | Event → card visible in the dashboard, offline replay | p95 ≤ **1.0 s** | T-0066 store timestamps |
+| NFR-004 | Post-gate envelope violations | **0** in 100 000 random cases + all offline runs | T-0023, T-0066 |
+| NFR-005 | Cause top-1 (leave-parts-out mean, bootstrap 95 % CI over prints) / top-3 | ≥ floor + **10 pp** / ≥ **0.90** | T-0013 |
 | NFR-006 | Conformal empirical coverage @ α = 0.10 / mean set size | ≥ **0.85** / ≤ **2.0** | T-0015 |
-| NFR-007 | Counterfactual direction fidelity | ≥ **0.85** | T-0017 |
-| NFR-008 | Soak: replay + FakePrinter | **2 h**, no crash, RSS growth < **200 MB** | T-0034 soak test (marked `slow`) |
+| NFR-007 | Counterfactual direction fidelity on confident events (07 §9) | ≥ **0.85**, confident fraction reported | T-0017 |
+| NFR-008 | Soak: replay + FakePrinter | **2 h**, no crash, RSS growth < **200 MB** | T-0052 (`slow`) |
 | NFR-009 | Unit suite runtime (excluding `gpu`/`hw`/`slow` markers) | < **120 s** on CPU | CI command in CLAUDE.md |
-| NFR-010 | Rig resolution rate (auto vs baseline) / setpoint reversals per run | ≥ baseline − **5 pp** / ≤ baseline | T-0042 |
-| NFR-011 | GPU memory, YOLO11-S + cause model at inference | ≤ **3.5 GB** | T-0036 |
+| NFR-010 | (dropped: rig resolution rate is the integrating team's measurement) | — | — |
+| NFR-011 | GPU memory at inference (cause model; + detector when configured) | ≤ **3.5 GB** | T-0036 |
+| NFR-012 | Proactive warning on held-out prints (07 §14) | median time-to-warning ≤ **10 s**; onset recall@30 s ≥ **0.70**; false warnings ≤ **1 / print-hour** [assumed] | T-0063 |
 
 ## Baseline, oracle, frozen eval
-- **Floor (cause):** for each defect class, predict the most frequent induced cause in the training folds. This equals the cause implied by the deck's fixed recipe per class.
-- **Floor (correction):** `baseline` mode, i.e. the deck's recipes.
-- **Oracle (cause):** the induced cause (accuracy 1.0). Results are reported as gap-to-oracle.
-- **Oracle (correction):** the inverse of the induced deviation applied exactly (from the campaign log). Rig resolution under the oracle is measured on ≥ 1 run per cause in T-0041 where feasible.
+- **Floor (cause):** predict the most frequent cause of the training folds' images (CAXTON has no defect class).
+  ADR-0002 option 1 (prior + sensors) is not a fair floor here: the sensor values ARE the labels.
+- **Reference (not a floor):** the paper's random-by-image protocol on fold 0, if time allows, to show the
+  within-print leakage gap (T-0013, SHOULD).
+- **Floor (proactive):** the same warning rule on the raw (unsmoothed) probabilities; shows what smoothing buys.
+- **Oracle (cause):** the CAXTON parameter class (accuracy 1.0). Results reported as gap-to-oracle.
 - **Frozen eval (committed in T-0007, not edited afterwards):**
 
 | Item | Value |
 |---|---|
-| Split | LOGO, 8 folds, calibration 20 % by trial inside the training geometries (ADR-0007) |
-| Cause metrics | top-1, top-3, per-class recall, gap to floor |
+| Split | leave-parts-out, 5 folds (GroupKFold by print = part, seed 0), calibration = 20 % of training prints (ADR-0007 re-scoped) |
+| Cause metrics | top-1, top-3, per-class recall, gap to floor, bootstrap 95 % CI over test prints |
 | Conformal | coverage and mean set size at α ∈ {0.05, 0.10, 0.20} |
-| Counterfactual | direction fidelity on top-1 |
+| Counterfactual | direction fidelity on confident events, confident fraction |
+| Proactive | time-to-warning, onset recall@30 s, false warnings / print-hour; θ_on chosen on calibration prints only |
 | Gate | violations / 100 000 |
-| Rig | resolution rate, reversals, max setpoint deviation, latency p95, by mode |
-| Thresholds | NFR-004..NFR-007, NFR-010 |
+| Thresholds | NFR-004..NFR-007, NFR-012 |
 | Verdict owner | Dr. Vinod Kumar V Meti |
 
 ## Non-goals (WON'T)
+- Anything physical (ADR-0009 D1): printer connection, OctoPrint/G-code transport testing, camera or Raspberry Pi
+  choice, rig runs, induced-defect printing, envelope sign-off for a real printer. The integrating team owns these.
+- Training or evaluating a defect detector (no box labels exist).
+- A multi-head per-parameter model (the paper's design), unless the T-0006 audit shows too few single-deviation
+  images (then DESCEND).
 - RL or adaptive policy learning beyond FR-026 recalibration (deck WP3 "learning" is out).
 - Firmware modification, new sensors (thermal, acoustic, humidity), multi-printer fleet, cloud.
 - Changes to the detector architecture, or claims about detection uncertainty (that's 4.1.1).
-- A new DOE sweep; L3 is derived from existing trial data (T-0024).
+- A new DOE sweep; L3 is derived from CAXTON's "good" class ranges (T-0024).
 - Image-generative counterfactuals.

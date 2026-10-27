@@ -1,123 +1,112 @@
 <!-- HEAD
 FILE:     11-tickets/BOARD.md
-PHASE:    4 — TICKET
-UPDATED:  2026-10-03
-STATUS:   draft (awaiting gate)
-SUMMARY:  52 tickets: 41 CODE, 7 PAIR, 4 HUMAN (including 3 COULD stretch tickets).
-          The effort-weighted critical path (~44 working days) is the DATA lane:
-          T-0002 → 0005 → 0006(K1) → 0007 → 0009 → 0012 → 0013(K2) → 0015 → 0039 → 0041 → 0045 → 0046 → 0047.
-          The software lanes (gate, printer, loop, UI) need no data and are built while T-0002 is pending.
-          Rule: whenever a data-lane ticket is unblocked, it preempts the others (risk first).
-OPEN:     week plan assumes a ~14-week semester starting 2026-10-05 (STATE Q1).
+PHASE:    4 — TICKET (delta 2026-10-27, ADR-0009 software-only)
+UPDATED:  2026-10-27
+STATUS:   accepted delta
+SUMMARY:  63 tickets: 22 DONE, 6 waiting on teammate CPU runs, 9 DROPPED (hardware/detector → integrating team),
+          26 in the new plan (11 new: T-0057…T-0067). Critical path is the DATA lane:
+          T-0057 → 0005 → 0006/0009/0024 → 0007 → 0065 (teammate download + data sitting) → 0012 (G2) → 0013 (G3, K2)
+          → 0015/0017/0063 → 0066 (G4 demo) → 0046 → 0047. The proactive + hand-off lane (0058–0062, 0064) needs no data
+          and is built while the teammate downloads.
+OPEN:     T-0065 Part 1 (image location) is the highest risk (K1′).
 -->
 
 # Board
 
-**GitHub:** issue #N = ticket T-000N at https://github.com/Ayush-3103-AI/SDP/issues. Milestones = PLAN-4W phases.
+**GitHub:** issue #N = ticket T-000N at https://github.com/Ayush-3103-AI/SDP/issues (#53–56 are PRs, so the new tickets
+start at T-0057 = #57).
 
 ## Lanes
-| Lane | Tickets | Needs |
+| Lane | Tickets (open) | Needs |
 |---|---|---|
-| **critical-path (data → rig → report)** | 0002, 0005, 0006, 0007, 0009, 0012, 0013, 0015, 0039, 0041, 0045, 0046, 0047 | REU hand-over, GPU, printer |
-| core (integration) | 0001, 0003, 0004, 0010, 0011, 0017, 0020, 0033, 0034, 0036, 0038, 0042, 0051 | — |
-| parallel-A (printer, loop I/O) | 0008, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0035, 0052 | printer only for 0028 |
-| parallel-B (safety gate, conformal, counterfactual) | 0014, 0016, 0019, 0021, 0022, 0023, 0024, 0025 | nothing (0024/0025 need trials.csv) |
-| parallel-C (UI, study) | 0018, 0037, 0043, 0044 | — |
-| parallel-D (campaign design) | 0040 | frozen taxonomy |
-| stretch (COULD) | 0048, 0049, 0050 | only after 0046 |
-
-## Dependency DAG (by level; a ticket can start once every ticket it depends on is done)
-```
-L1  0001[C] 0002[H]
-L2  0003[C]
-L3  0004[C] 0005[C] 0014[C] 0018[C] 0029[C] 0030[C] 0032[C]
-L4  0006[C] 0008[C] 0011[C] 0016[C] 0019[C] 0021[C] 0024[C] 0026[C] 0035[C] 0037[C]
-L5  0007[P] 0020[C] 0022[C] 0027[C] 0031[C] 0049[C]
-L6  0009[C] 0023[C] 0028[P] 0033[C] 0040[C]
-L7  0010[C] 0012[P] 0025[H] 0034[C]
-L8  0013[P] 0036[C] 0051[C]
-L9  0015[C] 0017[C] 0038[C] 0052[C] 0050[P]
-L10 0039[P] 0043[C]
-L11 0041[H] 0044[C]
-L12 0042[C] 0045[H]
-L13 0046[C] 0048[C]
-L14 0047[P]
-```
-C = Claude Code; P = Claude + human; H = human only.
+| **critical-path (data → model → evals → demo → report)** | 0057, 0005, 0009, 0006, 0024, 0007, 0065, 0010, 0012, 0013, 0015, 0063, 0066, 0046, 0047 | teammate laptop for 0065, 0012, 0013, 0066 |
+| proactive + loop | 0058, 0060, 0061, 0062 | nothing (fixtures) |
+| explain | 0059, 0017 | nothing until T-0013 preds |
+| hand-off | 0064 | nothing |
+| bench | 0036 | GPU (G4) |
+| study | 0043, 0044 (waiting), 0045 | humans |
+| stretch (COULD) | 0048, 0067 | after 0066 / 0013 |
 
 ## Execution order
-The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (52 steps, dependency-checked by `scripts/check_sequence.py`). Don't keep a second order here.
+The one canonical order is **[SEQUENCE.md](SEQUENCE.md)** (dependency-checked by `scripts/check_sequence.py`). Its
+"Teammate sittings" table says what the GPU laptop runs and when.
 
-## Week plan (assumed: 14 weeks from 2026-10-05)
-| Week | Target |
-|---|---|
-| 1 | 0002 started (human); 0001, 0003, 0004, 0021, 0022, 0014 |
-| 2 | 0016, 0019, 0023, 0011, 0026, 0027, 0029, 0032, 0031 |
-| 3 | 0035, 0030, 0018, 0020, 0033 · **data in hand** → 0005, 0006 (K1) |
-| 4 | 0007, 0008, 0024, 0009, 0010, 0012 (first read on A3) |
-| 5 | 0013 (K2), 0034, 0051 |
-| 6 | 0015, 0017, 0052, 0037, 0025 sign-off, 0028 · **K3: rig working?** |
-| 7 | 0038, 0036, 0040, 0043 |
-| 8 | 0039 dry run |
-| 9–11 | 0041 campaign (0044 in parallel) |
-| 12 | 0042, 0045 study |
-| 13 | 0046 |
-| 13–14 | 0047 report |
+## Parallel build (when the user asks for a parallel run)
+Unblocked CODE tickets right now, by DAG level (each can start once the tickets it lists are DONE):
+```
+L0  0057  0060
+L1  0005 (0057)   0058 (0057)   0059 (0057)
+L2  0009 (0005)   0006 (0005)   0024 (0005)   0061 (0058, 0060)
+L3  0007 (0006)   0062 (0009)   0064 (0061)   0010 (0007, 0009)
+then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
+```
 
 ## Status
 | Ticket | Owner | Pri | Status |
 |---|---|---|---|
-| T-0001 Scaffold repo | C | MUST | DONE |
-| T-0002 Inheritance package | H | MUST | TODO |
-| T-0003 Contracts module | C | MUST | DONE |
-| T-0004 Config loader | C | MUST | DONE |
-| T-0005 Induction adapter | C | MUST | BLOCKED (0002) |
-| T-0006 Data audit + K1 | C | MUST | BLOCKED |
-| T-0007 Freeze taxonomy + splits | P | MUST | BLOCKED |
-| T-0008 Detector baseline | C | MUST | BLOCKED |
-| T-0009 Crop dataset | C | MUST | BLOCKED |
-| T-0010 Eval harness + floor | C | MUST | BLOCKED |
-| T-0011 Cause model | C | MUST | DONE |
-| T-0012 Train fold 0 | P | MUST | BLOCKED |
-| T-0013 LOGO CV + K2 | P | MUST | BLOCKED |
-| T-0014 Conformal | C | MUST | DONE |
-| T-0015 Conformal eval | C | MUST | BLOCKED |
-| T-0016 Proposals/counterfactual | C | MUST | DONE |
-| T-0017 CF fidelity eval | C | MUST | BLOCKED |
-| T-0018 EigenCAM | C | SHOULD | DONE |
-| T-0019 Sensor checks | C | MUST | DONE |
-| T-0020 Explainer | C | MUST | DONE |
-| T-0021 Gate L1+L2 | C | MUST | DONE |
-| T-0022 Gate L3+verdict | C | MUST | DONE |
-| T-0023 Gate property + recipe audit | C | MUST | WAITING-GPU |
-| T-0024 Derive L3 window | C | MUST | BLOCKED |
-| T-0025 Envelope sign-off | H | MUST | BLOCKED |
-| T-0026 Printer + FakePrinter | C | MUST | DONE |
-| T-0027 OctoPrint client | C | MUST | DONE |
-| T-0028 OctoPrint smoke | P | MUST | BLOCKED |
-| T-0029 Frame sources | C | MUST | DONE |
-| T-0030 Detector wrapper | C | MUST | WAITING-GPU |
-| T-0031 Confirmation tracker | C | MUST | DONE |
-| T-0032 Event store | C | MUST | DONE |
-| T-0033 Orchestrator baseline | C | MUST | DONE |
-| T-0034 Orchestrator modes | C | MUST | DONE |
-| T-0035 Outcome verifier | C | MUST | DONE |
-| T-0036 Latency report | C | MUST | WAITING-GPU |
-| T-0037 Dashboard live view | C | MUST | WAITING-GPU |
-| T-0038 Proposal cards | C | MUST | WAITING-GPU |
-| T-0039 HIL dry run | P | MUST | BLOCKED |
-| T-0040 Campaign protocol | C | MUST | BLOCKED |
-| T-0041 Run campaign | H | MUST | BLOCKED |
-| T-0042 Rig results | C | MUST | BLOCKED |
-| T-0043 Study mode | C | SHOULD | WAITING-GPU |
-| T-0044 Study analysis | C | SHOULD | WAITING-GPU |
-| T-0045 Run study | H | SHOULD | BLOCKED |
-| T-0046 Acceptance report | C | MUST | BLOCKED |
-| T-0047 Report/paper | P | MUST | BLOCKED |
-| T-0048 Recalibrate (COULD) | C | COULD | TODO |
-| T-0049 Tiled inference (COULD) | C | COULD | BLOCKED |
-| T-0050 Leave-one-printer-out (COULD) | P | COULD | BLOCKED |
-| T-0051 Operator decisions + timeouts | C | MUST | DONE |
-| T-0052 Soak test | C | MUST | WAITING-GPU |
+| T-0001 Scaffold the repo (git, uv project, package, test runner) | C | MUST | DONE |
+| T-0002 Collect the inheritance package from the REU team | H | MUST | DONE |
+| T-0003 Implement the contracts module (dataclasses, constants, JSON round-trip) | C | MUST | DONE |
+| T-0004 Implement the config loader with validation, plus default.yaml and causes.yaml | C | MUST | DONE |
+| T-0005 Write the CAXTON adapter (canonical trials.csv / images.csv, label rule, part-stratified subset) | C | MUST | TODO |
+| T-0006 Write the data audit report (cause coverage per print, single-deviation share, kill check K1′) | C | MUST | TODO |
+| T-0007 Freeze the cause taxonomy and the leave-parts-out splits | P | MUST | TODO |
+| T-0008 Reproduce the detector baseline on the REU split | C | MUST | DROPPED |
+| T-0009 Build the nozzle-ROI crop dataset from images.csv | C | MUST | TODO |
+| T-0010 Build the cause evaluation harness and the majority floor | C | MUST | TODO |
+| T-0011 Implement the cause model (architecture, predict, training step) | C | MUST | DONE |
+| T-0012 Train the cause model on leave-parts-out fold 0 (early read on A3) | P | MUST | BLOCKED |
+| T-0013 Run the full leave-parts-out cross-validation and the K2 kill check | P | MUST | BLOCKED |
+| T-0014 Implement split-conformal calibration and prediction sets | C | MUST | DONE |
+| T-0015 Evaluate conformal coverage on the leave-parts-out folds and save the runtime qhat | C | MUST | TODO |
+| T-0016 Implement proposal and counterfactual generation (severity-scaled Δ, G-code, sentence) | C | MUST | DONE |
+| T-0017 Evaluate counterfactual direction fidelity on confident events | C | MUST | TODO |
+| T-0018 Implement EigenCAM attribution on the YOLO11 backbone | C | SHOULD | DONE |
+| T-0019 Implement the telemetry sensor checks | C | MUST | DONE |
+| T-0020 Assemble the Explainer (cause model → conformal set → sensor flags → proposals) | C | MUST | DONE |
+| T-0021 Implement safety gate layers L2 (rate/cooldown) and L1 (physical limits) | C | MUST | DONE |
+| T-0022 Implement gate layer L3 and the event-verdict truth table (with L4) | C | MUST | DONE |
+| T-0023 Write the randomised gate property test and the deck-recipe audit | C | MUST | WAITING-GPU (teammate CPU run) |
+| T-0024 Derive the L3 process window from CAXTON's "good" class ranges | C | MUST | TODO |
+| T-0025 Confirm the envelope numbers and get sign-off | H | MUST | DROPPED |
+| T-0026 Implement the Printer protocol and the FakePrinter simulator | C | MUST | DONE |
+| T-0027 Implement the OctoPrint REST client | C | MUST | DONE |
+| T-0028 Smoke-test OctoPrint on the real printer and measure dispatch latency | P | MUST | DROPPED |
+| T-0029 Implement the frame sources (camera and replay folder) | C | MUST | DONE |
+| T-0030 Implement the YOLO11 detector wrapper | C | MUST | DONE |
+| T-0031 Implement the confirmation tracker (with severity) | C | MUST | DONE |
+| T-0032 Implement the SQLite event store | C | MUST | DONE |
+| T-0033 Implement the orchestrator: baseline mode, critical-first handling, timings, CLI | C | MUST | DONE |
+| T-0034 Implement the orchestrator's gated-recipe, auto and advisory action paths | C | MUST | DONE |
+| T-0035 Implement the outcome verifier | C | MUST | DONE |
+| T-0036 Write the latency and VRAM report (offline bench) | C | MUST | TODO |
+| T-0037 Build the dashboard live view (read-only) | C | MUST | WAITING-GPU (teammate CPU run) |
+| T-0038 Build the dashboard proposal cards and operator buttons | C | MUST | WAITING-GPU (teammate CPU run) |
+| T-0039 Hardware-in-the-loop dry run on the Ender 5 Plus (no induced defects) | P | MUST | DROPPED |
+| T-0040 Write the induced-defect campaign protocol and the randomised run matrix | C | MUST | DROPPED |
+| T-0041 Run the induced-defect campaign | H | MUST | DROPPED |
+| T-0042 Evaluate the rig results (resolution, overshoot, violations, latency by mode) | C | MUST | DROPPED |
+| T-0043 Build the operator-study mode (replay cards with explanation on/off) | C | SHOULD | WAITING-GPU (teammate CPU run) |
+| T-0044 Write the operator-study analysis script | C | SHOULD | WAITING-GPU (teammate CPU run) |
+| T-0045 Run the operator study sessions | H | SHOULD | BLOCKED |
+| T-0046 Generate the acceptance report (every FR and NFR → PASS/FAIL with evidence) | C | MUST | BLOCKED |
+| T-0047 Draft the SDP report and paper | P | MUST | BLOCKED |
+| T-0048 (COULD) Recalibrate qhat from labelled logged events | C | COULD | TODO |
+| T-0049 (COULD) Test tiled inference for under-extrusion | C | COULD | DROPPED |
+| T-0050 (COULD) Evaluate the cause model leave-one-printer-out (Kobra 2 Neo) | P | COULD | DROPPED |
+| T-0051 Implement operator-decision processing and timeouts in the loop | C | MUST | DONE |
+| T-0052 Write the 2-hour soak test on replay + FakePrinter | C | MUST | WAITING-GPU (teammate CPU run) |
+| T-0057 Adapt the explain stack to the CAXTON taxonomy (no defect input, manual z-offset causes, SCHEMA_VERSION 2) | C | MUST | TODO |
+| T-0058 Wire the Explainer into `xqi run` (with a no-model fallback) and write defects.crop_path | C | MUST | TODO |
+| T-0059 Run EigenCAM on the cause-model backbone | C | SHOULD | TODO |
+| T-0060 Implement the early-warning module (EWMA + hysteresis) | C | MUST | TODO |
+| T-0061 Add the proactive path to the loop (early-warning events, optional detector) | C | MUST | TODO |
+| T-0062 Add the CAXTON replay source and process-seeded FakePrinter | C | MUST | TODO |
+| T-0063 Evaluate proactive warnings on held-out prints (time-to-warning, recall, false-warning rate) | C | MUST | TODO |
+| T-0064 Write the hand-off package (HANDOFF.md + Printer conformance test) | C | MUST | TODO |
+| T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | TODO |
+| T-0066 Run the offline end-to-end HITL demo on held-out CAXTON prints | P | MUST | TODO |
+| T-0067 (COULD) Check domain shift on the inherited camera roll | C | COULD | TODO |
 
-Statuses: TODO / BLOCKED (waiting on a dependency) / DOING / DONE / FAILED (a kill criterion fired → DESCEND).
+Statuses: TODO / BLOCKED (waiting on a dependency) / DOING / WAITING-GPU or WAITING-DATA (built; waiting on a teammate
+run) / DONE / FAILED (a kill criterion fired → DESCEND) / DROPPED (out of scope, ADR-0009).

@@ -715,3 +715,21 @@ SURPRISE:  ADR-0008 lasted one exchange. Scope boundaries (who owns hardware) be
            and weren't asked. Out-of-scope rig tickets (T-0025/28/39/40/41/42/50) are now to be dropped at Phase 4.
 BROKE:     Nothing. Built code stays valid; the OctoPrint client becomes an unsupported reference.
 NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
+
+## 2026-10-27 — Phase 2/3/4 delta for ADR-0009 (software-only), user-approved
+- BUILT: ADR-0009 accepted (Q1–Q4 as recommended; Q5 with Dr. Meti) with a "Verified facts" section on CAXTON (Apollo
+  record CC BY 4.0, 5 label CSVs, *_class columns 0/1/2, 150-image parameter segments, 8 CR-20 Pro, PLA, prints 183–191
+  excluded, z < 0.08 mm mislabelled, authors' split random by image). Specs 06–10 rewritten: FR-029/030 proactive early
+  warning (never auto-applied), FR-031 CAXTON adapter, FR-032 hand-off; NFR-002/003/004 re-scoped to the offline replay,
+  NFR-010 dropped, NFR-012 proactive; 07 §13–15 (EWMA warning, proactive eval, label rule), §3 rounding note (D2);
+  08 P5 rewritten, P7/P8 new; 09 SCHEMA_VERSION 2 (§Data rewritten), new CAUSES, MANUAL_ADVICE, proactive config,
+  §Hand-off, D3 store note. 11 new tickets T-0057…T-0067; 12 rewritten; 9 DROPPED (0008, 0025, 0028, 0039–0042, 0049,
+  0050); T-0002/0018/0030 closed with outcome notes. SEQUENCE re-ordered (Part A built / B plan / C dropped) + rule 7
+  build-ahead; check_sequence OK (63). Runbook docs/gpu-runs/T-0065.md (data sitting; Part 1 starts now).
+- RESULT: the plan no longer needs a printer anywhere. Critical path: T-0057 → data scripts → T-0065 (teammate) →
+  G2 → G3 (K2) → evals → G4 demo → acceptance → report.
+- SURPRISE: the Apollo record lists only the CSVs; the image archive's location is unverified. The Nature page is behind
+  a login, so the bin thresholds come from the class columns, not the paper. GitHub #53–56 are PRs, so new tickets start
+  at T-0057 to keep ticket = issue.
+- BROKE: nothing (docs only; code untouched; tests not re-run this session).
+- NEXT: step 29 T-0057. Teammates: T-0065 Part 1 + the CPU runs.

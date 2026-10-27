@@ -2,7 +2,7 @@
 FILE:     11-tickets/PLAN-4W.md
 PHASE:    5 — EXECUTE (implementation plan)
 UPDATED:  2026-10-03
-STATUS:   draft
+STATUS:   superseded 2026-10-27 by SEQUENCE.md Part B (ADR-0009 software-only). Kept for history.
 SUMMARY:  Implementation-only plan: 7 phases over 4 weeks (20 working days), 41 tickets. Step-by-step order: SEQUENCE.md.
           The 2-week cut line is the full software loop running end-to-end on replay frames + FakePrinter
           with a stub cause model. Weeks 3–4 add the real data/model and the rig integration.

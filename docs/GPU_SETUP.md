@@ -2,6 +2,11 @@
 
 This applies whenever Claude Code stops with **⚠ GPU REQUIRED — T-00NN**. That means the code for that step is already pushed and tested on CPU. You only have to run it on a GPU laptop (RTX 3050, 4 GB) and push the results back. Each GPU step has its own runbook at `docs/gpu-runs/T-00NN.md`. This file covers the parts every runbook shares.
 
+**What runs on the GPU laptop, and when (2026-10-27 plan):** see the "Teammate sittings" table at the top of
+`project-context/11-tickets/SEQUENCE.md`. You can start two things today: the CPU runs (T-0023, T-0052, T-0037/38,
+T-0043/44) and **Part 1 of the CAXTON download, `docs/gpu-runs/T-0065.md`**. The dataset download is your job, and the
+raw data and crops never leave your laptop. No printer, OctoPrint or Raspberry Pi work is ours any more (ADR-0009).
+
 ---
 
 ## A. One-time setup (≈ 30 min, once per laptop)
