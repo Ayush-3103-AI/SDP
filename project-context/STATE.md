@@ -83,8 +83,10 @@ Done-when, close the ticket (CLAUDE.md GPU step 6).
 - Received 2026-10-26: Drive "Camera Roll" = 5,490 unlabelled 1280×720 stills of ONE print (2025-04-29). No labels,
   splits, log or weights. Useful later as a replay feed and a false-alarm set (all frames = one trial). See
   docs/inherited/camera_roll_report.html and HANDOVER.md. Questions are posted on #2.
-- Still missing: the labelled 6,454-image YOLO export + splits, best.pt, the induction log, the REU loop code,
-  OctoPrint details, the protocol doc. The photos show a dual-hotend toolhead, not the Ender 5 Plus: confirm the rig.
+- 2026-10-27: the user confirmed this is ALL the data. It matches the AM_VM paper's Aion 500 + webcam + YOLOv8 work,
+  not the deck's dataset. Inherited models: AM_1 = YOLOv8n 1-class `defect` detector; AM_2 = YOLOv8 image
+  classifier (OK/blobs/cracks/spaghetti/stringing/under-extrusion). Plan: ADR-0008 (own recorded induced-defect
+  campaign → own labels → own YOLO11-S → K1/K2 re-run on own data).
 
 ## Open branches
 - B1 cause taxonomy → T-0007
@@ -99,8 +101,9 @@ Done-when, close the ticket (CLAUDE.md GPU step 6).
 - Q4 Does Dr. Meti accept the charter thresholds S1–S5? [accept; revisit at the T-0013 gate review]
 
 ## Highest unretired risk
-A1 [unknown]: can the REU induction log be joined to individual boxes (K1, at the T-0006 audit)? The hand-over so far
-has no log at all. If it never arrives, the learned cause model falls back to ADR-0002.
+Rig + people, now on the critical path: a real printer with OctoPrint and a fixed camera by week 5, ~30 printer-hours
+and ~30 labelling person-hours in weeks 5–7 (ADR-0008 Q-A…Q-C). If not, DESCEND to simulation-only (ADR-0008 option 2).
+Second: small data (64 trials, 4 LOGO folds) → K2 risk high; the prior-based floor keeps S1 reportable.
 
 ## Kill criteria watch
 - K1 at T-0006 · K2 at T-0013 · K3 at week 6 (T-0028 / T-0039)

@@ -60,13 +60,13 @@ The `AM_1_Model_1.pt` / `AM_2_Model_2.pt` files in the repo root are **older YOL
 ## Assumptions
 | ID | Assumption | Tag | Retired by |
 |---|---|---|---|
-| A1 | The induction log can be joined to images so that ≥ 60 % of defect boxes get one unambiguous cause | [unknown] | T-0005, T-0006 (K1) |
-| A2 | REU YOLO11-S weights + test split reproduce mAP50 ≈ 0.828 | [assumed] | T-0008 |
+| A1 | The induction log can be joined to images so that ≥ 60 % of defect boxes get one unambiguous cause | **[failed 2026-10-27 for REU data: no log exists]**; re-posed for own data (exact join by construction, ADR-0008) | T-0006 on own data (K1) |
+| A2 | REU YOLO11-S weights + test split reproduce mAP50 ≈ 0.828 | **[retired 2026-10-27: no weights or split exist]**; replaced by S6 (own detector, ADR-0008) | — |
 | A3 | The cause is learnable from a defect crop beyond the majority-per-class floor | [unknown] | T-0012, T-0013 (K2) |
 | A4 | OctoPrint reachable; temps readable; dispatch 20–40 ms | [assumed] | T-0028 |
 | A5 | Ender 5 Plus hotend is PTFE-lined → nozzle L1 max 240 °C | [assumed] | T-0025 (human) |
 | A6 | Cause model + conformal + gate add ≤ 30 ms p95 on the RTX 3050 | [assumed] | T-0036 |
-| A7 | REU test split was image-level random (possible near-duplicate leakage) | [unknown] | T-0008 report notes it |
+| A7 | REU test split was image-level random (possible near-duplicate leakage) | **[moot 2026-10-27: no REU split]**; own splits are by trial (ADR-0007) | — |
 | A8 | Each trial induces one cause at a time (or co-occurrence is labelled) | [unknown] | T-0006 |
 | A9 | Marlin accepts M220/M221 via OctoPrint mid-print without side effects | [assumed]: deck uses them | T-0028 |
 | A10 | Operators can be recruited (8–12) for a 30-min study | [assumed] | T-0045 |

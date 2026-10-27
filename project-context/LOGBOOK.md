@@ -683,3 +683,21 @@ SURPRISE:  - xqi/__main__.py still passes explainer=None, so CLI auto/advisory r
            - 09 §Store's operator_decisions writer column doesn't list the loop's choice=timeout inserts (STATE D3).
 BROKE:     Nothing.
 NEXT:      User decides D2–D5. The team runs the waiting runbooks. T-0002 hand-over → SEQUENCE step 27 (T-0005).
+
+## 2026-10-27 — DESCEND to Phase 0/1: the REU data does not exist (K1 fired) → ADR-0008 proposed
+BUILT:     Nothing in code. 05-decisions/ADR-0008.md (proposed), 00-charter.md Amendment 1 (proposed),
+           01-understanding A1 failed / A2 retired / A7 moot, STATE.md re-pointed to the gate.
+RESULT:    Evidence that the Drive camera roll is the paper's (AM_VM_SME_2619) Aion 500 work, not the deck's data:
+           - dual-hotend industrial printer, webcam at 1280×720, one print, no labels
+           - AM_1 = YOLOv8n with 1 class `defect`; AM_2 = YOLOv8 image classifier
+           The user confirmed there is no other data, so K1 fires (0 % joinable boxes) and A2 is impossible.
+           Proposal: a recorded own induced-defect campaign (64 trials, exact join by construction) → label
+           ~1,600 frames → own YOLO11-S → K1/K2 on own data, with the ADR-0002 prior-based floor; S5 campaign
+           reduced to ~16 runs.
+SURPRISE:  The project's foundational dataset ("6,454 images with induced-cause labels", per the deck) was never
+           handed over and may never have existed as described. A1 was tagged [unknown] for a reason; the
+           Phase 0 grill should have demanded the data before ticketing 52 tickets on top of it.
+BROKE:     The data-lane tickets (T-0005…T-0017, T-0024, T-0040, T-0041) are invalid as written and paused until
+           the Phase 2/4 deltas. The built software is unaffected.
+NEXT:      Gate on ADR-0008 + answers to Q-A…Q-E. Then the Phase 2 delta (06–09), then the Phase 4 delta (tickets,
+           SEQUENCE).

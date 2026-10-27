@@ -1,8 +1,8 @@
 <!-- HEAD
 FILE:     00-charter.md
 PHASE:    0 — CHARTER
-UPDATED:  2026-10-03
-STATUS:   draft (awaiting gate)
+UPDATED:  2026-10-27
+STATUS:   amended (Amendment 1 proposed, awaiting gate; see ADR-0008)
 SUMMARY:  SDP = a UG-scale piece of CARR Topic 4.1.3. It adds an explanation
           layer (cause expressed in process variables, conformal set of causes),
           a 4-layer safety gate and a recommend-then-act operator dashboard to the
@@ -63,3 +63,20 @@ Unknown: KLE Tech SDP rubric or CARR lab standards (STATE.md Q3). Until answered
 | Final report / paper | `project-report-architect` | [have] |
 | Literature refresh if needed | `lit-survey` | [have] |
 | FFF process physics / envelope judgement | none | [gap]: handled inline via `07-math.md` + `config/default.yaml`; not built (fails the reuse test for a UG timeline) |
+
+## Amendment 1 (proposed 2026-10-27, awaiting gate) — the REU data does not exist; we generate our own (ADR-0008)
+The full REU hand-over is 5,490 unlabelled frames of one print on a different printer. K1 fires for the inherited
+data. Instead of the K1 pivot as written (which leaves S1/S2 unmeasurable), we generate cause-labelled data
+ourselves. Proposed changes, pending the gate:
+
+| Item | Was | Becomes |
+|---|---|---|
+| §4 inherited dataset | 6,454 images with induced-cause labels | Own data campaign: 4 geometries × 8 conditions × 2 repeats = 64 recorded trials; ~1,600 box-labelled frames |
+| §4 inherited detector | YOLO11-S best.pt | We train YOLO11-S at 1088 px on our labels. AM_1 (1-class YOLOv8n) is used only to pre-annotate |
+| S1 | top-1 ≥ floor + 10 pp, LOGO (8 folds) | Same threshold, 4-fold LOGO on own data, mean with bootstrap 95 % CI |
+| S2 | coverage ≥ 0.85, set size ≤ 2.0 | Same, on own data, with CI |
+| S5 | full induced-defect campaign | Reduced closed-loop campaign, ~16 runs (4 geometries × 4 most frequent causes) |
+| S6 (new) | — | Own detector mAP50 ≥ 0.50 on held-out geometries (report-only floor) [assumed] |
+| K1 | REU join rate < 60 % → pivot | FIRED for REU data (2026-10-27). Re-evaluated on own data at T-0006; on FAIL → ADR-0002 option 1 |
+| K3 | no printer by week 6 | No printer + OctoPrint + fixed camera by week 5 → data campaign impossible; DESCEND again (simulation-only, option 2 in ADR-0008) |
+| Safety | all printer commands through gate() | Plus one human-invoked exception: `xqi induce` during data-campaign trials only, operator present, L1 still enforced |
