@@ -15,6 +15,22 @@ log = logging.getLogger(__name__)
 
 @runtime_checkable
 class Printer(Protocol):
+    """The hand-off boundary (docs/HANDOFF.md; conformance: tests/test_printer_contract.py).
+
+    - get_state(): a fresh PrinterState. Temperatures in °C; flow/speed in % of the sliced value (M221/M220 S);
+      ts and last_change_ts on time.monotonic(), the clock Frame.ts uses. last_change_ts[v] is when setpoint v
+      last changed through send_gcode (key absent = never). On failure raise OSError (the loop then escalates);
+      any other exception stops the loop.
+    - send_gcode(lines): True once the printer accepted every line, False otherwise; never raises for a refused
+      or failed command. M104/M140/M220/M221 must show in the next get_state and in last_change_ts. The loop
+      retries a False once and calls it only with gate()-checked lines (or the critical/baseline paths).
+    - pause()/resume(): True if the printer is now paused/printing because of this call, False if refused or
+      failed (the loop writes an alert row). Never raises.
+    - estop(): stop motion and heaters now (M112 or the hardware equivalent); True once halted. After it,
+      send_gcode returns False until a human resets the printer.
+    Each call should answer within cfg.printer.timeout_s (one retry inside is fine).
+    """
+
     def get_state(self) -> PrinterState: ...
 
     def send_gcode(self, lines: Sequence[str]) -> bool: ...
