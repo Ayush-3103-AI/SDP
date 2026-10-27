@@ -736,3 +736,18 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
 
 ## 2026-10-27 — Gate approved
 - RESULT: the user approved the Phase 2/3/4 delta gate (ADR-0009 re-plan). Next: step 29 T-0057.
+
+## 2026-10-27 — T-0057 Adapt the explain stack to the CAXTON taxonomy
+- BUILT: causes.yaml + types.py on the CAXTON CAUSES (09 §Constants), MANUAL_ADVICE (+ loader check: every
+  null-action cause except none needs advice), EARLY_WARNING, SCHEMA_VERSION 2. cause_model.use_defect (default
+  false, must be a bool): build_model(n, 0) = 512 → |CAUSES| head, predict ignores the defect; save_checkpoint
+  writes {use_defect, state_dict} and CauseModel refuses a mismatch (old plain state dicts are refused too).
+  event_verdict row 7 = ESCALATE("manual:<first manual member>"), misalignment kept as manual. Card data carries
+  advice; ui.py shows it as a warning. eval_latency random-init path uses save_checkpoint.
+- RESULT: 221 passed, 5 deselected; ruff clean. Two-axis review (standards + spec): no defects; applied the
+  strict-bool use_defect check and restored a bed_temp G-code test (M140; no cause maps to bed_temp now).
+- SURPRISE: test_camera::test_replay_fps_paces_playback flaked once (0.172 s < 0.18 s floor, Windows timer);
+  passed on re-run. Not touched by this ticket.
+- BROKE: nothing. Not done (reviewer notes, deliberate): Causes.manual_advice is validated but runtime reads the
+  types.py default (same pattern as CAUSE_ACTION); scripts/analyze_study.py selftest still names misalignment.
+- NEXT: step 30 T-0005 (CAXTON adapter). Parallel option: T-0060 has no open dependency.

@@ -128,6 +128,11 @@ def test_causes_yaml_matches_type_defaults():
         k: tuple(v) for k, v in types.CAUSE_DEFECTS.items()
     }
     assert causes.deck_recipes == types.DECK_RECIPES
+    assert causes.manual_advice == types.MANUAL_ADVICE
+
+
+def test_use_defect_defaults_false():
+    assert load(DEFAULT_CONFIG).cause_model.use_defect is False
 
 
 def _write_causes(tmp_path, mutate):
@@ -171,3 +176,28 @@ def test_causes_unknown_defect_raises(tmp_path):
 
     with pytest.raises(ConfigError, match=r"cause_defects\.flow_low"):
         load_causes(path)
+
+
+def test_manual_cause_without_advice_raises(tmp_path):
+    path = _write_causes(tmp_path, lambda data: data["manual_advice"].pop("z_offset_low"))
+
+    with pytest.raises(ConfigError, match=r"manual_advice\.z_offset_low"):
+        load_causes(path)
+
+
+def test_cause_without_action_raises(tmp_path):
+    path = _write_causes(tmp_path, lambda data: data["cause_action"].pop("speed_low"))
+
+    with pytest.raises(ConfigError, match=r"cause_action\.speed_low"):
+        load_causes(path)
+
+
+def test_use_defect_must_be_bool(tmp_path):
+    with DEFAULT_CONFIG.open("r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle)
+    data["cause_model"]["use_defect"] = "false"
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ConfigError, match=r"cause_model\.use_defect"):
+        load(path)

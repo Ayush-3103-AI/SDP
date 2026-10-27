@@ -291,3 +291,19 @@ def test_apply_on_loop_card_dispatches(tmp_path):
     assert action == {"source": "operator", "proposal_id": proposal["proposal_id"],
                       "gcode_json": '["M221 S108"]', "ok": 1}
     assert [line for _, line in printer.sent] == ["M221 S108"]
+
+
+def test_card_carries_manual_advice(db):
+    from xqi.types import MANUAL_ADVICE
+
+    with Store(db) as store:
+        store.write_run({"run_id": "run-001", "mode": "advisory", "cfg": {"conformal": {"alpha": 0.1}}})
+        store.write_explanation(
+            "d1", CauseEstimate({"z_offset_low": 0.6, "flow_low": 0.4}, "z_offset_low", 0.6),
+            CauseSet(("z_offset_low", "flow_low"), 0.1, 0.7), 0.7, [], 3.05,
+        )
+        store.write_verdict(EventVerdict("d1", "ESCALATE", "manual:z_offset_low", ()), t_gate=3.1, pending=True)
+    with Store.open_readonly(db) as store:
+        card = ui_data.card_model(store, "d1")
+
+    assert card["advice"] == [("z_offset_low", MANUAL_ADVICE["z_offset_low"])]

@@ -178,3 +178,10 @@ def test_printer_state_setpoint(variable, expected):
     )
 
     assert state.setpoint(variable) == expected
+
+
+def test_schema_version_2():
+    from xqi import types
+
+    assert types.SCHEMA_VERSION == 2
+    assert types.EARLY_WARNING == "early_warning" and types.EARLY_WARNING not in types.DEFECTS

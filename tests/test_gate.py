@@ -179,8 +179,8 @@ ONE = CauseSet(("nozzle_temp_low",), 0.1, 0.5)
         (5, {"cset": CauseSet((), 0.1, 0.5)}, "ESCALATE", "no_confident_cause", ()),
         (5, {"cset": None}, "ESCALATE", "no_confident_cause", ()),
         (6, {"cset": CauseSet(("none",), 0.1, 0.5)}, "NOOP", "no_actionable_cause", ()),
-        (7, {"cset": CauseSet(("misalignment", "flow_low"), 0.1, 0.5)}, "ESCALATE",
-         "mechanical", ()),
+        (7, {"cset": CauseSet(("flow_low", "z_offset_high"), 0.1, 0.5)}, "ESCALATE",
+         "manual:z_offset_high", ()),
         (8, {"decisions": [_dec("a", False)]}, "ESCALATE", "outside_envelope", ()),
         (8, {"decisions": []}, "ESCALATE", "outside_envelope", ()),
         (9, {}, "APPLY", "L4: pass", ("p1",)),
@@ -205,3 +205,12 @@ def test_event_verdict_table(row, kw, verdict, reason, ids):
     assert (v.defect_id, v.verdict, v.reason, v.proposal_ids) == (
         args["cd"].defect_id, verdict, reason, ids
     )
+
+
+@pytest.mark.parametrize("cause", ["z_offset_low", "z_offset_high", "misalignment"])
+def test_manual_cause_escalates(cause):
+    # misalignment left CAUSES but the integrating team's detector may still emit it (T-0057).
+    v = event_verdict("auto", _cd(), CauseSet((cause, "nozzle_temp_low"), 0.1, 0.5), EST, (), [_dec()],
+                      _state(), CFG)
+
+    assert (v.verdict, v.reason, v.proposal_ids) == ("ESCALATE", f"manual:{cause}", ())

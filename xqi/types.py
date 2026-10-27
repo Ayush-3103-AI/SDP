@@ -3,7 +3,7 @@ from typing import Literal
 
 import numpy as np
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # 2026-10-27: CAXTON taxonomy (ADR-0009)
 
 Var = Literal["nozzle_temp", "bed_temp", "flow", "speed"]
 
@@ -426,32 +426,45 @@ DEFECTS = (
 )
 
 
+EARLY_WARNING = "early_warning"  # pseudo-class for FR-030 events; never in DEFECTS, never critical
+
+
 CAUSES = (
     "none",
-    "nozzle_temp_low",
-    "nozzle_temp_high",
     "flow_low",
     "flow_high",
     "speed_low",
     "speed_high",
-    "bed_temp_low",
-    "misalignment",
+    "nozzle_temp_low",
+    "nozzle_temp_high",
+    "z_offset_low",
+    "z_offset_high",
 )
 
 
 CAUSE_ACTION = {
-    "nozzle_temp_low": ("nozzle_temp", -1),
-    "nozzle_temp_high": ("nozzle_temp", +1),
     "flow_low": ("flow", -1),
     "flow_high": ("flow", +1),
     "speed_low": ("speed", -1),
     "speed_high": ("speed", +1),
-    "bed_temp_low": ("bed_temp", -1),
+    "nozzle_temp_low": ("nozzle_temp", -1),
+    "nozzle_temp_high": ("nozzle_temp", +1),
     "none": None,
-    "misalignment": None,
+    "z_offset_low": None,
+    "z_offset_high": None,
 }
 
 
+# Manual causes (07 §2): no setpoint proposal, the card shows this text and the event ESCALATEs.
+# misalignment left CAUSES but stays manual: the integrating team's detector may emit it.
+MANUAL_ADVICE = {
+    "z_offset_low": "Nozzle likely too close to the bed: raise the Z offset (babystep up ~0.05 mm) or re-level.",
+    "z_offset_high": "Nozzle likely too far from the bed: lower the Z offset (babystep down ~0.05 mm) or re-level.",
+    "misalignment": "Possible layer shift: check belts and pulleys before resuming.",
+}
+
+
+# [assumed] physics prior for card text and the detector-class audit only; not used for labels (07 §15).
 CAUSE_DEFECTS = {
     "nozzle_temp_high": ["stringing", "over_extrusion"],
     "nozzle_temp_low": ["under_extrusion", "clog"],
@@ -459,8 +472,8 @@ CAUSE_DEFECTS = {
     "flow_low": ["under_extrusion"],
     "speed_high": ["under_extrusion"],
     "speed_low": ["over_extrusion", "stringing"],
-    "bed_temp_low": ["warping", "spaghetti"],
-    "misalignment": ["layer_shift"],
+    "z_offset_low": ["over_extrusion"],
+    "z_offset_high": ["under_extrusion", "warping"],
 }
 
 

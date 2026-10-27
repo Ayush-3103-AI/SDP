@@ -2,12 +2,11 @@
 
 PHASE:        5 — EXECUTE (re-planned; delta gate APPROVED by the user 2026-10-27). Phase 2 + 3 + 4 deltas done at
               the user's request ("go with all your recommendations and create specs and tickets").
-LAST SESSION: 2026-10-27 — specs 06–10 rewritten for the software-only scope (CAXTON causes, proactive early
-              warning, leave-parts-out, hand-off). SCHEMA_VERSION → 2 (spec; code in T-0057). 11 new tickets
-              (T-0057…T-0067), 12 rewritten, 9 dropped. SEQUENCE re-ordered (check_sequence OK: 63 tickets).
-              Data runbook docs/gpu-runs/T-0065.md written; Part 1 (find + download CAXTON) can start now.
-NEXT ACTION:  Step 29 T-0057 (taxonomy adaptation, CODE). Then 30 T-0005 … per SEQUENCE.md Part B.
-              Parallel option: SEQUENCE/BOARD list the unblocked CODE set (0057, 0060 → 0005, 0058, 0059 → …).
+LAST SESSION: 2026-10-27 — T-0057 DONE: CAXTON taxonomy in code (causes.yaml, MANUAL_ADVICE, EARLY_WARNING,
+              SCHEMA_VERSION 2, use_defect=false cause model with checkpoint check, gate row 7 = manual causes,
+              card advice). 221 passed; ruff clean.
+NEXT ACTION:  Step 30 T-0005 (CAXTON adapter, CODE). Then 31 T-0009 … per SEQUENCE.md Part B.
+              Parallel option: BOARD lists the unblocked CODE set (0060, 0005, 0058, 0059 → …).
               Teammates now: T-0065 Part 1 + the CPU runs (T-0023, T-0052, T-0037/38, T-0043/44).
 
 ## Load for next session
@@ -23,7 +22,7 @@ Nothing else.
   for a real printer, detector training. The `Printer` protocol is the boundary (docs/HANDOFF.md, T-0064).
 - All heavy compute AND the dataset download run on the teammate's GPU laptop (runbooks in docs/gpu-runs/).
 
-## Built so far (main 83ba73c code; 208 passed, 5 deselected; ruff clean)
+## Built so far (main, T-0057; 221 passed, 5 deselected; ruff clean)
 - P1: xqi/types.py, xqi/config.py, xqi/store.py
 - Gate: xqi/gate.py (L2 → L1 → L3, event_verdict/L4), property test, scripts/gate_audit.py, reports/recipe_audit.md
 - Explain: xqi/explain/ cause_model, conformal, counterfactual, sensors, attribution (YOLO path), Explainer
@@ -34,7 +33,7 @@ Nothing else.
 ## What changes in code (by ticket)
 | Ticket | Change |
 |---|---|
-| T-0057 | CAXTON CAUSES in causes.yaml, MANUAL_ADVICE, use_defect=false, verdict row 7 = manual causes, SCHEMA_VERSION 2 |
+| T-0057 ✔ | CAXTON CAUSES in causes.yaml, MANUAL_ADVICE, use_defect=false, verdict row 7 = manual causes, SCHEMA_VERSION 2 |
 | T-0058 | build_explainer in `xqi run` (fallback when no model), Explainer.estimate, defects.crop_path (old D4, D5) |
 | T-0059 | EigenCAM on the cause model's backbone.layer4 |
 | T-0060/61 | xqi/proactive.py (EWMA + hysteresis, 07 §13); early-warning events in the loop, never auto-APPLY; detector optional |
@@ -72,6 +71,8 @@ Outdated, don't run: docs/gpu-runs/T-0030.md, T-0036.md (banners added).
 - Software-only scope with CAXTON. ADR-0009 (supersedes ADR-0008)
 - 07 §11 EigenCAM orients v₁ by Σ(A v₁) (2026-10-26)
 - Tooling: uv + hatchling, Python 3.11, torch cu126 index, pytest skips gpu/hw/slow, ruff excludes .claude
+- Cause checkpoints are {use_defect, state_dict} (xqi.explain.cause_model.save_checkpoint); plain state dicts
+  are refused. T-0012/13 training must save through it.
 - psutil (soak test) comes via ultralytics; declare it in the dev group at the next deliberate `uv lock`.
 
 ## Questions for the human (recommended answer in brackets)

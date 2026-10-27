@@ -112,6 +112,8 @@ def proposal_card(card: dict, decide: Callable[..., None], enabled: bool) -> Non
             right.markdown(f"**Cause set**{alpha}")
             for cause, p in card["causes"]:
                 right.progress(p, text=f"{cause.replace('_', ' ')}  p={p:.2f}")
+            for _, text in card.get("advice", []):
+                right.warning(text)
             flags = ", ".join(card["flags"]) or "No sensor flags"
             right.markdown(f"Sensor flags: {flags}")
             right.markdown(f"Not auto-applied: **{card['verdict']}**: {card['reason']}")

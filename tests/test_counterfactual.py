@@ -4,6 +4,7 @@ import pytest
 
 from xqi.config import load
 from xqi.explain.counterfactual import (
+    gcode,
     make_proposal,
     recipe_to_proposals,
     round_half_up,
@@ -52,13 +53,17 @@ def test_round_half_up(x, expected):
     assert round_half_up(x) == expected
 
 
+def test_bed_temp_gcode():
+    # No cause maps to bed_temp since T-0057, but deck recipes still set it.
+    assert gcode("bed_temp", 61.5) == ("M140 S62",)
+
+
 @pytest.mark.parametrize(
     ("cause", "s", "state", "var", "delta", "to_value", "gcode"),
     [
         ("flow_low", 0.0, _state(), "flow", 5.0, 105.0, "M221 S105"),
         ("flow_low", 1.0, _state(), "flow", 10.0, 110.0, "M221 S110"),
         ("nozzle_temp_high", 0.5, _state(), "nozzle_temp", -3.5, 206.5, "M104 S207"),
-        ("bed_temp_low", 0.0, _state(), "bed_temp", 2.0, 62.0, "M140 S62"),
         ("speed_high", 1.0, _state(), "speed", -10.0, 90.0, "M220 S90"),
     ],
 )
@@ -84,7 +89,7 @@ def test_counterfactual_sentence():
     )
 
 
-@pytest.mark.parametrize("cause", ["none", "misalignment"])
+@pytest.mark.parametrize("cause", ["none", "z_offset_low", "z_offset_high", "misalignment"])
 def test_non_setpoint_causes_give_no_proposal(cause):
     assert make_proposal(cause, 0.9, 1.0, _state(), CFG) is None
 

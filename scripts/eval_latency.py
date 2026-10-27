@@ -135,7 +135,7 @@ def run_bench(cfg) -> dict:
     import torch
 
     from xqi.detect import Detector
-    from xqi.explain.cause_model import CauseModel, build_model
+    from xqi.explain.cause_model import CauseModel, build_model, save_checkpoint
     from xqi.explain.conformal import load_qhat
 
     if not torch.cuda.is_available():
@@ -149,9 +149,11 @@ def run_bench(cfg) -> dict:
     weights, note = Path(cfg.cause_model.weights), ""
     if not weights.exists():  # latency does not depend on the trained weights; say so in the report
         weights = Path(tempfile.mkdtemp()) / "random.pt"
-        torch.save(build_model(len(causes), len(DEFECTS), pretrained=False).state_dict(), weights)
+        n_defects = len(DEFECTS) if cfg.cause_model.use_defect else 0
+        save_checkpoint(build_model(len(causes), n_defects, pretrained=False), weights)
         note = f"{cfg.cause_model.weights} missing, random-init cause model (same timing)"
-    cm = CauseModel(weights, causes, DEFECTS, cfg.cause_model.device, cfg.cause_model.input_px)
+    cm = CauseModel(weights, causes, DEFECTS, cfg.cause_model.device, cfg.cause_model.input_px,
+                    cfg.cause_model.use_defect)
     qfile = Path(cfg.conformal.qhat_file)
     qhat = load_qhat(qfile)["qhat"] if qfile.exists() else 1 - cfg.conformal.alpha
     if not qfile.exists():

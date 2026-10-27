@@ -96,7 +96,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0050 (COULD) Evaluate the cause model leave-one-printer-out (Kobra 2 Neo) | P | COULD | DROPPED |
 | T-0051 Implement operator-decision processing and timeouts in the loop | C | MUST | DONE |
 | T-0052 Write the 2-hour soak test on replay + FakePrinter | C | MUST | WAITING-GPU (teammate CPU run) |
-| T-0057 Adapt the explain stack to the CAXTON taxonomy (no defect input, manual z-offset causes, SCHEMA_VERSION 2) | C | MUST | TODO |
+| T-0057 Adapt the explain stack to the CAXTON taxonomy (no defect input, manual z-offset causes, SCHEMA_VERSION 2) | C | MUST | DONE |
 | T-0058 Wire the Explainer into `xqi run` (with a no-model fallback) and write defects.crop_path | C | MUST | TODO |
 | T-0059 Run EigenCAM on the cause-model backbone | C | SHOULD | TODO |
 | T-0060 Implement the early-warning module (EWMA + hysteresis) | C | MUST | TODO |

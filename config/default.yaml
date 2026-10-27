@@ -53,6 +53,7 @@ cause_model:
   crop_pad: 0.2
   input_px: 224
   device: "cuda:0"
+  use_defect: false   # CAXTON has no defect class per image (ADR-0009); true = REU-style one-hot input
 
 conformal:
   alpha: 0.10

@@ -63,6 +63,7 @@ class CauseModelConfig:
     crop_pad: float
     input_px: int
     device: str
+    use_defect: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,6 +165,7 @@ class Causes:
     cause_action: dict[str, tuple[str, int] | None]
     cause_defects: dict[str, tuple[str, ...]]
     deck_recipes: dict[str, dict[str, float]]
+    manual_advice: dict[str, str]
 
 
 def _require(data: dict[str, Any], key: str) -> Any:
@@ -275,11 +277,15 @@ def _build_config(data: dict[str, Any]) -> Config:
     )
 
     cause_model_data = _require(data, "cause_model")
+    use_defect = cause_model_data.get("use_defect", False)
+    if not isinstance(use_defect, bool):
+        raise ConfigError("cause_model.use_defect: must be true or false")
     cause_model = CauseModelConfig(
         weights=str(cause_model_data["weights"]),
         crop_pad=float(cause_model_data["crop_pad"]),
         input_px=int(cause_model_data["input_px"]),
         device=str(cause_model_data["device"]),
+        use_defect=use_defect,
     )
 
     conformal_data = _require(data, "conformal")
@@ -447,6 +453,11 @@ def _build_causes(data: dict[str, Any]) -> Causes:
     if missing:
         raise ConfigError(f"cause_action.{min(missing)}: missing")
 
+    manual_advice = {str(c): str(t) for c, t in _require(data, "manual_advice").items()}
+    for cause, action in cause_action.items():
+        if action is None and cause != "none" and cause not in manual_advice:
+            raise ConfigError(f"manual_advice.{cause}: missing (manual cause)")
+
     cause_defects = {}
     for cause, defects in _require(data, "cause_defects").items():
         key = f"cause_defects.{cause}"
@@ -471,6 +482,7 @@ def _build_causes(data: dict[str, Any]) -> Causes:
         cause_action=cause_action,
         cause_defects=cause_defects,
         deck_recipes=deck_recipes,
+        manual_advice=manual_advice,
     )
 
 

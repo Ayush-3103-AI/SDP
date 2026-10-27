@@ -72,9 +72,9 @@ def test_none_only_set_gives_no_proposals():
 
 
 def test_non_actionable_member_is_skipped():
-    _, _, cset, _, props = _explain({"misalignment": 0.5, "flow_low": 0.4, "none": 0.1})
+    _, _, cset, _, props = _explain({"z_offset_low": 0.5, "flow_low": 0.4, "none": 0.1})
 
-    assert set(cset.members) == {"misalignment", "flow_low"}
+    assert set(cset.members) == {"z_offset_low", "flow_low"}
     assert [p.cause for p in props] == ["flow_low"]
 
 

@@ -32,7 +32,7 @@ def make_proposal(
     defect_id: str = "",
 ) -> Proposal | None:
     action = CAUSE_ACTION.get(cause)
-    if action is None:  # none, misalignment
+    if action is None:  # none, manual causes (07 §2)
         return None
     var, d = action
     d_min, d_max = cfg.correction.d_min[var], cfg.correction.d_max[var]

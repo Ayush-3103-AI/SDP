@@ -59,8 +59,8 @@ class StubExplainer:
             [line for _, line in self.printer.sent],
             store.query("SELECT COUNT(*) AS n FROM explanations")[0]["n"],
         )
-        est = CauseEstimate({"bed_temp_low": 1.0}, "bed_temp_low", 1.0)
-        return est, CauseSet(("bed_temp_low",), 0.1, 0.5), (), []
+        est = CauseEstimate({"flow_low": 1.0}, "flow_low", 1.0)
+        return est, CauseSet(("flow_low",), 0.1, 0.5), (), []
 
 
 class SetExplainer:

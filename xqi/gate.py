@@ -2,6 +2,7 @@ import math
 
 from xqi.config import Config
 from xqi.types import (
+    MANUAL_ADVICE,
     CauseEstimate,
     CauseSet,
     ConfirmedDefect,
@@ -125,8 +126,9 @@ def event_verdict(
         return out("ESCALATE", "no_confident_cause")
     if cset.members == ("none",):  # 6
         return out("NOOP", "no_actionable_cause")
-    if "misalignment" in cset.members:  # 7
-        return out("ESCALATE", "mechanical")
+    manual = [c for c in cset.members if c in MANUAL_ADVICE]
+    if manual:  # 7
+        return out("ESCALATE", f"manual:{manual[0]}")
     if not passed:  # 8
         return out("ESCALATE", "outside_envelope")
     l4 = _l4_fail(cset, est, flags, cfg)
