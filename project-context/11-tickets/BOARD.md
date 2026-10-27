@@ -97,13 +97,13 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0051 Implement operator-decision processing and timeouts in the loop | C | MUST | DONE |
 | T-0052 Write the 2-hour soak test on replay + FakePrinter | C | MUST | WAITING-GPU (teammate CPU run) |
 | T-0057 Adapt the explain stack to the CAXTON taxonomy (no defect input, manual z-offset causes, SCHEMA_VERSION 2) | C | MUST | DONE |
-| T-0058 Wire the Explainer into `xqi run` (with a no-model fallback) and write defects.crop_path | C | MUST | TODO |
-| T-0059 Run EigenCAM on the cause-model backbone | C | SHOULD | DOING (defect heatmaps done; warning heatmaps close with T-0061) |
-| T-0060 Implement the early-warning module (EWMA + hysteresis) | C | MUST | TODO |
-| T-0061 Add the proactive path to the loop (early-warning events, optional detector) | C | MUST | TODO |
+| T-0058 Wire the Explainer into `xqi run` (with a no-model fallback) and write defects.crop_path | C | MUST | DONE |
+| T-0059 Run EigenCAM on the cause-model backbone | C | SHOULD | DONE |
+| T-0060 Implement the early-warning module (EWMA + hysteresis) | C | MUST | DONE |
+| T-0061 Add the proactive path to the loop (early-warning events, optional detector) | C | MUST | DONE |
 | T-0062 Add the CAXTON replay source and process-seeded FakePrinter | C | MUST | TODO |
 | T-0063 Evaluate proactive warnings on held-out prints (time-to-warning, recall, false-warning rate) | C | MUST | TODO |
-| T-0064 Write the hand-off package (HANDOFF.md + Printer conformance test) | C | MUST | TODO |
+| T-0064 Write the hand-off package (HANDOFF.md + Printer conformance test) | C | MUST | DONE |
 | T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | TODO |
 | T-0066 Run the offline end-to-end HITL demo on held-out CAXTON prints | P | MUST | TODO |
 | T-0067 (COULD) Check domain shift on the inherited camera roll | C | COULD | TODO |

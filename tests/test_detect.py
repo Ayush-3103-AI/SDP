@@ -98,6 +98,8 @@ def test_best_pt_one_frame_under_60ms():
     from xqi.config import load
 
     cfg = load(Path("config/default.yaml"))
+    if cfg.detector.weights is None:
+        pytest.skip("detector.weights is null (ADR-0009: the detector is the integrating team's)")
     det = Detector(
         cfg.detector.weights,
         cfg.detector.imgsz,

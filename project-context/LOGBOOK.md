@@ -788,3 +788,19 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
 - BROKE: nothing.
 - NEXT: Done-when's "heatmaps for warnings" needs T-0061 (not a listed dependency): close #59 when T-0061 queues
   _heatmap(cd, replace(frame, image=roi)) for warnings.
+
+## 2026-10-27 — Parallel run 3, loop lane: T-0060, T-0058, T-0061, T-0064 (DONE); T-0059 closed
+- BUILT: xqi/proactive.py EarlyWarning (07 §13 EWMA + hysteresis, per-cause cooldown, gap reset) + CauseWarning +
+  proactive config. build_explainer (None + one warning when final.pt/qhat.json missing), Explainer.estimate,
+  `xqi run` wired, runs/<id>/crops/<defect_id>.jpg. Proactive tick: ROI → estimate → EarlyWarning → defects row
+  (cls early_warning, bbox null, severity p̄) → P3; gate row 9 never APPLYs a warning; warning ESCALATE = card,
+  no pause; detector optional (weights null → no Detector). Warning heatmaps queued like defect ones → T-0059 done.
+  docs/HANDOFF.md + tests/test_printer_contract.py (XQI_PRINTER_IMPL=module:factory hook).
+- RESULT: lane 295 passed, 5 deselected; fast-forwarded into main; ruff clean. A ramp toward flow_low in auto
+  mode gives one PROPOSE card and no G-code until operator Apply. docs/gpu-runs/T-0037.md rewritten to the
+  no-detector path (CPU, synthetic frames) — runnable now.
+- SURPRISE: store.write_defect was INSERT OR REPLACE, so the heatmap worker's write nulled crop_path → upsert.
+  Verifier.watch KeyErrors on early_warning → applied warnings aren't watched (T-0063 evaluates offline).
+  T-0060/T-0064 red runs not seen (raced / reference impl passes by construction).
+- BROKE: tests/test_detect.py gpu test read the now-null detector.weights → it now skips when null (integrator).
+- NEXT: notes — CPU `xqi run` with a real checkpoint needs cause_model.device: cpu; local runs need printer.kind fake.
