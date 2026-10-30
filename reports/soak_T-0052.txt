@@ -1,0 +1,6 @@
+﻿verdicts {'APPLY': 36, 'ESCALATE': 367, 'NOOP': 50, 'PROPOSE': 67}  decisions {'apply': 8, 'modify': 8, 'pause': 105, 'reject': 95, 'timeout': 218}
+.
+=================================== PASSES ====================================
+=========================== short test summary info ===========================
+PASSED tests/test_soak.py::test_soak_2h
+1 passed, 1 deselected in 75.13s (0:01:15)
