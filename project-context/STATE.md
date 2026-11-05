@@ -1,13 +1,14 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice), software only
 
 PHASE:        5 — EXECUTE (re-planned per ADR-0009; delta gate APPROVED 2026-10-27).
-LAST SESSION: 2026-10-27 — T-0057, then parallel run 3 (user-requested): every CODE ticket that needs no teammate
-              result is built and merged. main 328 passed, 1 skipped, 5 deselected; ruff clean.
-NEXT ACTION:  1. User decisions (below): NFR-002/003 DESCEND (blocks T-0066) and the adapt_counts.json 09 line.
-              2. T-0066 offline HITL demo code (+ eval_latency --runs per the DESCEND) → runbook for G4.
-              3. Teammate sittings; when results are pushed: git pull, verify Done-when, close tickets.
-DEMO:         next week (~2026-11-03). Fallback if CAXTON/model not ready: synthetic replay + random-init model,
-              full flow shown (warning, cause set, EigenCAM, card, gate), no accuracy numbers.
+LAST SESSION: 2026-11-05 — pulled Krish's 2026-10-30 results (T-0023 0/100 000 and T-0052 soak PASS → DONE;
+              T-0065 Part 1 done, CAXTON CC BY 4.0; T-0038 failed on a runbook bug). Built
+              scripts/fetch_caxton_subset.py (range reads, ~5 GB instead of 55.8 GB), fixed 7 runbooks after an audit,
+              wrote docs/gpu-runs/SITTING-2026-11.md. main 333 passed, 1 skipped, 5 deselected; ruff clean.
+NEXT ACTION:  1. Krish runs docs/gpu-runs/SITTING-2026-11.md. When pushed: git pull, verify Done-when, K1′ then K2 first.
+              2. User decisions (below): NFR-002/003 DESCEND (blocks T-0066) and the adapt_counts.json 09 line.
+              3. T-0066 demo code after the DESCEND; T-0067 domain_shift.py (Drive camera roll, after T-0013/15).
+DEMO:         the ~2026-11-03 demo date has passed; fallback stays synthetic replay + random-init model.
 
 ## Load for next session
 - project-context/STATE.md (this file)
@@ -39,10 +40,8 @@ Nothing else.
 ## Waiting on teammate runs (runbooks docs/gpu-runs/T-00NN.md; manual docs/GPU_SETUP.md)
 | Sitting | Tickets | Needs | Send back |
 |---|---|---|---|
-| Any time (CPU) | T-0023, T-0037, T-0038, T-0052, T-0043 → T-0044 | nothing | gate_property.md, ui_live/ui_card.png, soak log, study files |
-| D (data) | T-0065 Part 1 → Part 2 (closes T-0006 K1′, T-0024, T-0007 logo.json) | CAXTON images | CAXTON.md, data_audit.md, l3_window.md, logo.json |
-| G2 → G3 | T-0012 (~35 min) → T-0013 (~3 h, K2) → T-0015, T-0017, T-0063 (CPU) | sitting D | cause_*.md, final.pt, preds npz, qhat.json, conformal/counterfactual/proactive.md |
-| G4 | T-0036 bench + T-0066 demo (not built yet) | G3 (or random-init) | latency.md, demo outputs |
+| Sitting 2026-11 (docs/gpu-runs/SITTING-2026-11.md) | T-0065 Part 2 (subset fetch) → T-0012 → T-0013 (K2) → T-0015, T-0017, T-0063 → T-0036; CPU: T-0037, T-0038, T-0043 → T-0044; Drive camera roll download | nothing | see the sitting doc's send-back table |
+| Later | T-0066 demo (after the DESCEND), T-0067 domain shift (script not built) | T-0013/15 | demo outputs, domain_shift.md |
 Outdated, don't run: docs/gpu-runs/T-0030.md.
 After everything: `uv run pytest --junitxml reports/pytest.xml` + `scripts/acceptance.py` closes T-0046 (dry run
 today: 23 PASS · 0 FAIL · 15 NO DATA of 38). Then T-0047 report (PAIR, one chapter per session).
@@ -74,9 +73,9 @@ today: 23 PASS · 0 FAIL · 15 NO DATA of 38). Then T-0047 report (PAIR, one cha
 - Q2 Who owns T-0065 and the GPU sittings? [the teammate with the RTX 3050 laptop]
 
 ## Highest unretired risk
-K1′: the CAXTON image archive's download location is unverified. T-0065 Part 1 finds it or emails the authors.
-With the demo next week there is no time for the 1-week fallback; the demo fallback above applies instead.
-Second: domain gap (nozzle close-up vs the integrating team's camera).
+K1′ on the real audit (image location solved 2026-10-30; the subset fetch is untested at full scale: ~91 k range
+requests). Then K2 at T-0013. Second: domain gap (nozzle close-up vs the integrating team's camera); T-0067 measures it
+on the Drive camera roll. Krish's GPU is an RTX 4050, not the spec's 3050: S4 must name the GPU.
 
 ## Kill criteria watch
 - K1′ at T-0006 (real audit from T-0065) · K2 at T-0013 · K3 dropped

@@ -852,3 +852,22 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
 - BROKE: nothing.
 - NEXT: run 3 closed. Open: user decisions on the NFR-002/003 DESCEND (blocks T-0066) and the adapt_counts.json
   09 line. Then T-0066 (demo code). Teammate: T-0065 → G2 → G3 → 0015/0017/0063 → G4.
+
+## 2026-11-05 — Teammate results pulled; T-0023, T-0052 DONE; subset fetch + runbook audit for the next sitting
+- BUILT: scripts/fetch_caxton_subset.py (+ tests/test_fetch_caxton_subset.py, 5 tests): opens each remote printK.zip
+  with HTTP Range reads of its central directory and fetches only the adapt_caxton --list-needed images (one ranged
+  request each, CRC-checked) into <root>/caxton_dataset/printK/. T-0065 runbook Part 2 gains step 1b and a stop gate
+  (K1′ FAIL or a proposed cause drop stops training). docs/gpu-runs/SITTING-2026-11.md = the ordered sitting.
+- RESULT: Krish (2026-10-30, RTX 4050): T-0023 0 / 100 000 violations; T-0052 soak PASS (72 000 frames, RSS ok, no
+  pending events) → both DONE. T-0065 Part 1: images = print0–191.zip on the Apollo record (55.8 GB), CC BY 4.0,
+  CSV header matches adapt_caxton REQUIRED. Live fetch of 3 real images: CRC ok, 1280×720 decode, re-run skips.
+  333 passed, 1 skipped, 5 deselected; ruff clean.
+- SURPRISE: the Apollo server sends no Content-Length on HEAD (size read from a 1-byte range's Content-Range); ~1.8 s
+  per request from India, so the fetch is latency-bound (16 workers ≈ 2–3 h). CAXTON JPEGs carry a harmless
+  "1 extraneous bytes" libjpeg warning. Teammate GPU is an RTX 4050.
+- BROKE: T-0038 runbook (stub explainer has no labels since T-0061) → demo script now turns proactive off. A read-only
+  audit of the 11 sitting runbooks also found: wrong test counts (T-0038 14, T-0043 20), no git push in T-0037/38/43/44,
+  pilot.sqlite needs git add -f, T-0013 pulled before committing a tracked file it rewrites (pull moved after the
+  commit, T-0012 too), reports\img missing, T-0037 expectations wrong once final.pt exists. All fixed.
+- NEXT: Krish runs SITTING-2026-11.md. User: DESCEND D6, adapt_counts 09 line, Drive link to Krish privately (the
+  folder is "anyone with the link: editor"; ask the owner to make it viewer).

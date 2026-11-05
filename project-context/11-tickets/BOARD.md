@@ -66,7 +66,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0020 Assemble the Explainer (cause model → conformal set → sensor flags → proposals) | C | MUST | DONE |
 | T-0021 Implement safety gate layers L2 (rate/cooldown) and L1 (physical limits) | C | MUST | DONE |
 | T-0022 Implement gate layer L3 and the event-verdict truth table (with L4) | C | MUST | DONE |
-| T-0023 Write the randomised gate property test and the deck-recipe audit | C | MUST | WAITING-GPU (teammate CPU run) |
+| T-0023 Write the randomised gate property test and the deck-recipe audit | C | MUST | DONE |
 | T-0024 Derive the L3 process window from CAXTON's "good" class ranges | C | MUST | WAITING-DATA (T-0065: real window, then a config commit after user review) |
 | T-0025 Confirm the envelope numbers and get sign-off | H | MUST | DROPPED |
 | T-0026 Implement the Printer protocol and the FakePrinter simulator | C | MUST | DONE |
@@ -95,7 +95,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0049 (COULD) Test tiled inference for under-extrusion | C | COULD | DROPPED |
 | T-0050 (COULD) Evaluate the cause model leave-one-printer-out (Kobra 2 Neo) | P | COULD | DROPPED |
 | T-0051 Implement operator-decision processing and timeouts in the loop | C | MUST | DONE |
-| T-0052 Write the 2-hour soak test on replay + FakePrinter | C | MUST | WAITING-GPU (teammate CPU run) |
+| T-0052 Write the 2-hour soak test on replay + FakePrinter | C | MUST | DONE |
 | T-0057 Adapt the explain stack to the CAXTON taxonomy (no defect input, manual z-offset causes, SCHEMA_VERSION 2) | C | MUST | DONE |
 | T-0058 Wire the Explainer into `xqi run` (with a no-model fallback) and write defects.crop_path | C | MUST | DONE |
 | T-0059 Run EigenCAM on the cause-model backbone | C | SHOULD | DONE |
@@ -104,7 +104,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0062 Add the CAXTON replay source and process-seeded FakePrinter | C | MUST | DONE |
 | T-0063 Evaluate proactive warnings on held-out prints (time-to-warning, recall, false-warning rate) | C | MUST | WAITING-GPU (CPU, after T-0015/17: docs/gpu-runs/T-0063.md) |
 | T-0064 Write the hand-off package (HANDOFF.md + Printer conformance test) | C | MUST | DONE |
-| T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | TODO |
+| T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | IN-PROGRESS (Part 1 done 2026-10-30; Part 2 = subset fetch + data scripts) |
 | T-0066 Run the offline end-to-end HITL demo on held-out CAXTON prints | P | MUST | TODO |
 | T-0067 (COULD) Check domain shift on the inherited camera roll | C | COULD | TODO |
 
