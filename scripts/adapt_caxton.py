@@ -20,7 +20,9 @@ REQUIRED = ("img_path", "timestamp", "flow_rate", "feed_rate", "z_offset", "targ
 CLASS_VAR = {"flow_rate_class": "flow", "feed_rate_class": "speed", "z_offset_class": "z_offset",
              "hotend_class": "nozzle_temp"}  # 07 §15; 0 = low, 1 = good, 2 = high
 FIRST_EXCLUDED_PRINT = 183  # prints 183–191: large errors / poor lighting (the authors exclude them too)
-Z_SUSPECT_MM = 0.08  # README: lower Z offsets are incorrectly labelled
+# README: "very low values in Z offset (< 0.08mm) are incorrectly labelled". In the CSV every z ≥ 0.08 is class 2,
+# and one z value carries two labels only in these open bands (low/good, good/high); 07 §15, DESCEND 2026-11-07.
+Z_AMBIGUOUS_MM = ((-0.08, 0.0), (0.04, 0.08))
 TRIALS_COLS = ["trial_id", "printer", "geometry", "material", "t_start_iso", "t_end_iso", "n_images", "n_kept",
                "source"]
 IMAGES = {  # 09 §Data images.csv column ← CAXTON column, in order
@@ -70,14 +72,18 @@ def subset(df: pd.DataFrame, per_print: int, seed: int) -> pd.DataFrame:
     return df.loc[keep].sort_values(["print_id", "ts"], kind="stable")
 
 
+def z_ambiguous(z: pd.Series) -> pd.Series:
+    return pd.concat([(z > lo) & (z < hi) for lo, hi in Z_AMBIGUOUS_MM], axis=1).any(axis=1)
+
+
 def adapt(raw: pd.DataFrame, per_print: int, seed: int, keep_z_suspect: bool):
     """Returns (trials, images, counts)."""
     df = raw.assign(ts=parse_ts(raw.timestamp.astype(str)))
     excluded = {"print_id>=183": int((df.print_id >= FIRST_EXCLUDED_PRINT).sum())}
     df = df[df.print_id < FIRST_EXCLUDED_PRINT]
     per = df.groupby("print_id").ts.agg(["min", "max", "size"])  # print span and size before the z filter
-    z_bad = df.z_offset < Z_SUSPECT_MM
-    excluded["z_offset<0.08"] = 0 if keep_z_suspect else int(z_bad.sum())
+    z_bad = z_ambiguous(df.z_offset)
+    excluded["z_offset_ambiguous"] = 0 if keep_z_suspect else int(z_bad.sum())
     if not keep_z_suspect:
         df = df[~z_bad]
     df = df.assign(cause=label(df))
@@ -124,7 +130,7 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default="data")
     ap.add_argument("--per-print", type=int, default=500)
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--keep-z-suspect", action="store_true", help=f"keep z_offset < {Z_SUSPECT_MM} mm rows")
+    ap.add_argument("--keep-z-suspect", action="store_true", help=f"keep rows in the ambiguous z bands {Z_AMBIGUOUS_MM} mm")
     ap.add_argument("--list-needed", help="write the kept img_path values here, one per line")
     a = ap.parse_args(argv)
     out, root = Path(a.out), Path(a.root)

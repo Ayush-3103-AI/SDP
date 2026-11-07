@@ -105,7 +105,7 @@ def render(images, trials, counts, crops, causes, licence) -> str:
         lines += [f"Images in the CSV: {counts['images_in']}", ""]
         lines += _table(["reason", "images"], counts["excluded"].items())
         if counts["keep_z_suspect"]:
-            lines += ["", "z_offset < 0.08 mm rows were KEPT (--keep-z-suspect)."]
+            lines += ["", "rows in the ambiguous z_offset bands were KEPT (--keep-z-suspect)."]
     else:
         lines.append("adapt_counts.json not present (re-run scripts/adapt_caxton.py).")
     lines += ["", "## Images per print", "",

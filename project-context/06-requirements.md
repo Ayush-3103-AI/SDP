@@ -226,7 +226,7 @@ FR-031 | Adapt CAXTON to the canonical data files: per-print trials.csv, per-ima
          parameter classes and a single cause label, a part-stratified subset, and 224 px nozzle-ROI crops
   Priority:   MUST
   Rationale:  ADR-0009 D2: the only cause-labelled source
-  Acceptance: per 09 §Data; label rule 07 §15; prints 183–191 and z_offset < 0.08 mm excluded by default and counted
+  Acceptance: per 09 §Data; label rule 07 §15; prints 183–191 and z_offset in the ambiguous bands (−0.08, 0) or (0.04, 0.08) mm excluded by default and counted
   Verified by: tests/test_adapt_caxton.py, tests/test_build_crops.py (synthetic fixtures)
 ```
 ```

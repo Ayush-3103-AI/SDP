@@ -45,17 +45,24 @@ def test_fixture_csvs_columns_and_counts(tmp_path, capsys):
     assert set(trials.material) == {"PLA"} and set(trials.printer) == {"unknown"}
     assert trials.n_images.tolist() == [14, 12, 10] and trials.n_kept.tolist() == [13, 12, 10]
     assert images.cause.value_counts().to_dict() == KEPT
-    assert (images.z_offset_mm >= 0.08).all()
+    assert not adapt_caxton.z_ambiguous(images.z_offset_mm).any()
     p0 = images[images.trial_id == "p0"]
     assert p0.ts_s.iloc[0] == 0 and p0.ts_s.is_monotonic_increasing and p0.ts_s.iloc[1] == pytest.approx(0.4)
     assert p0.ts_iso.iloc[0] == "2020-10-08T13:12:50.490"
     assert images.image_path.iloc[0] == "caxton_dataset/print0/image-0.jpg"
     counts = json.loads((out / "adapt_counts.json").read_text())
     assert counts["images_in"] == 40 and counts["prints"] == 3 and counts["kept"] == 35
-    assert counts["excluded"] == {"print_id>=183": 4, "z_offset<0.08": 1}
+    assert counts["excluded"] == {"print_id>=183": 4, "z_offset_ambiguous": 1}
     assert counts["kept_by_cause"] == KEPT
     printed = capsys.readouterr().out
-    assert "images in: 40" in printed and "z_offset<0.08: 1" in printed and "flow_low: 4" in printed
+    assert "images in: 40" in printed and "z_offset_ambiguous: 1" in printed and "flow_low: 4" in printed
+
+
+def test_z_ambiguous_bands_only():
+    # CAXTON labels one z value two ways only in (-0.08, 0) (low/good) and (0.04, 0.08) (good/high); 07 §15
+    z = pd.Series([-0.5, -0.08, -0.05, -0.001, 0.0, 0.02, 0.04, 0.06, 0.079, 0.08, 0.2])
+    assert adapt_caxton.z_ambiguous(z).tolist() == [False, False, True, True, False, False, False, True, True, False,
+                                                     False]
 
 
 def test_keep_z_suspect(tmp_path):
@@ -66,7 +73,7 @@ def test_keep_z_suspect(tmp_path):
 def test_stratified_subset_takes_rare_causes_whole_and_is_deterministic():
     df = pd.read_csv(SAMPLE_CSV)
     df = df[df.print_id == 0].assign(cause=lambda d: adapt_caxton.label(d), ts=lambda d: adapt_caxton.parse_ts(d.timestamp))
-    df = df[df.z_offset >= 0.08]  # none 4, flow_low 4, speed_high 2, multi 2, nozzle_temp_high 1
+    df = df[~adapt_caxton.z_ambiguous(df.z_offset)]  # none 4, flow_low 4, speed_high 2, multi 2, nozzle_temp_high 1
     a = adapt_caxton.subset(df, 6, seed=0)
     assert len(a) == 6 and set(a.cause) == set(df.cause)  # every stratum survives
     assert a.ts.is_monotonic_increasing

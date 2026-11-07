@@ -211,6 +211,8 @@ Cause names: flow_rate → flow, feed_rate → speed, z_offset → z_offset, hot
 - Exactly one not good → that cause (e.g. feed_rate_class = 2 → `speed_high`).
 - Two or more not good → `multi` (kept in images.csv with all four classes, excluded from cause training/eval, used by
   §14 and the replay).
-- Excluded and counted: print_id ≥ 183; z_offset < 0.08 mm (README: incorrectly labelled; `--keep-z-suspect` keeps them).
+- Excluded and counted: print_id ≥ 183; z_offset in the ambiguous bands (−0.08, 0) or (0.04, 0.08) mm, where the CSV gives one z value two labels (low/good,
+  good/high). README: "very low values (< 0.08mm) are incorrectly labelled"; every z ≥ 0.08 is class 2, so a plain
+  z < 0.08 cut would drop every good and low z (DESCEND 2026-11-07). `--keep-z-suspect` keeps the bands.
 Direction note: `flow_low` means the flow was too low, so the correction raises it (CAUSE_ACTION d = −1, §2).
 Z-offset direction: z_offset_low = nozzle too close to the bed.

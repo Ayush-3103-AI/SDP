@@ -1,6 +1,6 @@
 """The CAXTON sample (tests/fixtures/caxton_sample/): 40 label rows in the real column layout, prints 0, 1, 2 and 185.
 
-Print 0: none ×4, flow_low ×4, speed_high ×2, multi ×2, one z < 0.08 mm row, nozzle_temp_high ×1.
+Print 0: none ×4, flow_low ×4, speed_high ×2, multi ×2, one row in an ambiguous z band (0.05 mm), nozzle_temp_high ×1.
 Print 1: none ×6, z_offset_high ×4, speed_low ×2; its first nozzle sits at the frame corner (10, 715).
 Print 2: nozzle_temp_low ×5, flow_high ×5. Print 185: none ×4 (excluded, print_id ≥ 183, no images).
 """

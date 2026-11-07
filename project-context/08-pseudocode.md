@@ -158,7 +158,7 @@ Edge cases: probs must cover every cause (KeyError otherwise); θ_off ≥ θ_on 
 adapt_caxton.py --csv <caxton_dataset_filtered.csv> --root <dir holding caxton_dataset/> --out data/
                 [--per-print N=500] [--seed 0] [--keep-z-suspect] [--list-needed needed.txt]
     rows = read csv; check required columns (09 §Data) → missing → exit 2 naming them
-    drop print_id >= 183 and z_offset < 0.08 (unless --keep-z-suspect); count both
+    drop print_id >= 183 and z_offset in (-0.08, 0) or (0.04, 0.08) (unless --keep-z-suspect); count both
     cause = label(row) per 07 §15
     subset: per print, keep every image of `multi`/`none`/single rows up to N, stratified by cause
             (take all of a rare cause first, then fill with the rest in ts order)

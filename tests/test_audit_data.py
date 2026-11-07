@@ -86,7 +86,7 @@ def test_runs_on_the_adapter_fixture_and_writes_every_section(tmp_path):
     for section in ("## Images and prints per cause", "## Single-deviation share", "## Exclusions",
                     "## Images per print", "## Segments", "## Missing crops", "## Proposed frozen taxonomy"):
         assert section in text
-    assert "| z_offset<0.08 | 1 |" in text and "| print_id>=183 | 4 |" in text
+    assert "| z_offset_ambiguous | 1 |" in text and "| print_id>=183 | 4 |" in text
     assert "| flow_low | 4 | 1 | 0 | 0 |" in text
     assert "| flow_high | 5 | 1 | 2 | 1 |" in text  # 5 single images in p2; flow_high is in p0's 2 multi rows
     assert "crops.csv not present" in text
