@@ -871,3 +871,19 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   commit, T-0012 too), reports\img missing, T-0037 expectations wrong once final.pt exists. All fixed.
 - NEXT: Krish runs SITTING-2026-11.md. User: DESCEND D6, adapt_counts 09 line, Drive link to Krish privately (the
   folder is "anyone with the link: editor"; ask the owner to make it viewer).
+
+## 2026-11-07 — K1′ false FAIL traced to the z filter; DESCEND (approved) + T-0067 built
+- BUILT: adapt_caxton drops only z_offset in the open bands (−0.08, 0) and (0.04, 0.08) (z_ambiguous; counts key
+  z_offset_ambiguous) instead of z < 0.08; spec lines in 06 FR, 07 §15, 08 P8, ADR-0009 amended. data/splits/logo.json
+  git rm'd (approved; T-0007 not frozen) so make_splits rebuilds it. T-0065 runbook re-run note. T-0067:
+  scripts/domain_shift.py (final.pt + qhat on n seeded camera-roll frames, whole frame + centre crop at CAXTON's ROI
+  fraction, vs pooled preds_fold*.npz probs_test; --selftest) + tests/test_domain_shift.py + docs/gpu-runs/T-0067.md.
+- RESULT: Krish 2026-11-06: 68,901 images fetched (his own range helper), 72,306 crops, audit K1′: FAIL (only
+  z_offset_high had single-cause images; 0 "none"); he obeyed the stop gate. Locally on the 125 MB label CSV only:
+  old rule reproduces his audit exactly; new rule → K1′ PASS (single-cause images per cause 830–9,922 in 18–102
+  prints; none 6,968 in 95 prints); keeping all rows also passes. 337 passed, 1 skipped, 5 deselected; ruff clean.
+- SURPRISE: CAXTON z_offset is relative to nominal: every z ≥ 0.08 is class 2, good z ∈ [−0.03, 0.08), low < 0; the
+  README's "< 0.08mm incorrectly labelled" can't mean a plain cut. The bad split (fold 1: 87 test / 66 train prints)
+  was the same bug: make_splits balances on single-cause counts, which only z_offset_high had.
+- BROKE: nothing.
+- NEXT: Krish re-runs T-0065 Part 2 (~53 k images to top up) → T-0012 → … per SITTING-2026-11.md, incl. T-0067.

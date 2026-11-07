@@ -104,9 +104,9 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0062 Add the CAXTON replay source and process-seeded FakePrinter | C | MUST | DONE |
 | T-0063 Evaluate proactive warnings on held-out prints (time-to-warning, recall, false-warning rate) | C | MUST | WAITING-GPU (CPU, after T-0015/17: docs/gpu-runs/T-0063.md) |
 | T-0064 Write the hand-off package (HANDOFF.md + Printer conformance test) | C | MUST | DONE |
-| T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | IN-PROGRESS (Part 1 done 2026-10-30; Part 2 = subset fetch + data scripts) |
+| T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | IN-PROGRESS (Part 2 re-run after the z-filter DESCEND 2026-11-07; 11-06 K1′ FAIL was the adapter bug) |
 | T-0066 Run the offline end-to-end HITL demo on held-out CAXTON prints | P | MUST | TODO |
-| T-0067 (COULD) Check domain shift on the inherited camera roll | C | COULD | TODO |
+| T-0067 (COULD) Check domain shift on the inherited camera roll | C | COULD | WAITING-GPU (after T-0015: docs/gpu-runs/T-0067.md) |
 
 Statuses: TODO / BLOCKED (waiting on a dependency) / DOING / WAITING-GPU or WAITING-DATA (built; waiting on a teammate
 run) / DONE / FAILED (a kill criterion fired → DESCEND) / DROPPED (out of scope, ADR-0009).
