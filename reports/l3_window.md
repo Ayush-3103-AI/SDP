@@ -6,9 +6,9 @@ Input: data/images.csv
 
 | var | p1 | p99 | good images | L1 |
 |---|---|---|---|---|
-| flow | 86.00 | 130.00 | 27890 | [50, 150] |
-| speed | 86.00 | 130.00 | 28920 | [50, 150] |
-| nozzle_temp | 182.00 | 235.00 | 45629 | [170, 240] |
+| flow | 86.00 | 130.00 | 37538 | [50, 150] |
+| speed | 86.00 | 130.00 | 38931 | [50, 150] |
+| nozzle_temp | 180.00 | 233.00 | 58501 | [170, 240] |
 
 bed_temp: not derived (CAXTON bed is 60/65 °C only); the config value stays.
 
@@ -25,7 +25,7 @@ material: PLA
 config/default.yaml, envelope.L3.window (rounded outward to integers, clipped to L1):
 
 ```yaml
-nozzle_temp: [182, 235]
+nozzle_temp: [180, 233]
 bed_temp: [50, 70]
 flow: [86, 130]
 speed: [86, 130]
