@@ -887,3 +887,17 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   was the same bug: make_splits balances on single-cause counts, which only z_offset_high had.
 - BROKE: nothing.
 - NEXT: Krish re-runs T-0065 Part 2 (~53 k images to top up) → T-0012 → … per SITTING-2026-11.md, incl. T-0067.
+
+## 2026-11-11 — T-0065/T-0006/T-0012/T-0037 results in; cause-model diagnostics on the dev laptop
+- BUILT: reports/cause_diagnostics.md + reports/img/crop_sheet.jpg; eval_cause.balanced() and a report-only balanced
+  accuracy line (not K2); T-0038 demo keeps the card open 10 min (hitl.timeout_s 600, 1 fps) and the runbook says
+  start the UI first; T-0013 runbook clears G3 after review; sitting doc updated.
+- RESULT: Krish 11-10 (RTX 4050): K1′ PASS (181 prints, 79,515 images, Drop: none); T-0012 fold 0 probe 0.297 /
+  fine-tune 0.249 top-1 vs floor 0.514 (z_offset_high); ui_live.png OK; ui_card.png has no card (timed out).
+  Diagnostics (user asked to run them here; fold-0 train 3,100 + calib 1,051 images only, test never read; frozen
+  ImageNet ResNet18 + linear probe): calib top-1 0.374 / balanced 0.211 vs floor 0.178 / 0.111; dropping images < 3–6 s
+  after a change +1.2 pp; grayscale balanced 0.207; leaky same-print split balanced 0.430. Crops correct.
+- SURPRISE: setpoints change every 12.6 s (median); fold floors 0.51–0.77 because z_offset_high is 9,922 of 39,231
+  non-multi images; the gap is cross-print generalisation, not lag or colour.
+- BROKE: nothing. 1 test added (balanced accuracy).
+- NEXT: T-0013 settles K2 (likely FAIL) → user decision. T-0038 retake, T-0043/44, Drive download in parallel.

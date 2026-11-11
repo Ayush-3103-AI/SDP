@@ -1,14 +1,14 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice), software only
 
 PHASE:        5 — EXECUTE (re-planned per ADR-0009; delta gate APPROVED 2026-10-27).
-LAST SESSION: 2026-11-07 — Krish's 11-06 data sitting gave K1′: FAIL. Root cause: our adapter dropped every
-              z_offset < 0.08 (in CAXTON = every good/low Z). DESCEND approved: drop only the ambiguous bands
-              (−0.08, 0) and (0.04, 0.08); local CSV-only re-audit → K1′ PASS (181 prints, 79,515 images, 830–9,922
-              single-cause images per cause). logo.json removed for the rebuild. T-0067 domain_shift.py built.
-              main 337 passed, 1 skipped, 5 deselected; ruff clean.
-NEXT ACTION:  1. Krish re-runs T-0065 Part 2 then the rest of docs/gpu-runs/SITTING-2026-11.md (incl. T-0067).
-              2. When pushed: git pull, verify Done-when; K1′ (expect PASS) then K2 first; then close tickets.
-              3. User: NFR-002/003 DESCEND (blocks T-0066), adapt_counts.json 09 line, l3_window review.
+LAST SESSION: 2026-11-11 — Krish 11-10: T-0065 re-run K1′ PASS; T-0012 fold 0 below floor (probe 0.297,
+              fine-tune 0.249 vs 0.514); T-0037 done; T-0038 screenshot missed the card. Local diagnostics on fold-0
+              train/calib prints (reports/cause_diagnostics.md): no bug; weak cross-print signal (balanced 0.21 vs
+              0.11); floor high because z_offset_high dominates. eval_cause prints balanced accuracy (report only).
+NEXT ACTION:  1. Krish: T-0013 (K2, likely FAIL) + T-0038 retake + T-0043/44 + Drive download (SITTING-2026-11.md).
+              2. If K2 fires: user decides — ADR-0002 option 1 pivot, or a DESCEND (multi-label heads on all images /
+                 metric = balanced accuracy, flagged as post-hoc). Do not pre-empt.
+              3. User: l3_window review (T-0024), taxonomy confirm (T-0007), NFR-002/003 DESCEND (T-0066).
 DEMO:         the ~2026-11-03 demo date has passed; fallback stays synthetic replay + random-init model.
 
 ## Load for next session
