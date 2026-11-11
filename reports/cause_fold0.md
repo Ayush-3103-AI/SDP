@@ -4,7 +4,7 @@ Rung 1 = frozen-backbone probe, rung 4 = full fine-tune (08 P5, Gate 2). Floor =
 
 | rung | epochs | best calib loss | test top-1 | test top-3 | floor top-1 | gap to floor (pp) |
 |---|---|---|---|---|---|---|
-| probe | 5 | 1.9427 | 0.297 | 0.621 | 0.514 (z_offset_high) | -21.7 |
+| probe | 5 | 1.9427 | 0.297 | 0.620 | 0.514 (z_offset_high) | -21.7 |
 | finetune | 5 | 2.1757 | 0.249 | 0.578 | 0.514 (z_offset_high) | -26.5 |
 
 ## probe
@@ -13,11 +13,11 @@ Diagnosis (auto; edit after reading the curve): underfit: train top-1 is within 
 
 | epoch | train loss | train acc | calib loss | calib acc | s |
 |---|---|---|---|---|---|
-| 1 | 1.9803 | 0.371 | 2.0792 | 0.304 | 120.4 |
-| 2 | 1.6607 | 0.459 | 1.9427 | 0.416 | 127.9 |
-| 3 | 1.5004 | 0.493 | 2.0708 | 0.342 | 126.0 |
-| 4 | 1.4199 | 0.498 | 2.1324 | 0.338 | 118.6 |
-| 5 | 1.3485 | 0.510 | 2.0670 | 0.385 | 118.2 |
+| 1 | 1.9803 | 0.371 | 2.0792 | 0.304 | 131.4 |
+| 2 | 1.6607 | 0.459 | 1.9427 | 0.416 | 128.9 |
+| 3 | 1.5004 | 0.493 | 2.0709 | 0.342 | 127.9 |
+| 4 | 1.4199 | 0.498 | 2.1325 | 0.338 | 139.9 |
+| 5 | 1.3485 | 0.510 | 2.0670 | 0.385 | 144.6 |
 
 ## finetune
 

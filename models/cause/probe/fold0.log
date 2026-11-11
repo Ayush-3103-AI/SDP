@@ -1,9 +1,9 @@
-{"seed": 0, "config": {"fold": 0, "all": false, "final": false, "overfit": null, "crops": "data/crops.csv", "splits": "data/splits/logo.json", "causes": "E:\\sssdp\\config\\causes.yaml", "out": null, "report": "reports/cause_fold0.md", "golden": "tests/fixtures/cause_golden", "epochs": 15, "batch": 32, "seed": 0, "limit": null, "max_per_print": 300, "freeze_backbone": true, "workers": 4, "px": 224, "device": "cuda:0", "no_pretrained": false}, "git_sha": "497710902269edf8ee39f42c55659a119f2556b0", "rung": "probe", "sha256": {"logo.json": "ff6764d90d09ee3e6c1b115ac80a2909ffde9730819eef24237c6f0d07a297db", "crops.csv": "8def33e9dbb973188a158c877dc0172fea5f12df7787e091203dc5497d912c3e"}}
+{"seed": 0, "config": {"fold": 0, "all": true, "final": false, "overfit": null, "crops": "data/crops.csv", "splits": "data/splits/logo.json", "causes": "E:\\sssdp\\config\\causes.yaml", "out": null, "report": "reports/cause_fold0.md", "golden": "tests/fixtures/cause_golden", "epochs": 15, "batch": 32, "seed": 0, "limit": null, "max_per_print": 300, "freeze_backbone": true, "workers": 4, "px": 224, "device": "cuda:0", "no_pretrained": false}, "git_sha": "95643a3bf9bfca628bc1ace2e3a238dc72f532a7", "rung": "probe", "sha256": {"logo.json": "ff6764d90d09ee3e6c1b115ac80a2909ffde9730819eef24237c6f0d07a297db", "crops.csv": "8def33e9dbb973188a158c877dc0172fea5f12df7787e091203dc5497d912c3e"}}
 fold0: train 9857 crops in 76 prints · calib 2078 · test 5147 (incl. multi) · device cuda:0
-epoch 1: train loss 1.9803 acc 0.371 · calib loss 2.0792 acc 0.304 · 120.4 s · batch 32
-epoch 2: train loss 1.6607 acc 0.459 · calib loss 1.9427 acc 0.416 · 127.9 s · batch 32
-epoch 3: train loss 1.5004 acc 0.493 · calib loss 2.0708 acc 0.342 · 126.0 s · batch 32
-epoch 4: train loss 1.4199 acc 0.498 · calib loss 2.1324 acc 0.338 · 118.6 s · batch 32
-epoch 5: train loss 1.3485 acc 0.510 · calib loss 2.0670 acc 0.385 · 118.2 s · batch 32
+epoch 1: train loss 1.9803 acc 0.371 · calib loss 2.0792 acc 0.304 · 131.4 s · batch 32
+epoch 2: train loss 1.6607 acc 0.459 · calib loss 1.9427 acc 0.416 · 128.9 s · batch 32
+epoch 3: train loss 1.5004 acc 0.493 · calib loss 2.0709 acc 0.342 · 127.9 s · batch 32
+epoch 4: train loss 1.4199 acc 0.498 · calib loss 2.1325 acc 0.338 · 139.9 s · batch 32
+epoch 5: train loss 1.3485 acc 0.510 · calib loss 2.0670 acc 0.385 · 144.6 s · batch 32
 early stop: calib loss has not improved for 3 epochs
-fold0: test top-1 0.2967032967032967 · floor top-1 0.5140796703296703 (z_offset_high)
+fold0: test top-1 0.2970467032967033 · floor top-1 0.5140796703296703 (z_offset_high)

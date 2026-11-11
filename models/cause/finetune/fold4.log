@@ -1,0 +1,11 @@
+{"seed": 0, "config": {"fold": 4, "all": false, "final": false, "overfit": null, "crops": "data/crops.csv", "splits": "data/splits/logo.json", "causes": "E:\\sssdp\\config\\causes.yaml", "out": null, "report": "reports/cause_fold0.md", "golden": "tests/fixtures/cause_golden", "epochs": 15, "batch": 32, "seed": 0, "limit": null, "max_per_print": 300, "freeze_backbone": false, "workers": 4, "px": 224, "device": "cuda:0", "no_pretrained": false}, "git_sha": "95643a3bf9bfca628bc1ace2e3a238dc72f532a7", "rung": "finetune", "sha256": {"logo.json": "ff6764d90d09ee3e6c1b115ac80a2909ffde9730819eef24237c6f0d07a297db", "crops.csv": "8def33e9dbb973188a158c877dc0172fea5f12df7787e091203dc5497d912c3e"}}
+fold4: train 9190 crops in 71 prints · calib 2215 · test 6252 (incl. multi) · device cuda:0
+epoch 1: train loss 1.2471 acc 0.522 · calib loss 2.3669 acc 0.400 · 147.9 s · batch 32
+epoch 2: train loss 0.8592 acc 0.686 · calib loss 2.7872 acc 0.330 · 135.5 s · batch 32
+epoch 3: train loss 0.7589 acc 0.720 · calib loss 3.5131 acc 0.275 · 136.2 s · batch 32
+epoch 4: train loss 0.6475 acc 0.765 · calib loss 2.2200 acc 0.372 · 136.3 s · batch 32
+epoch 5: train loss 0.6110 acc 0.781 · calib loss 2.7419 acc 0.471 · 150.6 s · batch 32
+epoch 6: train loss 0.5335 acc 0.802 · calib loss 2.6870 acc 0.420 · 136.6 s · batch 32
+epoch 7: train loss 0.4791 acc 0.817 · calib loss 3.3851 acc 0.332 · 136.7 s · batch 32
+early stop: calib loss has not improved for 3 epochs
+fold4: test top-1 0.4567112144102266 · floor top-1 0.5432887855897733 (z_offset_high)
