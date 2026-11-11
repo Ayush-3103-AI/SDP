@@ -83,6 +83,12 @@ def fold_metrics(npz: dict, fold: dict, crops: pd.DataFrame) -> dict:
             "floor1": (y == rank[0]).astype(float), "floor3": np.isin(y, rank[:3]).astype(float)}
 
 
+def balanced(cm: np.ndarray) -> float:
+    """Mean recall over the causes present in the test rows (rows = true)."""
+    n = cm.sum(axis=1)
+    return float(np.mean(np.diag(cm)[n > 0] / n[n > 0]))
+
+
 def _table(header, rows):
     out = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
     return out + ["| " + " | ".join(str(x) for x in r) + " |" for r in rows]
@@ -210,6 +216,9 @@ def render_model(folds: list[tuple[int, dict]], model_dir: str, rung_line: str |
     lines += _table(["cause", "test images", "recall"],
                     [(c, cm[i].sum(), f"{cm[i, i] / cm[i].sum():.3f}" if cm[i].sum() else "–")
                      for i, c in enumerate(labels)])
+    present = int((cm.sum(axis=1) > 0).sum())
+    lines += ["", (f"Balanced accuracy (mean recall over the {present} causes present; report only, not K2): "
+                   f"{balanced(cm):.3f} (always-majority = 1/{present} = {1 / present:.3f}).")]
     lines += ["", "### Confusion matrix (pooled; rows = true, columns = predicted)", ""]
     lines += _table(["true \\ pred", *labels], [(c, *cm[i]) for i, c in enumerate(labels)])
     lines += ["", "## Risks", "",

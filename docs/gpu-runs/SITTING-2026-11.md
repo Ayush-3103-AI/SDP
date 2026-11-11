@@ -1,6 +1,6 @@
 # Teammate sitting, November 2026: data → model → evaluations → dashboard + study
-Written 2026-11-05, updated 2026-11-07 (T-0065 re-run after the z-filter fix; T-0067 added) against main. For the team's GPU laptop (RTX 4050) and the Claude Code session running there.
-Total ≈ 6–8 h, most of it unattended (subset fetch ~2–3 h, T-0013 ~3 h). The CPU block (step 6) can run in between.
+Written 2026-11-05, updated 2026-11-11 (steps 1–2 done; T-0013 next after diagnostics; T-0038 retake) against main. For the team's GPU laptop (RTX 4050) and the Claude Code session running there.
+Remaining ≈ 4–5 h, most of it the unattended T-0013 run. The CPU block (step 6) can run while it trains.
 
 ## Rules for the runner (they override the "Every session" and "GPU steps" parts of CLAUDE.md, which are for the dev laptop)
 - This IS the GPU laptop: GPU runs and `-m slow` belong here.
@@ -20,18 +20,20 @@ Total ≈ 6–8 h, most of it unattended (subset fetch ~2–3 h, T-0013 ~3 h). T
 ## Steps
 0. Setup (10 min): `git pull`, `uv sync`, the GPU check from docs/GPU_SETUP.md §A5, then `uv run pytest -q` (must pass;
    if not, post the output on #65 and stop). Note the GPU name for every issue comment.
-1. **T-0065 Part 2 RE-RUN (#65)**: docs/gpu-runs/T-0065.md, Part 2; read its "Re-run (2026-11-07)" note first. The
-   11-06 `K1′: FAIL` was an adapter bug (now fixed). Run steps 1, 1b, 2, 3, 4, 5 again, using the repo's
-   `scripts\fetch_caxton_subset.py` for 1b (it skips the images you already have: ~53 k new, ~2.4 GB, 1–2 h).
-   Expected `K1′: PASS`. Do not apply anything `reports\l3_window.md` suggests; Ayush reviews it. Obey the stop gate:
-   if the audit still says FAIL or proposes dropping a cause, push and stop.
-2. **T-0012 (#12)**: docs/gpu-runs/T-0012.md (GPU ~35 min).
+1. ~~T-0065 Part 2 re-run~~ DONE 2026-11-10 (K1′: PASS). 2. ~~T-0012~~ DONE 2026-11-10 (below the floor).
+   Claude has read T-0012 and ran diagnostics (reports/cause_diagnostics.md): no pipeline bug (crops correct, label
+   lag and colour ruled out); the signal is weak across prints. So **T-0013 runs as specified** to settle K2.
 3. **T-0013 (#13)**: docs/gpu-runs/T-0013.md (GPU ~3 h, unattended; disable sleep first, restore it afterwards).
+   K2 is likely to fire. If `reports\cause_eval.md` line 1 says `K2: FAIL`: push the T-0013 files, comment on #13,
+   and skip steps 4, 5 and the T-0067 run (the user decides the pivot). Steps 6 and the Drive download still run.
 4. **T-0015 (#15) → T-0017 (#17) → T-0063 (#63)**: their runbooks (CPU, minutes each), on the T-0013 outputs.
 5. **T-0036 (#36)**: docs/gpu-runs/T-0036.md (GPU ~15 min). Put the GPU name at the top of the issue comment: the spec's
    S4 target is written for an RTX 3050.
 6. **CPU block** (independent; can run while T-0013 trains; Krish takes the screenshots and joins the pilot):
-   T-0037 (#37) → T-0038 (#38) → T-0043 (#43) → T-0044 (#44), each from its runbook.
+   ~~T-0037~~ DONE. **T-0038 (#38) RETAKE**: `git pull`, delete `runs\t0038_demo.py`, re-create it from the updated
+   runbook (proactive off, card open 10 min; do NOT add `labels = CAUSES`). Start the dashboard first, type your name,
+   then start the demo; the card is between the frame and "Last 50 events". The 11-10 screenshot had no card.
+   Then T-0043 (#43) → T-0044 (#44), each from its runbook.
 7. **Sir's Drive camera roll → T-0067 (#67)**. Krish has the Drive link. Never write that link into the repo, an issue
    or a commit: the repo is public. Download the camera-roll JPGs (~5,490 images, ~300 MB) to `D:\reu\camera_roll\`
    any time. After T-0015 (it needs final.pt and qhat.json), run docs/gpu-runs/T-0067.md (~5 min). The images are

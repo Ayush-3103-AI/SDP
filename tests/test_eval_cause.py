@@ -150,3 +150,8 @@ def test_most_confident_wrong_crops_png(tmp_path):
     out = tmp_path / "cause_errors.png"
     assert eval_cause.errors_png([(0, m)], crops, out) == 2
     assert cv2.imread(str(out)) is not None
+
+
+def test_balanced_accuracy_is_mean_recall_over_present_causes():
+    cm = np.array([[8, 2, 0], [5, 5, 0], [0, 0, 0]])  # third cause absent from test
+    assert eval_cause.balanced(cm) == pytest.approx((0.8 + 0.5) / 2)
