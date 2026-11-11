@@ -901,3 +901,6 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
   non-multi images; the gap is cross-print generalisation, not lag or colour.
 - BROKE: nothing. 1 test added (balanced accuracy).
 - NEXT: T-0013 settles K2 (likely FAIL) → user decision. T-0038 retake, T-0043/44, Drive download in parallel.
+- ALSO (same day): Krish's runner pushed T-0043/T-0044 with a pilot "recorded programmatically" (n = 1, +25 pp). Not a
+  person: Done-when not met. reports/operator_study.md now carries a NOT HUMAN DATA banner; the sitting doc forbids
+  simulated participants; T-0043/T-0044 set to WAITING-HUMAN.

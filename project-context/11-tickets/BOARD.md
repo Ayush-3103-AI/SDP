@@ -86,8 +86,8 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0040 Write the induced-defect campaign protocol and the randomised run matrix | C | MUST | DROPPED |
 | T-0041 Run the induced-defect campaign | H | MUST | DROPPED |
 | T-0042 Evaluate the rig results (resolution, overshoot, violations, latency by mode) | C | MUST | DROPPED |
-| T-0043 Build the operator-study mode (replay cards with explanation on/off) | C | SHOULD | WAITING-GPU (teammate CPU run) |
-| T-0044 Write the operator-study analysis script | C | SHOULD | WAITING-GPU (teammate CPU run) |
+| T-0043 Build the operator-study mode (replay cards with explanation on/off) | C | SHOULD | WAITING-HUMAN (11-11 pilot was programmatic, not a person: redo) |
+| T-0044 Write the operator-study analysis script | C | SHOULD | WAITING-HUMAN (re-run on the human pilot) |
 | T-0045 Run the operator study sessions | H | SHOULD | BLOCKED |
 | T-0046 Generate the acceptance report (every FR and NFR → PASS/FAIL with evidence) | C | MUST | WAITING-DATA (run after all reports + T-0066 land) |
 | T-0047 Draft the SDP report and paper | P | MUST | BLOCKED |

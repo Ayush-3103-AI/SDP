@@ -16,6 +16,8 @@ Remaining ≈ 4–5 h, most of it the unattended T-0013 run. The CPU block (step
   `reports\cause_eval.md` stops steps 4–5. Push what you have and comment on the issue.
 - After each push: `gh issue comment NN --body "Run done on <laptop, GPU>, <date>. Results in <sha>. Notes: <...>"`.
 - If you redirect script output to a file, set `$env:PYTHONUTF8=1` first (the scripts print α, θ, K1′, →).
+- **Human steps stay human.** Screenshots and the study pilot are done by Krish (or another team member) in the
+  browser. The runner never simulates a participant, fills in decisions or surveys, or writes study rows itself.
 
 ## Steps
 0. Setup (10 min): `git pull`, `uv sync`, the GPU check from docs/GPU_SETUP.md §A5, then `uv run pytest -q` (must pass;
@@ -33,7 +35,9 @@ Remaining ≈ 4–5 h, most of it the unattended T-0013 run. The CPU block (step
    ~~T-0037~~ DONE. **T-0038 (#38) RETAKE**: `git pull`, delete `runs\t0038_demo.py`, re-create it from the updated
    runbook (proactive off, card open 10 min; do NOT add `labels = CAUSES`). Start the dashboard first, type your name,
    then start the demo; the card is between the frame and "Last 50 events". The 11-10 screenshot had no card.
-   Then T-0043 (#43) → T-0044 (#44), each from its runbook.
+   **T-0043 (#43) REDO with a person**: the 11-11 pilot was filled in programmatically, which is not study data.
+   Krish (or another team member who did not build the cards) sits the ~30-min pilot in the browser,
+   clicking every card and filling the surveys by hand. Then T-0044 (#44) regenerates reports/operator_study.md.
 7. **Sir's Drive camera roll → T-0067 (#67)**. Krish has the Drive link. Never write that link into the repo, an issue
    or a commit: the repo is public. Download the camera-roll JPGs (~5,490 images, ~300 MB) to `D:\reu\camera_roll\`
    any time. After T-0015 (it needs final.pt and qhat.json), run docs/gpu-runs/T-0067.md (~5 min). The images are
