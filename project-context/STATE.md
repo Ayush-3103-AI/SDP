@@ -1,14 +1,16 @@
 # STATE — SDP: Explainable, safe HITL correction for FFF (CARR 4.1.3 slice), software only
 
 PHASE:        5 — EXECUTE (re-planned per ADR-0009; delta gate APPROVED 2026-10-27).
-LAST SESSION: 2026-11-11 — Krish 11-10: T-0065 re-run K1′ PASS; T-0012 fold 0 below floor (probe 0.297,
-              fine-tune 0.249 vs 0.514); T-0037 done; T-0038 screenshot missed the card. Local diagnostics on fold-0
-              train/calib prints (reports/cause_diagnostics.md): no bug; weak cross-print signal (balanced 0.21 vs
-              0.11); floor high because z_offset_high dominates. eval_cause prints balanced accuracy (report only).
-NEXT ACTION:  1. Krish: T-0013 (K2, likely FAIL) + T-0038 retake + T-0043/44 + Drive download (SITTING-2026-11.md).
-              2. If K2 fires: user decides — ADR-0002 option 1 pivot, or a DESCEND (multi-label heads on all images /
-                 metric = balanced accuracy, flagged as post-hoc). Do not pre-empt.
-              3. User: l3_window review (T-0024), taxonomy confirm (T-0007), NFR-002/003 DESCEND (T-0066).
+LAST SESSION: 2026-11-16 (cloud session, merged into main locally) — K2 FAIL twice so far:
+              Krish's 11-11 fine-tune on INCOMPLETE data (36,347 of 79,515 crops) 0.445 vs floor ≈ 0.63; frozen
+              ResNet18 probes on COMPLETE data (CPU) 9-way 0.220 / 4-head 0.163 vs floor 0.254 (balanced 0.194 vs
+              chance 0.111). T-0066 demo code built (scripts/run_demo.py, t_card timing). Build plan:
+              reports/FFF cause model build plan.md (gates G1 fine-tune → G2 multipliers → G3 DINOv2).
+NEXT ACTION:  1. Krish: docs/gpu-runs/SITTING-2026-11-16.md (complete the data, complete-data fine-tune = G1, final.pt,
+                 T-0015/17/63, T-0036, human T-0038/43/44, T-0067, T-0066 demo).
+              2. When G1 lands: if K2 still fires, user decides — ADR-0002 option 1 pivot, or a DESCEND (multi-head /
+                 balanced-accuracy metric, flagged post-hoc). Do not pre-empt.
+              3. User: approve D6 (T-0066), l3_window review (T-0024), taxonomy confirm (T-0007).
 DEMO:         the ~2026-11-03 demo date has passed; fallback stays synthetic replay + random-init model.
 
 ## Load for next session
@@ -36,13 +38,14 @@ Nothing else.
   detector optional, ui/ui_data (advice, warning p̄), study, docs/HANDOFF.md + tests/test_printer_contract.py
 - Scripts: adapt_caxton, build_crops, audit_data (K1′), derive_window, make_splits, eval_cause (floor, K2),
   train_cause (AMP, OOM halving, golden fixture), eval_conformal, eval_counterfactual, eval_proactive,
-  eval_latency (--bench), acceptance, gate_audit, analyze_study; config/caxton_demo.yaml
+  eval_latency (--bench), acceptance, gate_audit, analyze_study, probe_features (frozen 9-way / 4-head),
+  run_demo (T-0066: plan / run / report / --selftest); config/caxton_demo.yaml; dashboard records t_card timing
 
 ## Waiting on teammate runs (runbooks docs/gpu-runs/T-00NN.md; manual docs/GPU_SETUP.md)
 | Sitting | Tickets | Needs | Send back |
 |---|---|---|---|
-| Sitting 2026-11 (docs/gpu-runs/SITTING-2026-11.md) | T-0065 Part 2 (subset fetch) → T-0012 → T-0013 (K2) → T-0015, T-0017, T-0063 → T-0036; CPU: T-0037, T-0038, T-0043 → T-0044; Drive camera roll download | nothing | see the sitting doc's send-back table |
-| Later | T-0066 demo (after the DESCEND) | T-0013/15 | demo outputs |
+| Sitting 2026-11-16 (docs/gpu-runs/SITTING-2026-11-16.md) | fetch ~43 k missing → crops → T-0013 fine-tune (finetune_full) → final.pt → T-0015, T-0017, T-0063 → T-0036; human: T-0038 retake, T-0043/44 real-person pilot; T-0067; T-0066 demo | nothing | see the sitting doc's send-back table |
+Superseded: SITTING-2026-11.md (11-11 run stays in git as the first, incomplete-data run).
 Outdated, don't run: docs/gpu-runs/T-0030.md.
 After everything: `uv run pytest --junitxml reports/pytest.xml` + `scripts/acceptance.py` closes T-0046 (dry run
 today: 23 PASS · 0 FAIL · 15 NO DATA of 38). Then T-0047 report (PAIR, one chapter per session).
@@ -74,9 +77,10 @@ today: 23 PASS · 0 FAIL · 15 NO DATA of 38). Then T-0047 report (PAIR, one cha
 - Q2 Who owns T-0065 and the GPU sittings? [the teammate with the RTX 3050 laptop]
 
 ## Highest unretired risk
-K1′ on the real audit (image location solved 2026-10-30; the subset fetch is untested at full scale: ~91 k range
-requests). Then K2 at T-0013. Second: domain gap (nozzle close-up vs the integrating team's camera); T-0067 measures it
+K2 at T-0013: frozen features are below the floor on complete data; the complete-data fine-tune (G1) decides.
+CAXTON's 84.3 % is a random-image split, so there is no published held-out-print bar. Second: domain gap (nozzle close-up vs the integrating team's camera); T-0067 measures it
 on the Drive camera roll. Krish's GPU is an RTX 4050, not the spec's 3050: S4 must name the GPU.
 
 ## Kill criteria watch
-- K1′ at T-0006 (real audit from T-0065) · K2 at T-0013 · K3 dropped
+- K1′ PASS (T-0006 done) · K2 at T-0013: FAIL on incomplete data and on frozen probes; awaiting the complete-data
+  fine-tune, then the user's decision · K3 dropped

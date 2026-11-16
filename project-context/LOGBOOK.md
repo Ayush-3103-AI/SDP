@@ -904,3 +904,20 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
 - ALSO (same day): Krish's runner pushed T-0043/T-0044 with a pilot "recorded programmatically" (n = 1, +25 pp). Not a
   person: Done-when not met. reports/operator_study.md now carries a NOT HUMAN DATA banner; the sitting doc forbids
   simulated participants; T-0043/T-0044 set to WAITING-HUMAN.
+
+## 2026-11-16 — T-0013 complete-data probes, T-0066 demo code, cause-model build plan (cloud session, merged here)
+- BUILT (branch claude/serene-fermi-gkkcx1, fast-forwarded into main): docs/gpu-runs/SITTING-2026-11-16.md (fetch the
+  ~43 k missing images, rebuild crops, re-run the T-0013 fine-tune into models/cause/finetune_full on the same frozen
+  splits, then final.pt, T-0015/17/63, T-0036, human T-0038/43/44, T-0067, T-0066). scripts/probe_features.py
+  (frozen ResNet18 + linear heads, single 9-way and 4-head CAXTON-style, preds in train_cause format) + tests.
+  T-0066: scripts/run_demo.py (seeded 3 held-out prints, auto + advisory, reports/demo.md with NFR-002/003/004),
+  dashboard writes a t_card timing row on a card's first render (existing timings table, no schema change),
+  docs/gpu-runs/T-0066.md. reports/FFF cause model build plan.md + 5 research notes (CAXTON paper verified).
+- RESULT: Krish's 11-11 T-0013 fine-tune ran on incomplete data (36,347 of 79,515 crops): 0.445 top-1 vs floor ≈ 0.63,
+  K2 FAIL (−18 pp). Complete data (0 missing) on CPU: floor 0.254 ± 0.038; frozen single 9-way 0.220 (K2 FAIL,
+  −3.4 pp, balanced 0.194 vs chance 0.111); frozen 4-head 0.163 (K2 FAIL, −9.0 pp). 343 passed, 1 skipped; ruff clean.
+- SURPRISE: CAXTON's 84.3 % is from a random image split; no held-out-print number has been published. The 4-head
+  formulation loses when frozen; its CAXTON gain came from end-to-end training.
+- BROKE: nothing. STATE/BOARD/LOGBOOK were not updated by the cloud session; done here.
+- NEXT: Krish runs SITTING-2026-11-16. The complete-data fine-tune (G1) is the deciding K2 test; then the user decides
+  pivot (ADR-0002 option 1) or DESCEND. User: approve D6 (T-0066), T-0024, T-0007.

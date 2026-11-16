@@ -56,7 +56,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0010 Build the cause evaluation harness and the majority floor | C | MUST | DONE |
 | T-0011 Implement the cause model (architecture, predict, training step) | C | MUST | DONE |
 | T-0012 Train the cause model on leave-parts-out fold 0 (early read on A3) | P | MUST | DONE (below floor; reports/cause_diagnostics.md) |
-| T-0013 Run the full leave-parts-out cross-validation and the K2 kill check | P | MUST | WAITING-GPU (G3 + K2: docs/gpu-runs/T-0013.md) |
+| T-0013 Run the full leave-parts-out cross-validation and the K2 kill check | P | MUST | WAITING-GPU (K2 FAIL on incomplete data 11-11 + frozen probes on complete data 11-16; complete-data fine-tune: docs/gpu-runs/SITTING-2026-11-16.md step 4) |
 | T-0014 Implement split-conformal calibration and prediction sets | C | MUST | DONE |
 | T-0015 Evaluate conformal coverage on the leave-parts-out folds and save the runtime qhat | C | MUST | WAITING-GPU (after G3, CPU: docs/gpu-runs/T-0015.md) |
 | T-0016 Implement proposal and counterfactual generation (severity-scaled Δ, G-code, sentence) | C | MUST | DONE |
@@ -105,7 +105,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0063 Evaluate proactive warnings on held-out prints (time-to-warning, recall, false-warning rate) | C | MUST | WAITING-GPU (CPU, after T-0015/17: docs/gpu-runs/T-0063.md) |
 | T-0064 Write the hand-off package (HANDOFF.md + Printer conformance test) | C | MUST | DONE |
 | T-0065 Download CAXTON and run the data sitting on the teammate laptop | H | MUST | DONE |
-| T-0066 Run the offline end-to-end HITL demo on held-out CAXTON prints | P | MUST | TODO |
+| T-0066 Run the offline end-to-end HITL demo on held-out CAXTON prints | P | MUST | WAITING-GPU (code built; D6 pending user; docs/gpu-runs/T-0066.md after sitting steps 5–6) |
 | T-0067 (COULD) Check domain shift on the inherited camera roll | C | COULD | WAITING-GPU (after T-0015: docs/gpu-runs/T-0067.md) |
 
 Statuses: TODO / BLOCKED (waiting on a dependency) / DOING / WAITING-GPU or WAITING-DATA (built; waiting on a teammate
