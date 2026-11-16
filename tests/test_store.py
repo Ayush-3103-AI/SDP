@@ -491,3 +491,14 @@ def _insert_decision_process(db_path: str) -> None:
 
     store.insert_decision(decision)
     store.close()
+
+def test_card_shown_is_written_once_from_the_ui_connection(tmp_path):
+    db = tmp_path / "run-001" / "events.sqlite"
+    Store(db).close()
+    ui = Store.open_readonly(db)
+
+    ui.mark_card_shown("d1", 12.5)
+    ui.mark_card_shown("d1", 13.0)  # a second tab or a rerun never moves the first-shown time
+
+    rows = Store(db).query("SELECT defect_id, stage, t FROM timings")
+    assert rows == [{"defect_id": "d1", "stage": "t_card", "t": 12.5}]

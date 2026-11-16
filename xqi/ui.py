@@ -1,6 +1,7 @@
 """Dashboard live view and proposal cards (FR-015/016, ADR-0005). Layout only; data comes from xqi/ui_data.py.
 
-The only write is ui_data.insert_decision (an operator_decisions row); this page never talks to OctoPrint.
+The writes are ui_data.insert_decision (an operator_decisions row) and the first-render time of each card
+(Store.mark_card_shown, NFR-003); this page never talks to OctoPrint.
 Start with `streamlit run xqi/ui.py -- --run <id|latest>` (or `launch(run)`).
 """
 
@@ -9,6 +10,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import time
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
@@ -76,6 +78,10 @@ def main() -> None:
             card = ui_data.card_model(store, event["defect_id"])
             if card is not None:
                 proposal_card(card, partial(decide, card), enabled=bool(operator))
+                shown = st.session_state.setdefault("cards_shown", set())
+                if card["defect_id"] not in shown:  # monotonic, the loop's clock (NFR-003 = t_card − t_conf)
+                    store.mark_card_shown(card["defect_id"], time.monotonic())
+                    shown.add(card["defect_id"])
 
         st.subheader("Last 50 events")
         st.dataframe(ui_data.last_events(store), hide_index=True)

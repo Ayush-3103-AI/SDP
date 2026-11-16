@@ -556,6 +556,23 @@ class Store:
             if conn is not self._conn:
                 conn.close()
 
+    def mark_card_shown(self, defect_id: str, t: float) -> None:
+        """The UI's first render of an event's card: a `t_card` timing row, written once (NFR-003, T-0066)."""
+        conn = self._write_conn()
+        try:
+            conn.execute(
+                """
+                INSERT INTO timings (schema_version, run_id, defect_id, stage, t)
+                SELECT ?, ?, ?, 't_card', ?
+                WHERE NOT EXISTS (SELECT 1 FROM timings WHERE defect_id = ? AND stage = 't_card')
+                """,
+                (SCHEMA_VERSION, self.run_id, defect_id, t, defect_id),
+            )
+            conn.commit()
+        finally:
+            if conn is not self._conn:
+                conn.close()
+
     def write_operator_decision(
         self,
         obj: OperatorDecision | Mapping[str, Any],
