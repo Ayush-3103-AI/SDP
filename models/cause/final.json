@@ -1,0 +1,43 @@
+{
+ "name": "final",
+ "rung": "finetune",
+ "curve": [
+  {
+   "epoch": 1,
+   "train_loss": 1.7575133358672714,
+   "train_acc": 0.38737880886426596,
+   "calib_loss": 2.4057507514953613,
+   "calib_acc": 0.1788934063991515,
+   "s": 212.4
+  },
+  {
+   "epoch": 2,
+   "train_loss": 1.342946263231399,
+   "train_acc": 0.5328081717451524,
+   "calib_loss": 2.474623441696167,
+   "calib_acc": 0.222379353013965,
+   "s": 180.6
+  },
+  {
+   "epoch": 3,
+   "train_loss": 1.1527367850089667,
+   "train_acc": 0.6063885041551247,
+   "calib_loss": 2.5094339847564697,
+   "calib_acc": 0.2179600494961994,
+   "s": 179.3
+  },
+  {
+   "epoch": 4,
+   "train_loss": 1.0247154691542946,
+   "train_acc": 0.6473337950138505,
+   "calib_loss": 3.0518558025360107,
+   "calib_acc": 0.22467739084320312,
+   "s": 229.7
+  }
+ ],
+ "batch": 32,
+ "floor_cause": "z_offset_high",
+ "floor_top1": null,
+ "test_top1": null,
+ "test_top3": null
+}
