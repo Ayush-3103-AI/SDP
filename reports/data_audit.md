@@ -43,7 +43,7 @@ min 13 · median 500 · max 500 (kept images per print)
 
 ## Missing crops
 
-43168 of 79515 kept images have no crop.
+0 of 79515 kept images have no crop.
 
 ## Proposed frozen taxonomy (T-0007)
 
