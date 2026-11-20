@@ -1,0 +1,44 @@
+[
+ {
+  "print": "p102",
+  "fold": 2,
+  "mode": "auto",
+  "db": "runs/20261120T113620Z/events.sqlite"
+ },
+ {
+  "print": "p103",
+  "fold": 3,
+  "mode": "auto",
+  "db": "runs/20261120T114045Z/events.sqlite"
+ },
+ {
+  "print": "p107",
+  "fold": 4,
+  "mode": "auto",
+  "db": "runs/20261120T114455Z/events.sqlite"
+ },
+ {
+  "print": "p102",
+  "fold": 2,
+  "mode": "advisory",
+  "db": "runs/20261120T115038Z/events.sqlite"
+ },
+ {
+  "print": "p103",
+  "fold": 3,
+  "mode": "advisory",
+  "db": "runs/20261120T115550Z/events.sqlite"
+ },
+ {
+  "print": "p103",
+  "fold": 3,
+  "mode": "advisory",
+  "db": "runs/20261120T120028Z/events.sqlite"
+ },
+ {
+  "print": "p107",
+  "fold": 4,
+  "mode": "advisory",
+  "db": "runs/20261120T120458Z/events.sqlite"
+ }
+]

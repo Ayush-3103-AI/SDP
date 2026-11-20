@@ -1,0 +1,22 @@
+{
+ "seed": 0,
+ "fps": 2.0,
+ "crops": "data/crops.csv",
+ "prints": [
+  {
+   "fold": 2,
+   "print": "p102",
+   "config": "runs/demo/p102.yaml"
+  },
+  {
+   "fold": 3,
+   "print": "p103",
+   "config": "runs/demo/p103.yaml"
+  },
+  {
+   "fold": 4,
+   "print": "p107",
+   "config": "runs/demo/p107.yaml"
+  }
+ ]
+}
