@@ -71,6 +71,7 @@ Balanced accuracy (mean recall over the 9 causes present; report only, not K2): 
 
 ## Risks
 
-- Most confident wrong test crops: reports/cause_errors.png. What the reviewer saw: <fill in after looking: e.g. mislabelled transition frames, nozzle out of the crop, blur>
+- Most confident wrong test crops (automated visual review of reports/cause_errors_full.png): repeated flow_high predictions at p=1.00 on true z_offset_high and none crops; the tightly framed, visually similar nozzle/filament ROIs may omit print-bed context that could distinguish offset errors from flow errors.
 - Staleness: trained on CAXTON's nozzle close-up camera, its printer and PLA. A new printer, camera pose or zoom, or material is a new distribution: re-run T-0013 on its data before trusting top-1 (NFR-005) or the conformal coverage (T-0015).
 - Within-print leakage reference (random-by-image split on fold 0, SHOULD): not run.
+
