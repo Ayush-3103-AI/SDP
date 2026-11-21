@@ -65,3 +65,16 @@ def test_fit_multi_learns_from_multi_rows_and_reports_per_variable_accuracy(tmp_
     assert (z["probs_test"][keep].argmax(1) == z["y_test"][keep]).mean() > 0.9
     s = json.loads((out / "summary.json").read_text())
     assert s["fold1"]["var_acc"]["flow"] > 0.9
+
+
+def test_train_rows_restrict_training_only(tmp_path):
+    d = _fixture(tmp_path)
+    crops = pd.read_csv(d / "crops.csv")
+    # keep no flow_low rows for training: the head can then never predict flow_low, but test rows stay
+    crops[crops.cause != "flow_low"].to_csv(d / "keep.csv", index=False)
+    assert probe.main(["fit", "--crops", str(d / "crops.csv"), "--splits", str(d / "logo.json"), "--features",
+                       str(d / "f.npz"), "--out", str(d / "o"), "--train-rows", str(d / "keep.csv")]) == 0
+    z = np.load(d / "o" / "preds_fold0.npz")
+    flow_low = list(z["labels"]).index("flow_low")
+    assert len(z["y_test"]) == 32 and (z["y_test"] == flow_low).any()
+    assert (z["probs_test"].argmax(1) != flow_low).all()

@@ -12,6 +12,12 @@ the full fine-tune (out: models/cause/finetune). --final writes to models/cause 
 Per fold: AdamW lr 3e-4 wd 1e-4, class-weighted CE (weights from the fold's train prints only), aug = colour jitter
 0.2 + random resized crop (0.8–1.0) + hflip (no vertical flip), ≤ max-per-print images per print per epoch, early
 stop on calib loss (patience 3), use_defect=false. AMP on CUDA; a CUDA OOM halves the batch and restarts the fold.
+v2 recipe flags (all off by default = the T-0013 recipe; 2026-11-21, docs/gpu-runs/SITTING-2026-11-21.md):
+--heads 4 (CAXTON's 4 × {low, good, high} heads, trained on every row incl. multi, 9-way cause probabilities by
+joint_to_causes), --lp-epochs N (LP-FT: N head-only epochs with BN frozen, then the whole net), --lr-backbone (its
+own AdamW lr), --aug safe (aspect-preserving: crop scale 0.9–1, ratio 1, ±10° rotation, mild jitter; bead width is
+the flow / z signal), --loss plain (no class weights; K2 scores plain top-1), --ema D (select and save the EMA
+weights), --train-rows CSV (train rows restricted to that crops CSV's (trial_id, ts_s), e.g. a margin-filtered file).
 Writes <out>/fold<k>.pt (best calib loss, via save_checkpoint), fold<k>.log, fold<k>.json and preds_fold<k>.npz
 (every calib + test image incl. `multi` rows, in ts order). A fold-0 run rewrites --report from every rung found
 next to <out>. Test predictions are written and reported, never used for a choice (no tuning on test).
@@ -33,6 +39,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision.transforms import v2
 
@@ -45,6 +52,7 @@ from xqi.explain.cause_model import (
     _STD,
     CauseModel,
     build_model,
+    joint_to_causes,
     save_checkpoint,
     train_one_epoch,
 )
@@ -58,10 +66,16 @@ RUNGS = ("probe", "finetune")
 class Crops(Dataset):
     """(x, defect=0, y) from crop files, preprocessed exactly like CauseModel.predict (+ aug when training)."""
 
-    def __init__(self, paths, y, px: int, aug: bool):
+    def __init__(self, paths, y, px: int, aug: bool | str):
         self.paths, self.y, self.px = list(paths), torch.tensor(np.asarray(y)), px
-        self.aug = v2.Compose([v2.ColorJitter(0.2, 0.2, 0.2), v2.RandomResizedCrop(px, scale=(0.8, 1.0)),
-                               v2.RandomHorizontalFlip()]) if aug else None
+        if aug == "safe":  # keeps the aspect ratio and >= 90 % of the scale: bead width is the flow / z signal
+            self.aug = v2.Compose([v2.RandomRotation(10), v2.RandomResizedCrop(px, scale=(0.9, 1.0), ratio=(1.0, 1.0)),
+                                   v2.ColorJitter(0.1, 0.1, 0.1, 0.05), v2.RandomHorizontalFlip()])
+        elif aug:
+            self.aug = v2.Compose([v2.ColorJitter(0.2, 0.2, 0.2), v2.RandomResizedCrop(px, scale=(0.8, 1.0)),
+                                   v2.RandomHorizontalFlip()])
+        else:
+            self.aug = None
         self.mean, self.std = torch.from_numpy(_MEAN)[:, None, None], torch.from_numpy(_STD)[:, None, None]
 
     def __len__(self):
@@ -96,30 +110,50 @@ def make_model(n_causes: int, freeze: bool, pretrained: bool):
     return model
 
 
-def predict(model, df: pd.DataFrame, a, device, n: int) -> np.ndarray:
+def predict(model, df: pd.DataFrame, a, device, n: int, labels=None) -> np.ndarray:
+    """9-way cause probabilities; --heads 4 → per-head soft-max, then joint_to_causes (needs labels)."""
     if df.empty:
         return np.zeros((0, n), np.float32)
     loader = DataLoader(Crops(df.crop_path, df.y, a.px, aug=False), a.batch, num_workers=a.workers)
     model.eval()
     out = []
+    heads = getattr(a, "heads", 1)
     with torch.no_grad(), torch.autocast(device.type, enabled=device.type == "cuda"):
         for x, d, _ in loader:
-            out.append(torch.softmax(model(x.to(device), d.to(device)).float(), 1).cpu())
-    return torch.cat(out).numpy().astype(np.float32)
+            logits = model(x.to(device), d.to(device)).float()
+            out.append(torch.softmax(logits if heads == 1 else logits.view(len(x), heads, 3), -1).cpu())
+    p = torch.cat(out).numpy()
+    return (p if heads == 1 else joint_to_causes(p, labels)).astype(np.float32)
 
 
 def nll(p: np.ndarray, y: np.ndarray) -> float:
     return float(-np.log(np.clip(p[np.arange(len(y)), y], 1e-12, None)).mean())
 
 
-def fit(train, calib, n, a, device, log):
-    """Train until early stop on calib loss; returns (model at the best calib loss, curve)."""
+def targets(df: pd.DataFrame, heads: int) -> np.ndarray:
+    return df[CLS_COLS].to_numpy(int) if heads == 4 else df.y.to_numpy()
+
+
+def fit(train, calib, n, a, device, log, labels=None):
+    """Train until early stop on calib loss (9-way NLL); returns (model at the best calib loss, curve)."""
+    heads, lp = getattr(a, "heads", 1), getattr(a, "lp_epochs", 0)
     torch.manual_seed(a.seed)
-    model = make_model(n, a.freeze_backbone, not a.no_pretrained).to(device)
-    opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=LR, weight_decay=WD)
+    model = make_model(3 * heads if heads > 1 else n, a.freeze_backbone, not a.no_pretrained).to(device)
+    groups = [{"params": list(model.head.parameters()), "lr": LR}]
+    if not a.freeze_backbone:
+        groups.append({"params": list(model.backbone.parameters()), "lr": getattr(a, "lr_backbone", None) or LR})
+    opt = torch.optim.AdamW(groups, lr=LR, weight_decay=WD)
     scaler = torch.amp.GradScaler("cuda") if device.type == "cuda" else None
-    weights = torch.tensor(class_weights(train.y.to_numpy(), n), dtype=torch.float32)
-    ds = Crops(train.crop_path, train.y, a.px, aug=True)
+    y = targets(train, heads)
+    if getattr(a, "loss", "weighted") == "plain":
+        weights = None
+    elif heads == 4:
+        weights = torch.tensor(np.stack([class_weights(y[:, k], 3) for k in range(4)]), dtype=torch.float32)
+    else:
+        weights = torch.tensor(class_weights(y, n), dtype=torch.float32)
+    decay = getattr(a, "ema", 0.0)
+    ema = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(decay), use_buffers=True) if decay else None
+    ds = Crops(train.crop_path, y, a.px, aug=getattr(a, "aug", "default"))
     rng = np.random.default_rng(a.seed)
     best, best_loss, bad, curve = None, float("inf"), 0, []
     for epoch in range(1, a.epochs + 1):
@@ -127,15 +161,19 @@ def fit(train, calib, n, a, device, log):
         idx = epoch_sample(train, a.max_per_print, rng)
         loader = DataLoader(Subset(ds, idx), a.batch, shuffle=True, num_workers=a.workers,
                             drop_last=len(idx) > a.batch, generator=torch.Generator().manual_seed(a.seed + epoch))
-        loss, acc = train_one_epoch(model, loader, opt, weights, scaler)
-        p = predict(model, calib, a, device, n)
+        probing = epoch <= lp and not a.freeze_backbone
+        model.backbone.requires_grad_(not probing and not a.freeze_backbone)
+        loss, acc = train_one_epoch(model, loader, opt, weights, scaler, heads=heads, ema=ema, freeze_bn=probing)
+        scored = model if ema is None else ema.module
+        p = predict(scored, calib, a, device, n, labels)
         cal_loss, cal_acc = nll(p, calib.y.to_numpy()), float((p.argmax(1) == calib.y.to_numpy()).mean())
         curve.append({"epoch": epoch, "train_loss": loss, "train_acc": acc, "calib_loss": cal_loss,
                       "calib_acc": cal_acc, "s": round(time.monotonic() - t0, 1)})
         log(f"epoch {epoch}: train loss {loss:.4f} acc {acc:.3f} · calib loss {cal_loss:.4f} acc {cal_acc:.3f} · "
             f"{curve[-1]['s']} s · batch {a.batch}")
         if cal_loss < best_loss:
-            best, best_loss, bad = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}, cal_loss, 0
+            best = {k: v.detach().cpu().clone() for k, v in scored.state_dict().items()}
+            best_loss, bad = cal_loss, 0
         else:
             bad += 1
             if bad >= PATIENCE:
@@ -145,10 +183,10 @@ def fit(train, calib, n, a, device, log):
     return model, curve
 
 
-def fit_halving(train, calib, n, a, device, log):
+def fit_halving(train, calib, n, a, device, log, labels=None):
     while True:
         try:
-            return fit(train, calib, n, a, device, log)
+            return fit(train, calib, n, a, device, log, labels)
         except torch.cuda.OutOfMemoryError:
             if a.batch <= 4:
                 raise
@@ -185,17 +223,22 @@ def run(name, train, calib, test, labels, a, device, meta, out: Path) -> dict:
             fh.flush()
 
         log(json.dumps(meta))
-        train, cal_y = train[train.y >= 0], calib[calib.y >= 0]
+        if getattr(a, "train_rows", None):  # e.g. a boundary-margin filtered crops CSV; calib and test untouched
+            keep = pd.read_csv(a.train_rows, usecols=["trial_id", "ts_s"])
+            train = train.merge(keep, on=["trial_id", "ts_s"])
+        if getattr(a, "heads", 1) == 1:
+            train = train[train.y >= 0]
+        cal_y = calib[calib.y >= 0]
         log(f"{name}: train {len(train)} crops in {train.trial_id.nunique()} prints · calib {len(cal_y)} · "
             f"test {len(test)} (incl. multi) · device {device}")
-        model, curve = fit_halving(train, cal_y, n, a, device, log)
-        p_cal, p_test = predict(model, calib, a, device, n), predict(model, test, a, device, n)
+        model, curve = fit_halving(train, cal_y, n, a, device, log, labels)
+        p_cal, p_test = predict(model, calib, a, device, n, labels), predict(model, test, a, device, n, labels)
         np.savez(out / f"preds_{name}.npz", labels=np.array(labels), probs_calib=p_cal, y_calib=calib.y.to_numpy(),
                  calib_trial=calib.trial_id.to_numpy(str), calib_ts=calib.ts_s.to_numpy(float), probs_test=p_test,
                  y_test=test.y.to_numpy(), test_trial=test.trial_id.to_numpy(str), test_ts=test.ts_s.to_numpy(float),
                  test_cls=test[CLS_COLS].to_numpy(int).reshape(-1, 4))
         y_t, t = test.y.to_numpy(), test.y.to_numpy() >= 0
-        floor = np.bincount(train.y, minlength=n).argmax()
+        floor = np.bincount(train.y[train.y >= 0], minlength=n).argmax()
         top3 = np.argsort(-p_test[t], axis=1)[:, :3] if t.any() else np.zeros((0, 3), int)
         summary = {"name": name, "rung": meta["rung"], "curve": curve, "batch": a.batch,
                    "floor_cause": labels[floor], "floor_top1": float((y_t[t] == floor).mean()) if t.any() else None,
@@ -206,6 +249,7 @@ def run(name, train, calib, test, labels, a, device, meta, out: Path) -> dict:
         metrics = {"calib_loss": best["calib_loss"], "calib_top1": best["calib_acc"], "epochs": len(curve),
                    **{k: summary[k] for k in ("test_top1", "test_top3", "floor_top1")}}
         save_checkpoint(model, out / f"{name}.pt", **meta, causes=list(labels), input_px=a.px, metrics=metrics,
+                        heads=getattr(a, "heads", 1),
                         normalisation={"mean": _MEAN.tolist(), "std": _STD.tolist()})  # Gate 5 artifact dict
         log(f"{name}: test top-1 {summary['test_top1']} · floor top-1 {summary['floor_top1']} ({labels[floor]})")
     return summary
@@ -309,6 +353,13 @@ def main(argv=None) -> int:
     ap.add_argument("--px", type=int, default=224)
     ap.add_argument("--device", default="cuda:0" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--no-pretrained", action="store_true", help="random init (tests; no weight download)")
+    ap.add_argument("--heads", type=int, choices=(1, 4), default=1, help="4 = CAXTON's 4 × 3-class heads")
+    ap.add_argument("--lp-epochs", type=int, default=0, help="LP-FT: head-only epochs (BN frozen) before the rest")
+    ap.add_argument("--lr-backbone", type=float, help=f"backbone AdamW lr (default {LR}, the head's)")
+    ap.add_argument("--aug", choices=("default", "safe"), default="default")
+    ap.add_argument("--loss", choices=("weighted", "plain"), default="weighted")
+    ap.add_argument("--ema", type=float, default=0.0, help="EMA decay of the selected weights (0 = off)")
+    ap.add_argument("--train-rows", help="restrict train rows to this crops CSV's (trial_id, ts_s)")
     a = ap.parse_args(argv)
 
     random.seed(a.seed)

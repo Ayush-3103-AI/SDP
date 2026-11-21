@@ -101,13 +101,45 @@ def test_cuda_oom_halves_the_batch(tmp_path, monkeypatch, capsys):
     args = _fixture(tmp_path)
     real, seen = train_cause.train_one_epoch, []
 
-    def oom_at_8(model, loader, opt, weights, scaler=None):
+    def oom_at_8(model, loader, opt, weights, scaler=None, **kw):
         seen.append(loader.batch_size)
         if loader.batch_size == 8:
             raise torch.cuda.OutOfMemoryError("fake")
-        return real(model, loader, opt, weights, scaler)
+        return real(model, loader, opt, weights, scaler, **kw)
 
     monkeypatch.setattr(train_cause, "train_one_epoch", oom_at_8)
     assert train_cause.main(["--fold", "1", "--epochs", "1", "--batch", "8", "--out", str(tmp_path / "m"),
                              *args]) == 0
     assert seen == [8, 4] and "halving the batch to 4" in capsys.readouterr().out
+
+
+def test_four_heads_with_the_v2_recipe(tmp_path):
+    """4 × {low, good, high} heads trained on every row incl. multi; LP-FT, safe aug, plain CE, EMA weights."""
+    args = _fixture(tmp_path)
+    out = tmp_path / "m"
+    assert train_cause.main(["--fold", "0", "--epochs", "2", "--batch", "8", "--out", str(out), "--heads", "4",
+                             "--lp-epochs", "1", "--lr-backbone", "1e-5", "--aug", "safe", "--loss", "plain",
+                             "--ema", "0.9", "--report", str(tmp_path / "r.md"), *args]) == 0
+    npz = np.load(out / "preds_fold0.npz")
+    assert set(npz.files) == NPZ_KEYS and npz["probs_test"].shape == (28, len(CAUSES))
+    np.testing.assert_allclose(npz["probs_test"].sum(1), 1, atol=1e-5)
+    assert "train 42 crops" in (out / "fold0.log").read_text(encoding="utf-8")  # multi rows are trained on
+    ckpt = torch.load(out / "fold0.pt", weights_only=True)
+    assert ckpt["heads"] == 4 and ckpt["config"]["lp_epochs"] == 1
+    est = CauseModel(out / "fold0.pt", CAUSES, DEFECTS, "cpu", input_px=PX).predict(
+        np.zeros((PX, PX, 3), np.uint8), "unknown")
+    assert abs(sum(est.probs.values()) - 1) < 1e-5
+
+
+def test_lp_epochs_keep_the_backbone_fixed(tmp_path):
+    args = _fixture(tmp_path)
+    out = tmp_path / "m"
+    assert train_cause.main(["--fold", "0", "--epochs", "1", "--batch", "8", "--out", str(out), "--lp-epochs", "1",
+                             "--report", str(tmp_path / "r.md"),
+                             *args]) == 0
+    trained = torch.load(out / "fold0.pt", weights_only=True)["state_dict"]
+    torch.manual_seed(0)
+    init = train_cause.make_model(len(CAUSES), False, False).state_dict()
+    assert torch.equal(trained["backbone.conv1.weight"], init["backbone.conv1.weight"])
+    assert torch.equal(trained["backbone.bn1.running_mean"], init["backbone.bn1.running_mean"])  # BN frozen too
+    assert not torch.equal(trained["head.weight"], init["head.weight"])

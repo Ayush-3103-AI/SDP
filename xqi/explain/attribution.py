@@ -64,6 +64,43 @@ def eigencam(model, frame: Frame, layer: str, xyxy: Sequence[float], input_px: i
     return np.clip(heat[y1:y2, x1:x2], 0, 1)
 
 
+def gradcam(model, crop_bgr: np.ndarray, layer: str, cause: str, causes: Sequence[str], input_px: int = 224,
+            heads: int = 1) -> np.ndarray:
+    """Class-discriminative map for `cause` on the cause net: ReLU(Σ_k mean(∂s/∂A_k) A_k) at `layer`, in [0, 1],
+    the size of crop_bgr (the crop CauseModel.predict classified).
+
+    s = log p(cause) for the 9-way head; for 4 heads the un-normalised joint log p(v side) + Σ_{u≠v} log p(u good)
+    that joint_to_causes uses. Unlike EigenCAM (one map whatever the card says), each cause gets its own map.
+    """
+    from xqi.explain.cause_model import HEAD_VARS
+
+    captured = []
+    handle = attrgetter(layer)(model).register_forward_hook(lambda _m, _i, out: captured.append(out))
+    device = next(model.parameters()).device
+    x = to_input(crop_bgr, input_px).to(device).requires_grad_(True)  # a graph even if the weights are frozen
+    try:
+        with torch.enable_grad():
+            logits = model(x)
+            if heads == 1:
+                score = torch.log_softmax(logits, 1)[0, list(causes).index(cause)]
+            else:
+                lp = torch.log_softmax(logits.view(1, heads, 3), -1)[0]
+                score = lp[:, 1].sum()
+                if cause != "none":
+                    var, side = cause.rsplit("_", 1)
+                    v = HEAD_VARS.index(var)
+                    score = score - lp[v, 1] + lp[v, 0 if side == "low" else 2]
+            act = captured[-1]
+            grad = torch.autograd.grad(score, act)[0]
+    finally:
+        handle.remove()
+    heat = torch.relu((grad.mean((2, 3), keepdim=True) * act).sum(1))[0].detach().float().cpu().numpy()
+    peak = heat.max()
+    heat = heat / peak if peak > 0 else np.zeros_like(heat)
+    h, w = crop_bgr.shape[:2]
+    return np.clip(cv2.resize(heat.astype(np.float32), (w, h), interpolation=cv2.INTER_LINEAR), 0, 1)
+
+
 def save_heatmap_png(heat: np.ndarray, crop_bgr: np.ndarray, path: str | Path) -> None:
     """Overlay `heat` on the crop with COLORMAP_JET at alpha 0.4 and write a PNG."""
     color = cv2.applyColorMap(np.uint8(np.clip(heat, 0, 1) * 255), cv2.COLORMAP_JET)

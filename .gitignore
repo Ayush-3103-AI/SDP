@@ -9,6 +9,12 @@ models/cause/*
 !models/cause/final.pt
 !models/cause/qhat.json
 !models/cause/preds_*.npz
+!models/cause/recal_t/
+models/cause/recal_t/*
+!models/cause/recal_t/calibration.json
+!models/cause/recal_t/qhat.json
+!models/cause/v2/
+models/cause/v2/**/fold*.pt
 runs/
 graphify-out/
 .graphify/

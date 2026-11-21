@@ -57,10 +57,11 @@ cause_model:
   input_px: 224
   device: "cuda:0"
   use_defect: false   # CAXTON has no defect class per image (ADR-0009); true = REU-style one-hot input
+  calibration: models/cause/recal_t/calibration.json   # temperature only (scripts/recalibrate.py); null = raw softmax
 
 conformal:
   alpha: 0.10
-  qhat_file: models/cause/qhat.json
+  qhat_file: models/cause/recal_t/qhat.json   # must match cause_model.calibration (eval_conformal on its preds)
 
 correction:
   d_min:
@@ -122,6 +123,7 @@ verify:
 attribution:
   enabled: true
   layer: "backbone.layer4"   # cause-model ResNet18 last block (07 §11); "model.model.9" = YOLO11 SPPF
+  method: gradcam            # a map for the card's top cause; eigencam = one map whatever the cause
 
 proactive:            # early warning, 07 §13
   enabled: true

@@ -117,3 +117,35 @@ def test_real_best_pt_heatmap_fast():
     assert heat.shape == (300, 300) and heat.dtype == np.float32
     assert 0.0 <= heat.min() and heat.max() <= 1.0
     assert dt < 0.025, f"eigencam took {dt * 1000:.1f} ms"
+
+
+def _gradcam_model(tmp_path, heads=1):
+    from xqi.explain.attribution import gradcam
+    torch.manual_seed(0)
+    weights = tmp_path / f"cause{heads}.pt"
+    save_checkpoint(build_model(len(CAUSES) if heads == 1 else 12, 0, pretrained=False), weights, heads=heads)
+    return gradcam, CauseModel(weights, CAUSES, DEFECTS, "cpu")
+
+
+@pytest.mark.parametrize("heads", [1, 4])
+def test_gradcam_is_class_discriminative(tmp_path, heads):
+    gradcam, cm = _gradcam_model(tmp_path, heads)
+    image = np.random.default_rng(0).integers(0, 256, (100, 140, 3), dtype=np.uint8)
+    maps = {c: gradcam(cm.model, image, "backbone.layer4", c, CAUSES, 224, heads) for c in ("flow_low", "z_offset_high")}
+    for heat in maps.values():
+        assert heat.shape == (100, 140) and heat.dtype == np.float32 and heat.min() >= 0 and heat.max() <= 1
+    a, b = (maps[c].ravel() for c in maps)
+    assert not np.allclose(a, b, atol=1e-3)  # EigenCAM would give the same map for both
+
+
+def test_gradcam_fails_open_to_randomised_weights(tmp_path):
+    """Adebayo sanity check: re-initialising the explained block must change the map."""
+    gradcam, cm = _gradcam_model(tmp_path)
+    image = np.random.default_rng(1).integers(0, 256, (64, 64, 3), dtype=np.uint8)
+    before = gradcam(cm.model, image, "backbone.layer4", "flow_low", CAUSES, 224)
+    torch.manual_seed(5)
+    for m in cm.model.backbone.layer4.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal_(m.weight)
+    after = gradcam(cm.model, image, "backbone.layer4", "flow_low", CAUSES, 224)
+    assert np.corrcoef(before.ravel(), after.ravel())[0, 1] < 0.9

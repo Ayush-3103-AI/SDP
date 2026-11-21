@@ -213,7 +213,8 @@ class Orchestrator:
         if self.cfg.mode != "gated-recipe" and self.cfg.attribution.enabled and self.heat_model is not None:
             if roi is None:  # a warning brings its nozzle ROI; a defect, the crop the cause model classified
                 roi = crop(frame.image, cd.xyxy, self.cfg.cause_model.crop_pad)
-            self.jobs.put(partial(self._heatmap, cd, replace(frame, image=roi)))  # FR-009: after dispatch
+            top = est.top if est is not None else None  # the cause the card names
+            self.jobs.put(partial(self._heatmap, cd, replace(frame, image=roi), top))  # FR-009: after dispatch
 
     def process_operator_decisions(self) -> None:
         """FR-017/018: the UI is untrusted, so every apply/modify is re-gated on the current state."""
@@ -309,14 +310,19 @@ class Orchestrator:
         finally:
             store.close()
 
-    def _heatmap(self, cd, roi: Frame, store) -> None:
-        """EigenCAM on the cause net; roi.image is the crop it classified (a defect's box or a warning's ROI)."""
+    def _heatmap(self, cd, roi: Frame, cause: str | None, store) -> None:
+        """EigenCAM, or Grad-CAM for the card's top cause, on the cause net; roi.image is the crop it classified."""
         # Lazy: keeps the torch import off the start-up path.
         from xqi.explain import attribution
 
         h, w = roi.image.shape[:2]
-        heat = attribution.eigencam(self.heat_model, roi, self.cfg.attribution.layer, (0, 0, w, h),
-                                    self.cfg.cause_model.input_px)
+        if self.cfg.attribution.method == "gradcam" and cause is not None:
+            cm = self.explainer.cause_model
+            heat = attribution.gradcam(self.heat_model, roi.image, self.cfg.attribution.layer, cause, cm.causes,
+                                       self.cfg.cause_model.input_px, cm.heads)
+        else:
+            heat = attribution.eigencam(self.heat_model, roi, self.cfg.attribution.layer, (0, 0, w, h),
+                                        self.cfg.cause_model.input_px)
         path = self.store.path.parent / "heatmaps" / f"{cd.defect_id}.png"
         attribution.save_heatmap_png(heat, roi.image, path)
         store.write_defect(cd, heatmap_path=str(path))

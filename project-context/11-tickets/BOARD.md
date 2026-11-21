@@ -56,7 +56,7 @@ then build-ahead (SEQUENCE rule 7): 0015, 0017, 0063, 0036 on synthetic fixtures
 | T-0010 Build the cause evaluation harness and the majority floor | C | MUST | DONE |
 | T-0011 Implement the cause model (architecture, predict, training step) | C | MUST | DONE |
 | T-0012 Train the cause model on leave-parts-out fold 0 (early read on A3) | P | MUST | DONE (below floor; reports/cause_diagnostics.md) |
-| T-0013 Run the full leave-parts-out cross-validation and the K2 kill check | P | MUST | WAITING-GPU (K2 FAIL on incomplete data 11-11 + frozen probes on complete data 11-16; complete-data fine-tune: docs/gpu-runs/SITTING-2026-11-16.md step 4) |
+| T-0013 Run the full leave-parts-out cross-validation and the K2 kill check | P | MUST | WAITING-GPU (K2 FAIL: 11-19 complete-data fine-tune 0.209 vs floor 0.254; recalibrated 0.294, +4.1 pp, still FAIL; v2 recipe on clean labels: docs/gpu-runs/SITTING-2026-11-21.md) |
 | T-0014 Implement split-conformal calibration and prediction sets | C | MUST | DONE |
 | T-0015 Evaluate conformal coverage on the leave-parts-out folds and save the runtime qhat | C | MUST | WAITING-GPU (after G3, CPU: docs/gpu-runs/T-0015.md) |
 | T-0016 Implement proposal and counterfactual generation (severity-scaled Δ, G-code, sentence) | C | MUST | DONE |

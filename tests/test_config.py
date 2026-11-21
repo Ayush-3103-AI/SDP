@@ -201,3 +201,23 @@ def test_use_defect_must_be_bool(tmp_path):
 
     with pytest.raises(ConfigError, match=r"cause_model\.use_defect"):
         load(path)
+
+
+def test_optional_calibration_and_attribution_method(tmp_path):
+    import yaml
+
+    from xqi.config import ConfigError, load
+
+    data = yaml.safe_load(Path("config/default.yaml").read_text(encoding="utf-8"))
+    cfg = load("config/default.yaml")
+    assert cfg.cause_model.calibration is None and cfg.attribution.method == "eigencam"
+    data["cause_model"]["calibration"] = "models/cause/calibration.json"
+    data["attribution"]["method"] = "gradcam"
+    path = tmp_path / "c.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    cfg = load(path)
+    assert cfg.cause_model.calibration == "models/cause/calibration.json" and cfg.attribution.method == "gradcam"
+    data["attribution"]["method"] = "lime"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load(path)

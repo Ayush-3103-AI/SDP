@@ -64,6 +64,7 @@ class CauseModelConfig:
     input_px: int
     device: str
     use_defect: bool
+    calibration: str | None = None  # calibration.json from scripts/recalibrate.py (its "final" entry); None = raw
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,6 +135,7 @@ class VerifyConfig:
 class AttributionConfig:
     enabled: bool
     layer: str
+    method: str = "eigencam"  # "gradcam" = a map for the card's top cause (class-discriminative)
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,6 +302,7 @@ def _build_config(data: dict[str, Any]) -> Config:
         input_px=int(cause_model_data["input_px"]),
         device=str(cause_model_data["device"]),
         use_defect=use_defect,
+        calibration=None if cause_model_data.get("calibration") is None else str(cause_model_data["calibration"]),
     )
 
     conformal_data = _require(data, "conformal")
@@ -416,7 +419,10 @@ def _build_config(data: dict[str, Any]) -> Config:
     attribution = AttributionConfig(
         enabled=bool(attribution_data["enabled"]),
         layer=str(attribution_data["layer"]),
+        method=str(attribution_data.get("method", "eigencam")),
     )
+    if attribution.method not in ("eigencam", "gradcam"):
+        raise ConfigError("attribution.method: must be eigencam or gradcam")
 
     proactive = _build_proactive(_require(data, "proactive"))
 

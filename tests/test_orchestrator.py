@@ -537,3 +537,27 @@ def test_warning_heatmap(tmp_path, monkeypatch):
     assert row["cls"] == "early_warning"
     assert Path(row["heatmap_path"]) == tmp_path / "run" / "heatmaps" / f"{row['defect_id']}.png"
     assert Path(row["heatmap_path"]).exists() and Path(row["crop_path"]).exists()
+
+
+def test_gradcam_heatmap_explains_the_cards_top_cause(tmp_path, monkeypatch):
+    import sys
+
+    from xqi.explain import attribution
+
+    calls = []
+
+    def fake_gradcam(model, crop_bgr, layer, cause, causes, input_px, heads):
+        calls.append((cause, tuple(causes), heads))
+        return np.ones((4, 4), np.float32)
+
+    monkeypatch.setattr(attribution, "gradcam", fake_gradcam)
+    monkeypatch.setattr(attribution, "eigencam", lambda *a: pytest.fail("eigencam used"))
+    monkeypatch.setattr(sys.modules[__name__], "CFG",
+                        replace(CFG, attribution=replace(CFG.attribution, method="gradcam")))
+
+    class GradExplainer(SetExplainer):
+        cause_model = SimpleNamespace(model=SimpleNamespace(name="cause net"), causes=("none", "flow_low"), heads=1)
+
+    _, db = _run(tmp_path, "auto", _always("under_extrusion"), GradExplainer("flow_low"))
+    assert calls == [("flow_low", ("none", "flow_low"), 1)]
+    assert Path(db.query("SELECT heatmap_path FROM defects")[0]["heatmap_path"]).exists()

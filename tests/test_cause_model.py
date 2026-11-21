@@ -75,3 +75,17 @@ def test_checkpoint_use_defect_mismatch_refused(tmp_path):
 
     with pytest.raises(ValueError, match="use_defect"):
         CauseModel(weights, CAUSES, DEFECTS, "cpu", use_defect=True)
+
+
+def test_calibration_is_the_recalibrate_transform(tmp_path):
+    from caxton_fixture import load_script
+    recal = load_script("recalibrate")
+    weights = tmp_path / "cause.pt"
+    save_checkpoint(build_model(len(CAUSES), 0, pretrained=False), weights)
+    cal = {"T": 2.5, "tau": 0.75, "log_prior": np.log(np.arange(1, 10) / 45).tolist()}
+    raw = CauseModel(weights, CAUSES, DEFECTS, "cpu")
+    adj = CauseModel(weights, CAUSES, DEFECTS, "cpu", calibration=cal)
+    crop = np.random.default_rng(0).integers(0, 256, (40, 40, 3), dtype=np.uint8)
+    p = np.array([[raw.predict(crop, "x").probs[c] for c in CAUSES]])
+    q = np.array([adj.predict(crop, "x").probs[c] for c in CAUSES])
+    np.testing.assert_allclose(q, recal.adjust(p, cal["T"], cal["tau"], cal["log_prior"])[0], atol=1e-5)

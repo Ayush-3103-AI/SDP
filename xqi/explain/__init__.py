@@ -81,5 +81,11 @@ def build_explainer(cfg) -> Explainer | None:
 
     causes = load_causes(cfg.causes_file).causes
     m = cfg.cause_model
-    model = CauseModel(weights, causes, DEFECTS, m.device, m.input_px, use_defect=m.use_defect)
+    calibration = None
+    if m.calibration:  # qhat must come from the same recalibrated probabilities (recalibrate → eval_conformal)
+        import json
+
+        calibration = json.loads(Path(m.calibration).read_text(encoding="utf-8"))["final"]
+    model = CauseModel(weights, causes, DEFECTS, m.device, m.input_px, use_defect=m.use_defect,
+                       calibration=calibration)
     return Explainer(model, conformal.load_qhat(qfile)["qhat"], causes, cfg)

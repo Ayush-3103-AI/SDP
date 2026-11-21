@@ -921,3 +921,26 @@ NEXT:      Gate on ADR-0009 (Q1–Q5) → Phase 2 delta → Phase 4 delta.
 - BROKE: nothing. STATE/BOARD/LOGBOOK were not updated by the cloud session; done here.
 - NEXT: Krish runs SITTING-2026-11-16. The complete-data fine-tune (G1) is the deciding K2 test; then the user decides
   pivot (ADR-0002 option 1) or DESCEND. User: approve D6 (T-0066), T-0024, T-0007.
+
+## 2026-11-21 — K2 diagnosis → CPU fixes + v2 recipe for the GPU (user asked: "do everything that can be done on CPU")
+- BUILT: scripts/recalibrate.py (T + prior / T-only on calib prints, cross-fit selection score, causal window,
+  --only); scripts/clean_labels.py (bogus z < −0.5 mm, CAXTON 15-frame gap, boundary-margin train file);
+  train_cause v2 flags (--heads 4, --lp-epochs, --lr-backbone, --aug safe, --loss plain, --ema, --train-rows; all off
+  by default); CauseModel reads `heads` and an optional calibration; attribution.gradcam (class-discriminative,
+  passes a randomisation check); config: cause_model.calibration, attribution.method (defaults unchanged);
+  caxton_demo.yaml uses T-only calibration + gradcam; probe_features --train-rows; joint_to_causes moved to
+  cause_model. Fixed eval_counterfactual merge (`cause` column collided with crops.csv → KeyError).
+  docs/gpu-runs/SITTING-2026-11-21.md (blocks A/B/C, pre-registered pick on calib cross-fit).
+  Reproduced data/images.csv + crops.csv from the public label CSV: sha256 matches Krish's (c3a1e6c3…).
+- RESULT: recalibration of the 11-19 fine-tune: top-1 0.209 → 0.294 (+4.1 pp vs floor, K2 still FAIL ≤ 5 pp),
+  ECE 0.26 → 0.05, balanced 0.177 → 0.152; T-only keeps top-1, ECE 0.055. Frozen probes on 19,958 crops: clean /
+  margin training labels +2–4 pp argmax top-1, +1.2 pp balanced; all variants converge after the prior term.
+  reports/label_experiments.md, label_audit.md, recalibration*.md. 362 tests pass on an idle CPU; ruff clean on
+  scripts/tests/xqi.
+- SURPRISE: 1,491 of 1,522 z_offset_low images have z ≤ −1 mm (README "incorrectly labelled"): the class is noise.
+  hotend_class is cut on the measured temperature, so the thermal-lag hypothesis was wrong. The prior term "wins" K2
+  by predicting z_offset_high (a manual cause) for almost everything: metric and product goal disagree.
+- BROKE: nothing new. Pre-existing: test_cli_run_mode_overrides_config fails on CPU-only machines since final.pt
+  landed (default.yaml device cuda:0). test_replay_fps_paces_playback flakes under heavy CPU load.
+- NEXT: Krish runs SITTING-2026-11-21 (A → B → C). User: K2 on the clean test set? metric for K2 (top-1 vs balanced)?
+  adopt gradcam + calibration in default.yaml? (DESCENDs, listed in STATE).

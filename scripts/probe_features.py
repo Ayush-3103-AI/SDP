@@ -32,8 +32,9 @@ sys.path[:0] = [str(ROOT), str(ROOT / "scripts")]
 from train_cause import CLS_COLS, Crops, class_weights, nll
 
 from xqi.config import load_causes
+from xqi.explain.cause_model import HEAD_VARS, joint_to_causes
 
-VARS = ["flow", "speed", "z_offset", "nozzle_temp"]  # CLS_COLS order; 0 = low, 1 = good, 2 = high
+VARS = list(HEAD_VARS)  # CLS_COLS order; 0 = low, 1 = good, 2 = high
 WD_GRID = (1e-4, 1e-3, 1e-2, 1e-1)
 MAX_PER_PRINT, STEPS = 300, 300
 
@@ -51,22 +52,6 @@ def extract(crops: pd.DataFrame, batch: int, workers: int) -> np.ndarray:
             if i % 100 == 0:
                 print(f"  {i * batch} / {len(crops)}", flush=True)
     return np.concatenate(out).astype(np.float32)
-
-
-def joint_to_causes(p_heads: np.ndarray, labels: list[str]) -> np.ndarray:
-    """(n, 4, 3) per-head probabilities → (n, len(labels)) single-deviation cause probabilities, renormalised."""
-    good = p_heads[:, :, 1]
-    all_good = good.prod(1)
-    out = np.zeros((len(p_heads), len(labels)), np.float64)
-    for j, c in enumerate(labels):
-        if c == "none":
-            out[:, j] = all_good
-            continue
-        var, side = c.rsplit("_", 1)
-        v = VARS.index(var)
-        others = all_good / np.clip(good[:, v], 1e-12, None)
-        out[:, j] = p_heads[:, v, 0 if side == "low" else 2] * others
-    return (out / out.sum(1, keepdims=True)).astype(np.float32)
 
 
 def sample(df: pd.DataFrame, seed: int) -> np.ndarray:
@@ -98,10 +83,12 @@ def fit_linear(x, targets, weights, wd, n_out):
     return lambda z: torch.softmax((torch.from_numpy(z) @ w + b).view(-1, h, n_out), -1).numpy()
 
 
-def fit_fold(head, feats, crops, fold, labels, seed):
+def fit_fold(head, feats, crops, fold, labels, seed, train_keep=None):
     n = len(labels)
     idx = {k: crops.index[crops.trial_id.isin(fold[f"{k}_trials"])].to_numpy() for k in ("train", "calib", "test")}
     train = crops.loc[idx["train"]]
+    if train_keep is not None:  # --train-rows: cleaner training targets; calib and test rows untouched
+        train = train[train_keep[train.index]]
     if head == "single":
         train = train[train.y >= 0]
     rows = train.index.to_numpy()[sample(train.reset_index(drop=True), seed)]
@@ -149,6 +136,7 @@ def main(argv=None) -> int:
     ap.add_argument("--batch", type=int, default=64)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--train-rows", help="fit: train only on rows whose (trial_id, ts_s) are in this crops CSV")
     a = ap.parse_args(argv)
     crops = pd.read_csv(a.crops)
     if a.mode == "extract":
@@ -167,10 +155,13 @@ def main(argv=None) -> int:
     folds = json.loads(Path(a.splits).read_text(encoding="utf-8"))["folds"]
     out = Path(a.out or f"models/cause/{a.head}_cached")
     out.mkdir(parents=True, exist_ok=True)
-    summary = {}
+    summary, keep = {}, None
+    if a.train_rows:
+        rows = pd.read_csv(a.train_rows, usecols=["trial_id", "ts_s"])
+        keep = pd.MultiIndex.from_frame(crops[["trial_id", "ts_s"]]).isin(pd.MultiIndex.from_frame(rows))
     for k, fold in enumerate(folds):
         print(f"fold {k} ({a.head})", flush=True)
-        idx, r = fit_fold(a.head, feats, crops, fold, labels, a.seed)
+        idx, r = fit_fold(a.head, feats, crops, fold, labels, a.seed, keep)
         cal, te = crops.loc[idx["calib"]], crops.loc[idx["test"]]
         np.savez(out / f"preds_fold{k}.npz", labels=np.array(labels), probs_calib=r["probs_calib"],
                  y_calib=cal.y.to_numpy(), calib_trial=cal.trial_id.to_numpy(str), calib_ts=cal.ts_s.to_numpy(float),

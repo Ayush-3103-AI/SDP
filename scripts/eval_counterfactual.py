@@ -67,7 +67,7 @@ def deviations(crops: pd.DataFrame, events: list[dict], cause_action: dict) -> d
     out = {}
     for e in events:
         df = pd.DataFrame({"trial_id": e["trial"], "ts_s": e["ts"], "cause": [e["labels"][y] for y in e["y"]]})
-        df = df.merge(crops, on=["trial_id", "ts_s"], how="left")
+        df = df.merge(crops.drop(columns="cause", errors="ignore"), on=["trial_id", "ts_s"], how="left")
         for cause, g in df.groupby("cause"):
             var = cause_action[cause][0]
             out.setdefault(cause, []).extend((g[SETPOINT[var][0]] - good[var]).abs().dropna())
