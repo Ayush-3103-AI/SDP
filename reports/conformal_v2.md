@@ -60,4 +60,4 @@ Predictions: models\cause\v2\a1\recal_t/preds_fold*.npz. qhat per fold from its 
 
 ## Runtime qhat
 
-models\cause\v2\a1\recal_t\preds_final.npz not found: qhat.json not written (run train_cause.py --final first).
+models\cause\v2\a1\recal_t\qhat.json: qhat = 0.9382 at α = 0.1 from 4552 calibration images of models\cause\v2\a1\recal_t\preds_final.npz.
