@@ -1,0 +1,1694 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XQI Project Review</title>
+<meta name="description" content="SDP project review: explainable, safe human-in-the-loop correction for FFF 3D printing (CARR Topic 4.1.3 slice).">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ---------- tokens ---------- */
+:root{
+  color-scheme: dark;
+  --bg:#0e0f0f; --surface:#161717; --surface-2:#1e1f1f; --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
+  --ink:#f0efec; --ink-2:#c3c2b7; --muted:#97958d;
+  --accent:#ff8a3d; --accent-soft:rgba(255,138,61,.14); --on-accent:#1a0d04;
+  --series:#3987e5; --series-2:#9085e9;
+  --good:#0ca30c; --good-ink:#3cc23c; --bad:#d03b3b; --bad-ink:#ef7a7a; --warn:#fab219; --warn-ink:#fab219;
+  --pending:#97958d; --grid:#2c2c2a; --axis:#383835;
+  --hatch:rgba(239,122,122,.16);
+  --shadow:0 20px 60px rgba(0,0,0,.45);
+  --ease-out:cubic-bezier(0.23,1,0.32,1); --ease-io:cubic-bezier(0.77,0,0.175,1);
+  --r:14px; --r-s:8px;
+  --rail:220px;
+}
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#f6f6f3; --surface:#fcfcfb; --surface-2:#efeeea; --line:rgba(11,11,11,.10); --line-2:rgba(11,11,11,.18);
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#64635e;
+  --accent:#c2410c; --accent-soft:rgba(194,65,12,.10); --on-accent:#ffffff;
+  --series:#2a78d6; --series-2:#6250d6;
+  --good:#0ca30c; --good-ink:#006300; --bad:#d03b3b; --bad-ink:#b42323; --warn:#fab219; --warn-ink:#8a5a00;
+  --pending:#64635e; --grid:#e1e0d9; --axis:#c3c2b7;
+  --hatch:rgba(208,59,59,.10);
+  --shadow:0 20px 50px rgba(40,38,30,.12);
+}
+
+/* ---------- base ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:17px;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.02em;line-height:1.12}
+h2{font-size:clamp(1.9rem,3.4vw,3rem);max-width:22ch}
+h3{font-size:1.15rem;letter-spacing:-.01em}
+p{margin:0}
+a{color:inherit}
+code,.mono{font-family:"Geist Mono",ui-monospace,monospace;font-size:.86em}
+code{background:var(--surface-2);border:1px solid var(--line);padding:.08em .4em;border-radius:6px;white-space:nowrap}
+img{max-width:100%;height:auto;display:block}
+.lede{color:var(--ink-2);font-size:1.08rem;max-width:62ch;margin-top:1rem}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- progress + rail ---------- */
+.progress{position:fixed;inset:0 0 auto 0;height:3px;z-index:40;background:var(--accent);transform-origin:0 50%;transform:scaleX(0)}
+@supports (animation-timeline: scroll()){
+  .progress{animation:grow linear both;animation-timeline:scroll(root)}
+  @keyframes grow{to{transform:scaleX(1)}}
+}
+.rail{position:fixed;top:0;left:0;bottom:0;width:var(--rail);padding:28px 18px 20px 22px;display:flex;flex-direction:column;gap:22px;z-index:30;border-right:1px solid var(--line);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px)}
+.brand{font-weight:600;letter-spacing:-.01em;font-size:1rem;line-height:1.25}
+.brand span{display:block;color:var(--muted);font-weight:400;font-size:.8rem;margin-top:2px}
+.rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;flex:1}
+.rail a{display:flex;gap:10px;align-items:center;text-decoration:none;color:var(--muted);font-size:.86rem;padding:6px 8px;border-radius:8px;transition:color .2s ease,background-color .2s ease}
+.rail a i{font-style:normal;font-family:"Geist Mono",monospace;font-size:.72rem;width:1.6em;color:var(--muted)}
+.rail a:hover{color:var(--ink)}
+.rail a[aria-current="true"]{color:var(--ink);background:var(--surface-2)}
+.rail a[aria-current="true"] i{color:var(--accent)}
+.controls{display:flex;gap:8px;flex-wrap:wrap}
+.btn{appearance:none;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font:inherit;font-size:.84rem;padding:7px 12px;border-radius:999px;cursor:pointer;transition:transform 160ms var(--ease-out),background-color .2s ease;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent;font-weight:600}
+@media (hover:hover) and (pointer:fine){.btn:hover{background:var(--surface-2)}.btn.primary:hover{background:var(--accent);filter:brightness(1.06)}}
+kbd{font-family:"Geist Mono",monospace;font-size:.75em;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:5px;padding:0 .4em;color:var(--ink-2)}
+.topbar{display:none}
+
+main{margin-left:var(--rail)}
+.wrap{max-width:1320px;margin:0 auto;padding:0 clamp(16px,4vw,56px)}
+section{padding:clamp(72px,10vh,120px) 0;border-top:1px solid var(--line);scroll-margin-top:0}
+section.hero{border-top:0}
+.sec-head{margin-bottom:clamp(28px,4vw,48px)}
+
+@media (max-width:1099px){
+  .rail{display:none}
+  main{margin-left:0}
+  .topbar{display:flex;position:sticky;top:0;z-index:30;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px)}
+  .topbar .where{font-size:.85rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .topbar .where b{color:var(--ink);font-weight:500}
+}
+
+/* ---------- reveal ---------- */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s var(--ease-out),transform .7s var(--ease-out);transition-delay:var(--d,0ms)}
+.reveal.in{opacity:1;transform:none}
+
+/* ---------- hero ---------- */
+.hero{min-height:100dvh;display:flex;align-items:center;padding:clamp(40px,6vh,80px) 0}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(28px,5vw,72px);align-items:center}
+.eyebrow{font-family:"Geist Mono",monospace;font-size:.78rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.hero h1{font-size:clamp(2.2rem,3.7vw,3.6rem);margin-top:18px;max-width:19ch;letter-spacing:-.035em}
+.hero .lede{font-size:clamp(1.05rem,1.4vw,1.2rem)}
+.hero .cta{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}
+.hero .cta .btn{padding:11px 18px;font-size:.95rem}
+.hero-fig{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);background:var(--surface)}
+.hero-fig img{width:100%;aspect-ratio:1310/1260;object-fit:cover}
+.hero-fig figcaption{padding:12px 16px;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line)}
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:clamp(36px,6vh,64px);border-top:1px solid var(--line)}
+.hero-stats div{padding:18px 18px 0 0}
+.stat-n{font-size:clamp(1.6rem,2.6vw,2.3rem);font-weight:600;letter-spacing:-.03em;line-height:1}
+.stat-l{color:var(--muted);font-size:.84rem;margin-top:8px;line-height:1.35}
+
+/* ---------- problem ---------- */
+.problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,56px);align-items:start}
+.quote{font-size:clamp(1.3rem,2.2vw,1.8rem);line-height:1.3;letter-spacing:-.02em;font-weight:500;max-width:24ch}
+.verdicts{display:grid;gap:10px;margin-top:26px}
+.verdict{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface)}
+.recipes{display:grid;gap:10px}
+.recipe{border:1px solid var(--line);border-radius:var(--r-s);padding:14px 16px;background:var(--surface)}
+.recipe h4{font-size:.95rem;font-weight:500;margin-bottom:8px}
+.gchips{display:flex;gap:6px;flex-wrap:wrap}
+.gchip{font-family:"Geist Mono",monospace;font-size:.78rem;padding:3px 8px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line)}
+.gchip.bad{border-color:color-mix(in srgb,var(--bad) 55%,transparent);color:var(--bad-ink)}
+.callout{margin-top:22px;padding:18px 20px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 var(--r-s) var(--r-s) 0}
+.callout b{font-weight:600}
+
+/* ---------- status pills ---------- */
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:500;padding:3px 10px;border-radius:999px;border:1px solid var(--line-2);white-space:nowrap;font-family:"Geist Mono",monospace}
+.pill svg{width:12px;height:12px}
+.pill.pass{color:var(--good-ink);border-color:color-mix(in srgb,var(--good) 55%,transparent)}
+.pill.fail{color:var(--bad-ink);border-color:color-mix(in srgb,var(--bad) 60%,transparent)}
+.pill.wait{color:var(--muted);border-style:dashed}
+.pill.drop{color:var(--muted)}
+.pill.warn{color:var(--warn-ink);border-color:color-mix(in srgb,var(--warn) 55%,transparent)}
+
+/* ---------- root cause ---------- */
+.rc-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:clamp(24px,4vw,56px);align-items:start}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.compare>div{background:var(--surface);padding:20px}
+.compare h3{margin-bottom:10px}
+.compare .out{font-family:"Geist Mono",monospace;font-size:.84rem;padding:10px 12px;border-radius:8px;background:var(--surface-2);margin:10px 0 12px;line-height:1.5}
+.compare ul{margin:0;padding-left:1.1em;color:var(--ink-2);font-size:.92rem}
+.compare li+li{margin-top:4px}
+.tax{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:stretch;margin-top:8px}
+.tax .h{font-size:.78rem;color:var(--muted);font-family:"Geist Mono",monospace;align-self:end;padding:0 4px}
+.tax .var{display:flex;flex-direction:column;justify-content:center;padding:10px 12px 10px 0;font-weight:500;font-size:.95rem}
+.tax .var small{color:var(--muted);font-weight:400;font-family:"Geist Mono",monospace;font-size:.74rem}
+.cell{border:1px solid var(--line);border-radius:var(--r-s);padding:10px 12px;background:var(--surface);transition:border-color .2s ease}
+.cell b{font-family:"Geist Mono",monospace;font-weight:500;font-size:.82rem;display:block}
+.cell span{font-size:.8rem;color:var(--muted)}
+.cell.none-cell{grid-column:2 / span 2}
+@media (hover:hover) and (pointer:fine){.cell:hover{border-color:var(--accent)}}
+
+/* ---------- objectives ---------- */
+.metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.metric{border:1px solid var(--line);border-radius:var(--r);padding:18px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
+.metric .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.metric .id{font-family:"Geist Mono",monospace;color:var(--muted);font-size:.8rem}
+.metric p{font-size:.92rem;color:var(--ink-2)}
+.metric .thr{font-family:"Geist Mono",monospace;font-size:.8rem;color:var(--ink)}
+.kgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:40px}
+.kcard{padding:20px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface-2)}
+.kcard .k{font-size:2rem;font-weight:600;letter-spacing:-.03em;line-height:1}
+.kcard p{font-size:.9rem;color:var(--ink-2);margin-top:10px}
+.kcard .pill{margin-top:12px}
+.scope{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:40px}
+.scope>div{padding:20px;border-radius:var(--r);border:1px solid var(--line)}
+.scope .out{border-style:dashed}
+.scope ul{margin:10px 0 0;padding-left:1.1em;color:var(--ink-2);font-size:.93rem}
+.subhead{font-size:1.25rem;margin:56px 0 18px}
+
+/* ---------- architecture ---------- */
+.arch{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(20px,4vw,48px);align-items:start}
+.arch-svg-wrap{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:12px}
+#pipe{width:100%;height:auto;display:block;max-height:86vh}
+#pipe .node rect{fill:var(--surface-2);stroke:var(--line-2);stroke-width:1;transition:stroke .2s ease,fill .2s ease}
+#pipe .node text{fill:var(--ink);font-family:"Geist",sans-serif;font-size:13px;font-weight:500;pointer-events:none}
+#pipe .node text.sub{fill:var(--muted);font-size:10.5px;font-weight:400;font-family:"Geist Mono",monospace}
+#pipe .node{cursor:pointer;outline:none}
+#pipe .node.hot rect{stroke:var(--accent);stroke-width:1.6}
+#pipe .node.sel rect{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+#pipe .node:focus-visible rect{stroke:var(--accent);stroke-width:2.5}
+#pipe .node.boundary rect{stroke-dasharray:5 4}
+#pipe .grp{fill:none;stroke:var(--line-2);stroke-dasharray:2 4}
+#pipe .glabel{fill:var(--muted);font-size:10.5px;font-family:"Geist Mono",monospace}
+#pipe .flow{fill:none;stroke:var(--axis);stroke-width:1.5;stroke-dasharray:4 5;animation:dash 1.2s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-9}}
+#pipe .ann{fill:var(--muted);font-size:10.5px;font-family:"Geist Mono",monospace}
+#pipe .ann.bad{fill:var(--bad-ink)}
+#pipe .block{stroke:var(--bad-ink);stroke-width:1.4;fill:none}
+#pipe .bline{stroke:var(--accent);stroke-dasharray:6 5;stroke-width:1.2}
+#pipe .frame{fill:var(--accent)}
+.detail{position:sticky;top:24px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:24px;min-height:320px}
+.detail .kicker{font-family:"Geist Mono",monospace;font-size:.78rem;color:var(--accent)}
+.detail h3{font-size:1.5rem;margin:6px 0 12px}
+.detail p{color:var(--ink-2)}
+.detail dl{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;margin:20px 0 0;font-size:.9rem}
+.detail dt{color:var(--muted)}
+.detail dd{margin:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.detail-body{transition:opacity .18s ease,filter .18s ease}
+.detail-body.swap{opacity:.2;filter:blur(2px)}
+.hint{margin-top:14px;font-size:.84rem;color:var(--muted)}
+
+/* ---------- built ---------- */
+.built-top{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:36px}
+.tile{border:1px solid var(--line);border-radius:var(--r);padding:18px;background:var(--surface)}
+.lanes{display:grid;gap:0;border-top:1px solid var(--line)}
+.lane{display:grid;grid-template-columns:220px 1fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
+.lane h3{font-size:.98rem;font-weight:500}
+.lane h3 small{display:block;color:var(--muted);font-weight:400;font-size:.78rem;font-family:"Geist Mono",monospace;margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.tchip{font-family:"Geist Mono",monospace;font-size:.74rem;padding:5px 8px;border-radius:6px;border:1px solid var(--line-2);background:var(--surface);cursor:default;opacity:0;transform:scale(.96);transition:opacity .4s var(--ease-out),transform .4s var(--ease-out);transition-delay:var(--d,0ms)}
+.in .tchip{opacity:1;transform:none}
+.tchip.done{background:color-mix(in srgb,var(--good) 22%,var(--surface));border-color:color-mix(in srgb,var(--good) 55%,transparent)}
+.tchip.open{border-style:dashed;border-color:var(--warn);color:var(--ink)}
+.tchip.dropped{color:var(--muted);text-decoration:line-through;background:transparent}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.84rem;color:var(--ink-2);margin:0 0 14px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line-2)}
+.sw.done{background:color-mix(in srgb,var(--good) 40%,var(--surface));border-color:var(--good)}
+.sw.open{border:1px dashed var(--warn)}
+.sw.dropped{background:transparent}
+.shot{margin-top:40px;display:grid;grid-template-columns:1.3fr .7fr;gap:24px;align-items:center}
+.shot figure{margin:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.shot figcaption{padding:10px 14px;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);background:var(--surface)}
+
+/* ---------- charts ---------- */
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:clamp(18px,2vw,26px);min-width:0}
+.card h3{margin-bottom:6px}
+.card .cap{color:var(--muted);font-size:.86rem;margin-bottom:18px}
+.span-2{grid-column:span 2}.span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-6{grid-column:span 6}
+.card-head{display:flex;justify-content:space-between;gap:12px;align-items:start;flex-wrap:wrap}
+.big{font-size:clamp(2.6rem,5vw,4.2rem);font-weight:600;letter-spacing:-.04em;line-height:1}
+.big small{font-size:.38em;color:var(--muted);font-weight:400;letter-spacing:0;margin-left:6px}
+
+.hb{display:grid;gap:9px;position:relative}
+.hb-row{display:grid;grid-template-columns:var(--lw,150px) 1fr 64px;gap:12px;align-items:center;font-size:.85rem}
+.hb-l{color:var(--ink-2);font-family:"Geist Mono",monospace;font-size:.78rem;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-v{font-family:"Geist Mono",monospace;font-size:.8rem;font-variant-numeric:tabular-nums;color:var(--ink)}
+.hb-plot{position:relative;height:18px;border-left:1px solid var(--axis)}
+.hb-bar{position:absolute;left:0;top:3px;bottom:3px;width:var(--w);background:var(--c,var(--series));border-radius:0 4px 4px 0;transform-origin:left center;transform:scaleX(0);transition:transform .9s var(--ease-out);transition-delay:var(--d,0ms)}
+.in .hb-bar{transform:scaleX(1)}
+.hb-bar.dim{--c:color-mix(in srgb,var(--series) 45%,var(--surface))}
+.hb-bar.pend{background:transparent;border:1.5px dashed var(--pending);border-left:0}
+.hb-ref{position:absolute;top:-4px;bottom:-4px;width:0;border-left:2px solid var(--ink)}
+.hb-ref.dash{border-left:2px dashed var(--bad-ink)}
+.hb-ref.soft{border-left:1.5px dashed var(--ink-2)}
+.hb-ref.chance{border-left:1.5px dotted var(--muted)}
+.hb-zone{position:absolute;top:0;bottom:0;left:0;background:repeating-linear-gradient(135deg,var(--hatch) 0 4px,transparent 4px 8px)}
+.hb-gl{position:absolute;top:0;bottom:0;border-left:1px solid var(--grid)}
+.hb-axis{display:grid;grid-template-columns:var(--lw,150px) 1fr 64px;gap:12px;font-family:"Geist Mono",monospace;font-size:.72rem;color:var(--muted)}
+.hb-axis div{position:relative;height:16px}
+.hb-axis div span{position:absolute;transform:translateX(-50%)}
+.hb-pendtxt{position:absolute;left:6px;background:var(--surface);padding:0 4px;border-radius:3px;top:50%;transform:translateY(-50%);font-size:.72rem;color:var(--muted);font-family:"Geist Mono",monospace;white-space:nowrap}
+.keys{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.8rem;color:var(--ink-2);margin-bottom:14px}
+.keys span{display:inline-flex;align-items:center;gap:7px}
+.k-bar{width:16px;height:8px;border-radius:2px;background:var(--series)}
+.k-ref{width:0;height:14px;border-left:2px solid var(--ink)}
+.k-k2{width:0;height:14px;border-left:2px dashed var(--bad-ink)}
+.k-nfr{width:0;height:14px;border-left:1.5px dashed var(--ink-2)}
+.k-chance{width:0;height:14px;border-left:1.5px dotted var(--muted)}
+.k-zone{width:16px;height:12px;background:repeating-linear-gradient(135deg,var(--hatch) 0 3px,transparent 3px 6px);border:1px solid var(--line)}
+.k-pend{width:16px;height:8px;border:1.5px dashed var(--pending)}
+
+.stack{display:flex;height:34px;border-radius:6px;overflow:hidden;gap:2px}
+.stack div{height:100%;transform-origin:left;transform:scaleX(0);transition:transform .9s var(--ease-out);transition-delay:var(--d,0ms)}
+.in .stack div{transform:scaleX(1)}
+.stack-keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:14px;font-size:.82rem}
+.stack-keys b{display:block;font-family:"Geist Mono",monospace;font-weight:500;font-size:.95rem;color:var(--ink)}
+.stack-keys span{color:var(--muted);display:flex;gap:6px;align-items:center}
+
+.waffle{display:grid;grid-template-columns:repeat(19,1fr);gap:4px;max-width:520px}
+.waffle i{aspect-ratio:1;border-radius:3px;display:block;opacity:0;transform:scale(.9);transition:opacity .35s var(--ease-out),transform .35s var(--ease-out);transition-delay:var(--d,0ms)}
+.in .waffle i{opacity:1;transform:none}
+.waffle i.pass{background:var(--good)}
+.waffle i.fail{background:var(--bad)}
+.waffle i.nodata{border:1.5px dashed var(--pending)}
+
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.rc{border:1px solid var(--line);border-radius:var(--r-s);padding:10px 12px;font-size:.82rem}
+.rc .v{font-family:"Geist Mono",monospace;font-size:.8rem;margin-top:4px}
+.rc.broke{border-color:color-mix(in srgb,var(--bad) 50%,transparent)}
+.rc .why{color:var(--muted);font-size:.76rem;margin-top:4px}
+
+.pend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.ptile{border:1px dashed var(--line-2);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:6px;min-height:150px}
+.ptile.has{border-style:solid}
+.ptile .lbl{font-size:.88rem;color:var(--ink-2)}
+.ptile .val{font-size:1.7rem;font-weight:600;letter-spacing:-.03em;line-height:1.1}
+.ptile .val.wait{font-size:.95rem;font-weight:500;color:var(--muted);font-family:"Geist Mono",monospace;letter-spacing:0;display:flex;align-items:center;gap:8px}
+.ptile .tgt{font-family:"Geist Mono",monospace;font-size:.74rem;color:var(--muted);margin-top:auto}
+.pulse{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--pending);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+
+svg.lc{width:100%;height:auto;display:block;overflow:visible}
+svg.lc text{font-family:"Geist Mono",monospace;font-size:10px;fill:var(--muted)}
+svg.lc .gl{stroke:var(--grid)}
+svg.lc .ax{stroke:var(--axis)}
+svg.lc .ln{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+svg.lc .draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);transition:stroke-dashoffset 1.4s var(--ease-io)}
+.in svg.lc .draw{stroke-dashoffset:0}
+svg.lc circle{stroke:var(--surface);stroke-width:2}
+svg.lc .hit{fill:transparent;stroke:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+details.tbl{margin-top:14px;font-size:.82rem}
+details.tbl summary{cursor:pointer;color:var(--muted);width:max-content;max-width:100%}
+details.tbl .tw{overflow-x:auto;margin-top:8px}
+details.tbl table{border-collapse:collapse;font-family:"Geist Mono",monospace;font-size:.76rem;min-width:100%}
+details.tbl th,details.tbl td{text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+details.tbl th{color:var(--muted);font-weight:400}
+
+/* ---------- failures ---------- */
+.fail-lead{display:grid;grid-template-columns:auto 1fr;gap:clamp(20px,4vw,48px);align-items:center;margin-bottom:28px}
+.fail-num{font-size:clamp(3.2rem,8vw,6.5rem);font-weight:600;letter-spacing:-.05em;line-height:.9;color:var(--bad-ink)}
+.errfig{margin:0}
+.errfig img{border-radius:var(--r-s);border:1px solid var(--line);width:100%}
+.errfig figcaption{font-size:.82rem;color:var(--muted);margin-top:10px}
+.split-bar{display:flex;height:30px;border-radius:6px;overflow:hidden;gap:2px;margin:14px 0 10px}
+.split-bar div{transform-origin:left;transform:scaleX(0);transition:transform 1s var(--ease-out);transition-delay:var(--d,0ms)}
+.in .split-bar div{transform:scaleX(1)}
+
+/* ---------- overcome ---------- */
+.gates{display:grid;grid-template-columns:repeat(3,1fr);gap:0;position:relative;counter-reset:g}
+.gate{padding:22px 22px 22px 0;position:relative}
+.gate::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--line-2)}
+.gate.now::before{background:var(--accent)}
+.gate .gid{font-family:"Geist Mono",monospace;font-size:.8rem;color:var(--muted);margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.gate.now .gid{color:var(--accent)}
+.gate p{font-size:.92rem;color:var(--ink-2);margin-top:8px}
+.gate .rule{font-family:"Geist Mono",monospace;font-size:.76rem;color:var(--ink);margin-top:12px;padding:8px 10px;border-radius:8px;background:var(--surface-2)}
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+.branch{border:1px solid var(--line);border-radius:var(--r);padding:20px;background:var(--surface)}
+.branch.alt{border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+.branch h3{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.branch ol,.branch ul{margin:12px 0 0;padding-left:1.2em;color:var(--ink-2);font-size:.92rem}
+.branch li+li{margin-top:6px}
+.fork-q{margin-top:44px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.fork-q .q{font-weight:600;font-size:1.15rem}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.steps li{border:1px solid var(--line);border-radius:var(--r-s);padding:14px;font-size:.88rem;color:var(--ink-2);display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.steps li b{color:var(--ink);font-weight:500}
+.steps .n{font-family:"Geist Mono",monospace;color:var(--accent);font-size:.8rem;grid-row:span 2}
+.steps .t{font-family:"Geist Mono",monospace;font-size:.74rem;color:var(--muted)}
+
+/* ---------- roadmap ---------- */
+.road{list-style:none;margin:0;padding:0;position:relative}
+.road::before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--line-2)}
+.road li{position:relative;padding:0 0 28px 44px}
+.road li::before{content:"";position:absolute;left:4px;top:5px;width:16px;height:16px;border-radius:50%;background:var(--bg);border:2px solid var(--line-2)}
+.road li.now::before{border-color:var(--accent);background:var(--accent)}
+.road h3{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.road p{color:var(--ink-2);font-size:.94rem;margin-top:6px;max-width:70ch}
+.road .who{font-family:"Geist Mono",monospace;font-size:.76rem;color:var(--muted)}
+.closing{min-height:100dvh;display:flex;align-items:center}
+.closing h2{font-size:clamp(2rem,3.6vw,3.4rem);max-width:24ch;letter-spacing:-.035em}
+.closing .three{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:48px;border-top:1px solid var(--line)}
+.closing .three div{padding:20px 24px 0 0}
+.closing .three b{display:block;font-size:1.05rem;margin-bottom:6px}
+.closing .three p{color:var(--ink-2);font-size:.94rem}
+.foot{margin-top:56px;font-size:.82rem;color:var(--muted)}
+
+/* ---------- replay ---------- */
+.rp-top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:999px;padding:3px;gap:3px;background:var(--surface)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:.86rem;padding:7px 14px;border-radius:999px;cursor:pointer;transition:background-color .2s ease,color .2s ease,transform 160ms var(--ease-out);white-space:nowrap}
+.seg button:active{transform:scale(.97)}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-2)}
+.rp-label{font-family:"Geist Mono",monospace;font-size:.76rem;color:var(--warn-ink);border:1px dashed color-mix(in srgb,var(--warn) 60%,transparent);border-radius:8px;padding:6px 10px;max-width:100%}
+.player{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:10px 16px;align-items:center}
+.player:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.pbtns{display:flex;gap:6px}
+.ibtn{appearance:none;width:38px;height:38px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink);display:grid;place-items:center;cursor:pointer;transition:transform 160ms var(--ease-out),background-color .2s ease}
+.ibtn:active{transform:scale(.94)}
+.ibtn.play{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.ibtn svg{width:16px;height:16px}
+.scrub{position:relative;min-width:0}
+.scrub input{width:100%;accent-color:var(--accent);margin:0;height:28px;cursor:pointer;position:relative;z-index:1}
+.ticks{position:absolute;left:8px;right:8px;top:-6px;height:8px;pointer-events:none}
+.ticks i{position:absolute;top:0;width:2px;height:8px;border-radius:1px;transform:translateX(-1px);background:var(--muted)}
+.ticks i.ok{background:var(--good)}
+.ticks i.bad{background:var(--bad)}
+.pmeta{display:flex;gap:12px;align-items:center;font-family:"Geist Mono",monospace;font-size:.78rem;color:var(--ink-2);white-space:nowrap}
+.pmeta select{font:inherit;background:var(--surface-2);color:var(--ink);border:1px solid var(--line-2);border-radius:8px;padding:5px 6px}
+.pread{grid-column:1 / -1;font-family:"Geist Mono",monospace;font-size:.76rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 16px}
+.pread b{color:var(--ink);font-weight:500}
+.strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:16px 0}
+.strip div{border:1px solid var(--line-2);border-radius:10px;padding:8px 6px;text-align:center;font-size:.78rem;font-weight:500;background:var(--surface-2);color:var(--muted);transition:border-color .25s ease,color .25s ease,background-color .25s ease;position:relative}
+.strip div small{display:block;font-family:"Geist Mono",monospace;font-weight:400;font-size:.66rem;margin-top:2px}
+.strip div.hot{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+.strip div.idle{opacity:.55}
+.rp-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 300px;gap:12px;align-items:start}
+.rp{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:16px;min-width:0;transition:border-color .3s ease}
+.rp.hot{border-color:color-mix(in srgb,var(--accent) 70%,var(--line))}
+.rp h3{font-size:.95rem;display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.rp h3 span.n{font-family:"Geist Mono",monospace;font-size:.72rem;color:var(--accent);font-weight:400}
+.rp .note{font-size:.76rem;color:var(--muted);margin-top:10px;line-height:1.45}
+.rp.wide{grid-column:span 2}
+.rp.dim .body{opacity:.45}
+.fimg{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);aspect-ratio:1;background:var(--surface-2)}
+.fimg img{width:100%;height:100%;object-fit:cover;transition:opacity .2s ease}
+.fmeta{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.8rem;margin-top:10px}
+.fmeta dt{color:var(--muted)}
+.fmeta dd{margin:0;font-family:"Geist Mono",monospace;font-size:.78rem;display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-family:"Geist Mono",monospace;font-size:.72rem;padding:2px 7px;border-radius:6px;border:1px solid var(--line-2);color:var(--ink-2);white-space:nowrap}
+.chip.in{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+.chip.out{opacity:.45;text-decoration:line-through}
+.chip.true{border-color:var(--good);color:var(--good-ink)}
+.pb{display:grid;gap:5px}
+.pb-row{display:grid;grid-template-columns:118px 1fr 44px;gap:8px;align-items:center;font-size:.74rem}
+.pb-row span:first-child{font-family:"Geist Mono",monospace;color:var(--ink-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-row .v{font-family:"Geist Mono",monospace;font-variant-numeric:tabular-nums;color:var(--ink)}
+.pb-row .t{position:relative;height:12px;border-left:1px solid var(--axis)}
+.pb-row .t i{position:absolute;left:0;top:1px;bottom:1px;width:100%;border-radius:0 3px 3px 0;background:color-mix(in srgb,var(--series) 45%,var(--surface));transform-origin:left;transform:scaleX(var(--p,0));transition:transform .28s var(--ease-out)}
+.pb-row.top .t i{background:var(--series)}
+.pb-row.tru span:first-child{color:var(--good-ink)}
+.pb-row.tru span:first-child::after{content:" ●";font-size:.6rem}
+.verdictline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;font-size:.84rem}
+.setsize{font-size:2rem;font-weight:600;letter-spacing:-.03em;line-height:1}
+.setsize small{font-size:.4em;color:var(--muted);font-weight:400;letter-spacing:0;margin-left:6px}
+.setchips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+svg.ew{width:100%;height:auto;display:block;overflow:visible}
+svg.ew text{font-family:"Geist Mono",monospace;font-size:9.5px;fill:var(--muted)}
+svg.ew .bg{stroke:var(--muted);stroke-opacity:.55;stroke-width:1;fill:none}
+svg.ew .fg{stroke:var(--series);stroke-width:2;fill:none;stroke-linejoin:round}
+svg.ew .on{stroke:var(--bad-ink);stroke-dasharray:5 4}
+svg.ew .off{stroke:var(--ink-2);stroke-dasharray:2 3}
+svg.ew .head{stroke:var(--accent);stroke-width:1.5}
+svg.ew .wm{stroke:var(--surface);stroke-width:2}
+svg.ew .rs{stroke:var(--grid)}
+.cam{display:grid;place-items:center;text-align:center;aspect-ratio:16/9;border:1.5px dashed var(--line-2);border-radius:10px;color:var(--muted);font-size:.8rem;padding:12px;gap:4px}
+.cam b{font-family:"Geist Mono",monospace;color:var(--ink-2);font-weight:500;font-size:.8rem}
+.cf{margin-top:12px;font-size:.84rem;color:var(--ink-2)}
+.cf code{white-space:normal}
+.layers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.layer{border:1px solid var(--line-2);border-radius:10px;padding:8px;font-size:.72rem;min-height:92px;display:flex;flex-direction:column;gap:4px;transition:border-color .25s ease,opacity .25s ease}
+.layer b{font-size:.9rem;display:flex;align-items:center;gap:6px}
+.layer b svg{width:12px;height:12px}
+.layer.pass b svg{color:var(--good-ink)}
+.layer.fail b svg{color:var(--bad-ink)}
+.layer span{color:var(--muted);line-height:1.35;overflow-wrap:anywhere}
+.layer.pass{border-color:color-mix(in srgb,var(--good) 55%,transparent)}
+.layer.fail{border-color:color-mix(in srgb,var(--bad) 60%,transparent)}
+.layer.skip{border-style:dashed;opacity:.7}
+.card-ui{border:1px solid var(--line-2);border-radius:12px;padding:14px;background:var(--surface-2)}
+.card-ui .hd{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.84rem}
+.card-ui .gc{font-family:"Geist Mono",monospace;font-size:.82rem;margin-top:8px}
+.card-ui .adv{font-size:.8rem;color:var(--ink-2);margin-top:8px}
+.card-ui .btns{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.card-ui .btns button{appearance:none;font:inherit;font-size:.8rem;padding:6px 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:not-allowed}
+.log{grid-row:span 3;align-self:stretch;display:flex;flex-direction:column;min-height:0}
+.log ol{flex:1 1 0;max-height:none}
+.log ol{list-style:none;margin:0;padding:0;overflow:auto;display:flex;flex-direction:column;gap:8px;min-height:120px}
+.log li{border:1px solid var(--line);border-radius:10px;padding:10px;font-size:.78rem;color:var(--ink-2);animation:logIn .35s var(--ease-out)}
+.log li.cur{border-color:var(--accent)}
+.log li b{color:var(--ink);font-weight:500}
+.log li .ts{font-family:"Geist Mono",monospace;color:var(--muted);font-size:.72rem}
+.log .empty{color:var(--muted);font-size:.8rem;border-style:dashed;animation:none}
+@keyframes logIn{from{opacity:0;transform:translateY(-6px)}}
+.rp-foot{margin-top:14px;font-size:.8rem;color:var(--muted);max-width:90ch}
+@media (max-width:1399px){.rp-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.log{grid-row:auto;grid-column:1 / -1}.log ol{flex:none;max-height:360px}}
+@media (max-width:1099px){.rp-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rp.wide{grid-column:1 / -1}}
+@media (max-width:760px){
+  .rp-grid{grid-template-columns:minmax(0,1fr)}
+  .rp.wide{grid-column:auto}
+  .player{grid-template-columns:1fr;}
+  .pmeta{justify-content:space-between}
+  .strip{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .layers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pb-row{grid-template-columns:104px 1fr 40px}
+  .fimg{max-width:240px}
+}
+@media (prefers-reduced-motion:reduce){.log li{animation:none}.pb-row .t i{transition:none}}
+
+/* ---------- tooltip ---------- */
+#tip{position:fixed;z-index:60;pointer-events:none;background:var(--surface-2);color:var(--ink);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;font-size:.8rem;line-height:1.4;max-width:280px;box-shadow:var(--shadow);opacity:0;transform:translateY(4px);transition:opacity .14s ease,transform .14s var(--ease-out)}
+#tip.on{opacity:1;transform:none}
+#tip b{font-weight:600}
+
+/* ---------- present mode ---------- */
+html.present{scroll-snap-type:y proximity}
+html.present section{min-height:100dvh;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center}
+html.present .hero{display:flex}
+html.present .rail{opacity:.35;transition:opacity .2s ease}
+html.present .rail:hover{opacity:1}
+.present-hint{position:fixed;right:16px;bottom:16px;z-index:50;font-size:.8rem;padding:8px 12px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line-2);color:var(--ink-2);opacity:0;transform:translateY(8px);transition:opacity .2s ease,transform .2s var(--ease-out);pointer-events:none}
+html.present .present-hint{opacity:1;transform:none}
+
+/* ---------- responsive ---------- */
+@media (max-width:1099px){
+  .hero-grid,.problem-grid,.rc-grid,.arch,.shot{grid-template-columns:1fr}
+  .detail{position:static}
+  .span-2,.span-3,.span-4{grid-column:span 6}
+  .bento{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  body{font-size:16px}
+  .hero-stats,.built-top{grid-template-columns:1fr 1fr}
+  .hero-stats div{padding-top:16px}
+  .compare,.scope,.fork,.two,.kgrid,.gates,.closing .three{grid-template-columns:1fr}
+  .lane{grid-template-columns:1fr;gap:8px}
+  .hb-row{grid-template-columns:1fr 54px;gap:2px 8px}
+  .hb-l{grid-column:1 / -1;text-align:left}
+  .hb-axis{grid-template-columns:1fr 54px;gap:8px}
+  .hb-axis>span:first-child{display:none}
+  .hb-axis div span:nth-child(even){display:none}
+  .fail-lead{grid-template-columns:1fr}
+  .waffle{grid-template-columns:repeat(13,1fr)}
+  .tax .var{padding-right:4px;font-size:.86rem}
+  .gate{padding-right:0}
+}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{transform:none;transition:opacity .3s ease}
+  .hb-bar,.stack div,.split-bar div,.tchip,.waffle i{transform:none !important;transition:opacity .3s ease}
+  svg.lc .draw{stroke-dasharray:none;stroke-dashoffset:0}
+  #pipe .flow{animation:none}
+  .pulse{animation:none}
+  .progress{animation:none;display:none}
+}
+@media print{.rail,.topbar,.progress,.present-hint{display:none}main{margin:0}.reveal{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"></div>
+
+<nav class="rail" aria-label="Sections">
+  <div class="brand">XQI<span>SDP project review</span></div>
+  <ol id="railList"></ol>
+  <div class="controls">
+    <button class="btn" id="themeBtn" type="button" aria-pressed="false">Light theme</button>
+    <button class="btn" id="presentBtn" type="button" title="Present mode (P)">Present <kbd>P</kbd></button>
+  </div>
+</nav>
+
+<div class="topbar">
+  <div class="where" id="where"><b>XQI</b> · Overview</div>
+  <div class="controls">
+    <button class="btn" id="themeBtn2" type="button">Theme</button>
+  </div>
+</div>
+
+<main id="main">
+
+<!-- 1. HERO -->
+<section class="hero" id="hero" data-title="Overview">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="reveal">
+        <div class="eyebrow">SDP · CARR Topic 4.1.3 slice</div>
+        <h1>Explainable, safe human-in-the-loop correction for FFF printing</h1>
+        <p class="lede">A printer that sees a defect should name the setting that caused it, propose a bounded fix and let a person decide.</p>
+        <div class="cta">
+          <a class="btn primary" href="#architecture">See the pipeline</a>
+          <a class="btn" href="#failures">Where it fails</a>
+        </div>
+      </div>
+      <figure class="hero-fig reveal" style="--d:120ms">
+        <img src="../reports/img/crop_sheet.jpg" alt="Grid of nozzle close-up crops from the CAXTON dataset, eight random training crops for each of the nine cause classes. The nozzle tip is centred and the deposited line is visible in each crop; filament colour and lighting vary per print." width="1310" height="1260">
+        <figcaption>224 px nozzle crops, eight per cause. CAXTON (Brion and Pattinson 2022, CC BY 4.0).</figcaption>
+      </figure>
+    </div>
+    <div class="hero-stats reveal" style="--d:220ms" id="heroStats"></div>
+  </div>
+</section>
+
+<!-- 2. PROBLEM -->
+<section id="problem" data-title="Problem">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>Today's loop detects a defect, then fires a fixed recipe without saying why</h2>
+      <p class="lede">The inherited CARR loop finds 7 defect classes with YOLO and answers each with fixed G-code or an emergency stop (M112). It does not bound or scale its corrections, and it never asks a person first.</p>
+    </div>
+    <div class="problem-grid">
+      <div class="reveal">
+        <p class="quote">“Explainable: Absent. Recommendations: Absent. Safe: Partial.”</p>
+        <p class="muted small" style="margin-top:8px">The CARR 4.1.3 deck, rating the current loop.</p>
+        <div class="verdicts" id="deckVerdicts"></div>
+        <div class="callout"><b>Why a black-box detector is not enough.</b> Operators can't check a label they can't see the reason for. A detector says <i>what</i> went wrong. The correction depends on <i>which setting</i> drifted, and in which direction.</div>
+      </div>
+      <div class="reveal" style="--d:100ms">
+        <h3 style="margin-bottom:6px">The fixed recipes, checked against our safety envelope</h3>
+        <p class="muted small" style="margin-bottom:14px">Each change pushed from nominal setpoints through the gate (reports/recipe_audit.md). Red = what baseline mode would send past a limit.</p>
+        <div class="recipes" id="recipes"></div>
+        <p style="margin-top:16px" id="recipeLine"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. ROOT CAUSE -->
+<section id="cause" data-title="Root cause">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>Defects come from setpoints drifting, so the fix has to name the setpoint</h2>
+      <p class="lede">Flow, speed, nozzle temperature and z-offset each go low or high. A defect label collapses all of them into one word; a cause label keeps the variable and the sign, which is exactly what a correction needs.</p>
+    </div>
+    <div class="rc-grid">
+      <div class="reveal">
+        <div class="compare">
+          <div>
+            <h3>Defect detector</h3>
+            <div class="out">"under-extrusion"</div>
+            <ul>
+              <li>Recipe changes temperature, speed and flow at once (M104 S205, M220 S80, M221 S110)</li>
+              <li>No reason the operator can check</li>
+              <li>Same action whatever drifted</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Cause model + explanation</h3>
+            <div class="out">flow_low; set {flow_low, speed_high}<br><span class="muted">example output</span></div>
+            <ul>
+              <li>One variable, one sign, a bounded step</li>
+              <li>Heatmap, conformal set and a sentence</li>
+              <li>A person approves before G-code is sent</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Image only, by design (ADR-0002).</b> CAXTON's labels are the commanded setpoints. Feeding setpoints or telemetry into the model would hand it the answer, so <code>CauseModel.predict</code> takes only the crop.</div>
+      </div>
+      <div class="reveal" style="--d:100ms">
+        <h3>The 9-cause taxonomy, with single-cause training images</h3>
+        <p class="muted small" style="margin-top:6px">Counts from the data audit (79,515 images, 181 prints). Z-offset has no G-code fix, so it becomes manual advice.</p>
+        <div class="tax" id="taxonomy"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. OBJECTIVES -->
+<section id="objectives" data-title="Objectives">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>Seven measurable targets, three kill criteria, one scope cut</h2>
+      <p class="lede">Each metric can fail and has a script that measures it. Status chips below are computed from the results block at the bottom of this page.</p>
+    </div>
+    <div class="metrics" id="metrics"></div>
+    <div class="kgrid" id="kills"></div>
+    <h3 class="subhead reveal">ADR-0009: software only, on public data</h3>
+    <div class="scope reveal">
+      <div>
+        <h3>Ours</h3>
+        <ul>
+          <li>Cause model (causability), image-only</li>
+          <li>Explanation: EigenCAM, conformal set, counterfactual proposal</li>
+          <li>Proactive early warning</li>
+          <li>4-layer safety gate on every recommendation</li>
+          <li>HITL loop, dashboard and operator study</li>
+          <li>Offline evaluation and the hand-off package</li>
+        </ul>
+      </div>
+      <div class="out">
+        <h3>The integrating team's</h3>
+        <ul>
+          <li>Printer connection and OctoPrint / G-code transport</li>
+          <li>Camera and Raspberry Pi choice</li>
+          <li>Rig runs and induced-defect printing</li>
+          <li>Envelope sign-off for a real printer</li>
+          <li>Defect detector training</li>
+        </ul>
+        <p class="muted small" style="margin-top:12px">Why: the inherited REU data turned out to be 5,490 unlabelled frames of one print. CAXTON (1.27 M parameter-labelled images, 192 parts) replaced it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. ARCHITECTURE -->
+<section id="architecture" data-title="Architecture">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>One frame, from crop to printer, through a gate that fails closed</h2>
+      <p class="lede">Select any stage to see what it does, the file that implements it and its tickets. The orange square is a frame moving through the loop.</p>
+    </div>
+    <div class="arch">
+      <div class="arch-svg-wrap reveal"><svg id="pipe" role="group" aria-label="XQI pipeline diagram. Each stage is a focusable button."></svg></div>
+      <aside class="detail reveal" style="--d:100ms" aria-live="polite">
+        <div class="detail-body" id="detail"></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- 5b. REPLAY -->
+<section id="replay" data-title="Replay">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>Two held-out prints, frame by frame, through the real code</h2>
+      <p class="lede">Saved per-frame probabilities from the cause model, pushed through the project's own conformal, early-warning, counterfactual and gate functions. Nothing on this panel is simulated except the operator.</p>
+    </div>
+    <div class="rp-top reveal">
+      <div class="seg" role="group" aria-label="Choose print">
+        <button type="button" data-print="hit" aria-pressed="true" id="rpHitBtn">Hit</button>
+        <button type="button" data-print="miss" aria-pressed="false" id="rpMissBtn">Miss</button>
+      </div>
+      <span class="rp-label" id="rpLabel"></span>
+    </div>
+    <div class="player reveal" id="player" tabindex="0" aria-label="Replay player. Space plays or pauses, comma and period step one frame.">
+      <div class="pbtns">
+        <button class="ibtn" type="button" id="rpPrev" aria-label="Step back one frame"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3v10M13 3L6 8l7 5z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
+        <button class="ibtn play" type="button" id="rpPlay" aria-label="Play"><svg viewBox="0 0 16 16" aria-hidden="true" id="rpPlayIcon"><path d="M5 3l8 5-8 5z" fill="currentColor"/></svg></button>
+        <button class="ibtn" type="button" id="rpNext" aria-label="Step forward one frame"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12 3v10M3 3l7 5-7 5z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
+      </div>
+      <div class="scrub">
+        <div class="ticks" id="rpTicks" aria-hidden="true"></div>
+        <input type="range" id="rpScrub" min="0" max="0" value="0" step="1" aria-label="Frame">
+      </div>
+      <div class="pmeta">
+        <label for="rpSpeed">speed</label>
+        <select id="rpSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+      </div>
+      <div class="pread" id="rpRead" aria-live="off"></div>
+    </div>
+    <div class="strip" id="rpStrip" aria-hidden="true">
+      <div data-s="0">Frame<small>crop</small></div>
+      <div data-s="1">Cause model<small>9 probs</small></div>
+      <div data-s="2">Conformal<small>α = 0.10</small></div>
+      <div data-s="3">Early warning<small>EWMA</small></div>
+      <div data-s="4">Explanation<small>proposal</small></div>
+      <div data-s="5">Gate<small>L2 L1 L3 L4</small></div>
+      <div data-s="6">Operator<small>card</small></div>
+    </div>
+    <div class="rp-grid reveal">
+      <article class="rp" id="rp0"><h3>Frame <span class="n">1</span></h3><div class="body">
+        <div class="fimg"><img id="rpImg" alt="" width="140" height="140"></div>
+        <dl class="fmeta"><dt>frame</dt><dd id="rpFrame"></dd><dt>ts</dt><dd id="rpTs"></dd><dt>true</dt><dd id="rpTrue"></dd></dl>
+        <p class="note">Representative crop of the true cause from reports/img/crop_sheet.jpg, not this frame: the crops are not on the dev machine.</p>
+      </div></article>
+      <article class="rp" id="rp1"><h3>Cause model <span class="n">2</span></h3><div class="body">
+        <div class="pb" id="rpProbs"></div>
+        <div class="verdictline" id="rpTop"></div>
+      </div></article>
+      <article class="rp" id="rp2"><h3>Conformal set <span class="n">3</span></h3><div class="body">
+        <div class="setsize" id="rpSetN"></div>
+        <div class="setchips" id="rpSet"></div>
+        <p class="note" id="rpQ"></p>
+      </div></article>
+      <aside class="rp log" id="rpLogBox" aria-label="Event log"><h3>Event log <span class="n" id="rpLogN"></span></h3><ol id="rpLog"></ol></aside>
+      <article class="rp wide" id="rp3"><h3>Early warning <span class="n">4</span></h3><div class="body">
+        <svg class="ew" id="rpEw" role="img" aria-label="EWMA of the cause probabilities over the print, with the warning thresholds"></svg>
+        <p class="note" id="rpEwNote"></p>
+      </div></article>
+      <article class="rp" id="rp4"><h3>Explanation <span class="n">5</span></h3><div class="body">
+        <div class="cam"><b>EigenCAM: awaiting final.pt</b>No weights on this machine, so no heatmap is drawn. It runs on backbone.layer4 once final.pt lands.</div>
+        <div class="cf" id="rpCf"></div>
+      </div></article>
+      <article class="rp wide" id="rp5"><h3>Safety gate <span class="n">6</span></h3><div class="body">
+        <div class="layers" id="rpLayers"></div>
+        <div class="verdictline" id="rpVerdict"></div>
+      </div></article>
+      <article class="rp" id="rp6"><h3>Operator card <span class="n">7</span></h3><div class="body">
+        <div class="card-ui" id="rpCard"></div>
+        <p class="note" id="rpVerify"></p>
+      </div></article>
+    </div>
+    <p class="rp-foot" id="rpFoot"></p>
+  </div>
+</section>
+
+<!-- 6. BUILT -->
+<section id="built" data-title="What we built">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>The software is built and tested. The model's evidence is still arriving.</h2>
+      <p class="lede">Every ticket on the board, grouped by module. Hover a chip for its title and status.</p>
+    </div>
+    <div class="built-top reveal" id="builtTiles"></div>
+    <div class="legend reveal" id="laneLegend"></div>
+    <div class="lanes reveal" id="lanes"></div>
+    <div class="shot reveal">
+      <figure>
+        <img src="../reports/img/ui_live.png" alt="Screenshot of the XQI Streamlit dashboard live view: a synthetic noise frame, mode advisory, printer printing, nozzle 210 of 210 C, bed 60 of 60 C, flow and speed 100 of 100 percent, and an empty event table." width="1920" height="1080" loading="lazy">
+        <figcaption>Dashboard live view on a synthetic replay frame (T-0037, run 2026-11-10).</figcaption>
+      </figure>
+      <div>
+        <h3>The operator sees state, not just alerts</h3>
+        <p class="muted" style="margin-top:8px">Loop and UI run as separate processes and share one SQLite store (WAL), so every stage is also an audit log. Proposal cards add the crop, heatmap, cause set and the gated G-code with approve, modify and reject.</p>
+        <p class="muted small" style="margin-top:12px">The card screenshot is being retaken: the 11-10 capture timed out before the card rendered (T-0038).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. RESULTS -->
+<section id="results" data-title="Results">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>What has been measured so far</h2>
+      <p class="lede">Data, safety and robustness results are in and passing. The model-dependent results wait on the complete-data fine-tune.</p>
+    </div>
+    <div class="bento">
+      <article class="card span-3 reveal" id="cardAudit">
+        <div class="card-head"><h3>Data audit (K1′)</h3><span id="auditPill"></span></div>
+        <p class="cap">Single-cause images per cause. Rule: at least 200 images in at least 5 prints for 4 or more setpoint causes.</p>
+        <div id="auditChart"></div>
+      </article>
+      <article class="card span-3 reveal" style="--d:80ms" id="cardGate">
+        <div class="card-head"><h3>Gate property test</h3><span id="gatePill"></span></div>
+        <p class="cap">Random proposals, episodes of 10 with sequential dispatch (NFR-004, seed 0).</p>
+        <div class="big"><span class="count" data-path="gate.violations">0</span><small>violations in <span id="gateCases"></span> cases</small></div>
+        <div style="margin-top:22px" id="gateStack"></div>
+      </article>
+      <article class="card span-4 reveal" id="cardRecipe">
+        <div class="card-head"><h3>Deck-recipe audit</h3><span class="pill warn" id="recipePill"></span></div>
+        <p class="cap">Raw recipe value vs what the gate lets through. Baseline mode would send the raw value.</p>
+        <div class="rgrid" id="recipeGrid"></div>
+      </article>
+      <article class="card span-2 reveal" style="--d:80ms" id="cardSoak">
+        <div class="card-head"><h3>2-hour soak</h3><span id="soakPill"></span></div>
+        <p class="cap">Replay + FakePrinter, simulated operator (NFR-008).</p>
+        <div class="big"><span class="count" data-path="soak.frames">0</span><small>frames</small></div>
+        <p class="muted small" style="margin:10px 0 16px">No crash, RSS growth within limit, no pending events left.</p>
+        <div id="soakChart"></div>
+      </article>
+      <article class="card span-6 reveal" id="cardPending">
+        <div class="card-head"><h3>Model-dependent results</h3><span class="pill wait" id="pendPill"></span></div>
+        <p class="cap">These need a cause model that has passed K2. Each tile fills itself from the results block when the GPU sitting lands, and turns PASS or FAIL against its target.</p>
+        <div class="pend-grid" id="pending"></div>
+      </article>
+      <article class="card span-6 reveal" id="cardAcc">
+        <div class="card-head"><h3>Acceptance dry run</h3><span id="accPill"></span></div>
+        <p class="cap">Every FR and NFR mapped to PASS, FAIL or NO DATA with evidence (scripts/acceptance.py). NO DATA rows wait on the sitting reports.</p>
+        <div class="two" style="align-items:center">
+          <div id="accWaffle"></div>
+          <div id="accKeys"></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 8. FAILURES -->
+<section id="failures" data-title="Failures">
+  <div class="wrap">
+    <div class="fail-lead reveal">
+      <div class="fail-num" id="k2Count">K2 ×2</div>
+      <div>
+        <h2>The cause model has not yet beaten an always-guess-the-majority baseline</h2>
+        <p class="lede">K2 fires when leave-prints-out top-1 is at or below the floor + 5 pp. It has fired on every run so far. We show all of them.</p>
+      </div>
+    </div>
+    <div class="bento">
+      <article class="card span-6 reveal">
+        <h3>Top-1 on unseen prints vs each run's majority floor</h3>
+        <p class="cap">5-fold leave-prints-out mean. Each run is compared with the floor on its own test images: the fine-tune on incomplete data had a floor of 0.625, the complete data a floor of 0.254.</p>
+        <div class="keys"><span><i class="k-bar"></i>model top-1</span><span><i class="k-ref"></i>majority floor</span><span><i class="k-zone"></i>K2 fires (≤ floor + 5 pp)</span><span><i class="k-nfr"></i>NFR-005 target (floor + 10 pp)</span><span><i class="k-pend"></i>awaiting GPU run</span></div>
+        <div id="k2Chart"></div>
+      </article>
+      <article class="card span-3 reveal">
+        <h3>Balanced accuracy vs chance</h3>
+        <p class="cap">Mean recall over the 9 causes. Always-majority scores 1/9. The signal exists, but it is weak.</p>
+        <div class="keys"><span><i class="k-bar"></i>balanced accuracy</span><span><i class="k-chance"></i>chance 0.111</span></div>
+        <div id="balChart"></div>
+      </article>
+      <article class="card span-3 reveal" style="--d:80ms">
+        <h3>The cross-print cliff</h3>
+        <p class="cap">Same frozen probe, fold-0 calibration prints (reports/cause_diagnostics.md). When train and test share prints it looks twice as good.</p>
+        <div id="cliffChart"></div>
+        <p class="small muted" style="margin-top:12px">Ruled out: crop bug (crops correct), label lag (+1.2 pp at most), colour shortcut (grayscale 0.207 vs 0.211).</p>
+      </article>
+      <article class="card span-4 reveal">
+        <h3>Overfitting signature</h3>
+        <p class="cap">Fold-0 fine-tune, 11-11 run. Train accuracy climbs while calibration loss bottoms early and rises; across folds the best calib loss came in epochs 1 to 4.</p>
+        <div class="two" id="overfit"></div>
+      </article>
+      <article class="card span-2 reveal" style="--d:80ms">
+        <h3>Incomplete data</h3>
+        <p class="cap">The 11-11 fine-tune trained on the crops that existed at the time.</p>
+        <div id="incomplete"></div>
+      </article>
+      <article class="card span-3 reveal">
+        <h3>Recall on actionable causes is near zero</h3>
+        <p class="cap">Per-cause recall, 11-11 fine-tune, pooled over folds. The model mostly says z_offset_high.</p>
+        <div id="recallChart"></div>
+      </article>
+      <article class="card span-3 reveal" style="--d:80ms">
+        <h3>No published bar for unseen prints</h3>
+        <p class="cap">CAXTON's 84.3% splits individual images at random (70/20/10), so neighbouring frames of one print sit on both sides. It is not comparable with our numbers.</p>
+        <div id="litChart"></div>
+        <p class="small muted" style="margin-top:12px">The 84.3% is roughly the mean of four per-parameter heads (flow 87.1, speed 86.4, Z 85.5, hotend 78.3), measured with post-change frames removed.</p>
+      </article>
+      <article class="card span-6 reveal">
+        <div class="two" style="align-items:center">
+          <figure class="errfig">
+            <img src="../reports/cause_errors.png" alt="Twenty most confident wrong test crops from the 11-11 fine-tune. Many come from print 24 labelled none but predicted flow_low with confidence 1.00; others are flow_low predicted as none or z_offset_high, and z_offset_high predicted as none. Several crops are blurred or show a different filament colour." width="1200" height="1050" loading="lazy">
+            <figcaption>The 20 most confident wrong test crops (reports/cause_errors.png).</figcaption>
+          </figure>
+          <div>
+            <h3>What the errors look like</h3>
+            <p class="muted" style="margin-top:8px">Confident mistakes cluster by print: one print's look gets mapped to one cause. The reviewer noted errors at parameter transitions, a subtle visual difference between under-extrusion, speed and z-offset, and a heavy bias toward z_offset_high.</p>
+            <p class="muted" style="margin-top:12px">This matches the diagnosis: per-print appearance (geometry, layer texture, lighting, filament colour) dominates the features a model can pick up from 181 prints.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 9. OVERCOME -->
+<section id="overcome" data-title="Next gates">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>One decisive run, then a fork we have already written down</h2>
+      <p class="lede">The build plan (reports/FFF cause model build plan.md) turns the fix into gates, each with its own go/no-go rule, run in order instead of tuning everything at once.</p>
+    </div>
+    <div class="gates reveal" id="gates"></div>
+    <div class="fork-q reveal"><span class="q">If G1 does not clear K2</span><span class="muted">the user decides. Nothing is pre-empted.</span></div>
+    <div class="fork reveal">
+      <div class="branch alt">
+        <h3>Pivot <span class="pill">ADR-0002 option 1</span></h3>
+        <ul>
+          <li>Replace the learned model with hand-written cause probabilities plus telemetry evidence (Bayesian scoring).</li>
+          <li>Its accuracy is reported on the same leave-prints-out folds as the floor.</li>
+          <li>Gate, conformal wrapper, counterfactuals, dashboard and hand-off stay as they are.</li>
+        </ul>
+      </div>
+      <div class="branch">
+        <h3>DESCEND <span class="pill warn">flagged post-hoc</span></h3>
+        <ul>
+          <li>Change the model to fine-tuned 4 heads (flow, speed, z, hotend × low/good/high), or change the headline metric to balanced accuracy.</li>
+          <li>Any metric change is marked post-hoc in the report, because it is chosen after seeing results.</li>
+          <li>Exposing per-head outputs to the card bumps SCHEMA_VERSION and needs approval.</li>
+        </ul>
+      </div>
+    </div>
+    <h3 class="subhead reveal">The remaining sitting with Krish (GPU laptop, RTX 4050)</h3>
+    <ol class="steps reveal" id="sitting"></ol>
+  </div>
+</section>
+
+<!-- 10. ROADMAP -->
+<section id="roadmap" data-title="Roadmap">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <h2>What is left, in order</h2>
+    </div>
+    <ol class="road reveal" id="road"></ol>
+  </div>
+</section>
+
+<section class="closing" id="closing" data-title="Close">
+  <div class="wrap">
+    <h2 class="reveal">The safety and explanation stack is built. Whether the image carries the cause across prints is the one open question.</h2>
+    <div class="three reveal" style="--d:120ms">
+      <div><b>Safe by construction</b><p>0 violations in 100,000 random gate cases. Early warnings are never auto-applied.</p></div>
+      <div><b>Honest about the model</b><p>K2 has fired <span id="k2Twice">twice</span>. We report the floor, the chance level and the missing literature bar.</p></div>
+      <div><b>One run decides</b><p>The complete-data fine-tune (G1) settles K2. Both outcomes have a written next step.</p></div>
+    </div>
+    <p class="foot">Sources: project-context/ (charter, ADRs, STATE, BOARD, LOGBOOK) and reports/. Data as of <span id="asOf"></span>. Dataset: CAXTON, Brion and Pattinson, Nat. Commun. 13 (2022), CC BY 4.0.</p>
+  </div>
+</section>
+</main>
+
+<div id="tip" role="tooltip"></div>
+<div class="present-hint" aria-hidden="true">Present mode: <kbd>←</kbd> <kbd>→</kbd> move, <kbd>P</kbd> exit</div>
+
+<script>
+// UPDATE HERE when the GPU sitting results land
+// Every number on this page comes from this block. null = not measured yet ("awaiting GPU run").
+const DATA = {
+  asOf: "2026-11-18",
+  tests: { passed: 343, skipped: 1 },                       // LOGBOOK 2026-11-16
+  audit: {                                                   // reports/data_audit.md
+    verdict: "PASS", images: 79515, prints: 181, ruleImages: 200, rulePrints: 5,
+    causes: [
+      ["none", 6968, 95], ["flow_low", 3168, 45], ["flow_high", 6574, 64], ["speed_low", 4761, 59],
+      ["speed_high", 4128, 55], ["nozzle_temp_low", 1358, 22], ["nozzle_temp_high", 830, 18],
+      ["z_offset_low", 1522, 84], ["z_offset_high", 9922, 102]
+    ]
+  },
+  gate: { cases: 100000, violations: 0, dispatched: 35746, clipped: 30105, blocked_L2: 19135, blocked_L1: 23930, blocked_L3: 21189 }, // reports/gate_property.md
+  recipes: [                                                 // reports/recipe_audit.md
+    ["over-extrusion", "nozzle_temp", 210, 190, "step, L3", 205, "°C"],
+    ["over-extrusion", "speed", 100, 95, "", 95, "%"],
+    ["over-extrusion", "flow", 100, 80, "step, L3", 90, "%"],
+    ["under-extrusion", "nozzle_temp", 210, 205, "", 205, "°C"],
+    ["under-extrusion", "speed", 100, 80, "step", 90, "%"],
+    ["under-extrusion", "flow", 100, 110, "", 110, "%"],
+    ["stringing", "nozzle_temp", 210, 190, "step, L3", 205, "°C"],
+    ["stringing", "speed", 100, 80, "step", 90, "%"],
+    ["stringing", "flow", 100, 95, "", 95, "%"],
+    ["warping", "bed_temp", 60, 65, "", 65, "°C"]
+  ],
+  soak: { pass: true, hours: 2, frames: 72000, verdicts: { ESCALATE: 367, PROPOSE: 67, NOOP: 50, APPLY: 36 } }, // reports/soak_T-0052.txt, LOGBOOK 11-05
+  k2: {                                                      // reports/cause_eval*.md, cause_floor*.md
+    chance: 1 / 9,
+    runs: [
+      { label: "Fine-tune, incomplete data (11-11)", short: "Fine-tune, incomplete", date: "2026-11-11", top1: 0.445, floor: 0.625, balanced: null },
+      { label: "Frozen ResNet18, 9-way (11-16)", short: "Frozen, 9-way", date: "2026-11-16", top1: 0.220, floor: 0.254, balanced: 0.194 },
+      { label: "Frozen ResNet18, 4-head (11-16)", short: "Frozen, 4-head", date: "2026-11-16", top1: 0.163, floor: 0.254, balanced: 0.163 },
+      { label: "Fine-tune, complete data (G1)", short: "G1 fine-tune", date: null, top1: null, floor: 0.254, balanced: null }
+    ],
+    cliff: { samePrint: 0.430, newPrint: 0.211 },             // reports/cause_diagnostics.md (balanced acc)
+    cropsUsed: 36347, cropsTotal: 79515,
+    caxtonPublished: 0.843,
+    overfit: {                                               // reports/cause_fold0.md, finetune rung, fold 0
+      epochs: [1, 2, 3, 4, 5],
+      trainAcc: [0.529, 0.696, 0.762, 0.794, 0.804],
+      calibLoss: [2.3552, 2.1757, 2.8105, 2.3667, 2.5320]
+    },
+    recall: [                                                // reports/cause_eval.md, pooled over folds
+      ["none", 0.372], ["flow_low", 0.020], ["flow_high", 0.004], ["speed_low", 0.046], ["speed_high", 0.135],
+      ["nozzle_temp_low", 0.000], ["nozzle_temp_high", 0.022], ["z_offset_low", 0.283], ["z_offset_high", 0.636]
+    ]
+  },
+  // Model-dependent results. Fill `value` from the sitting reports; the tile turns PASS/FAIL against target.
+  pending: [
+    { id: "g1",   label: "Complete-data fine-tune top-1 (G1, K2)", value: null, target: 0.354, dir: ">=", fmt: 3, tgt: "≥ 0.354 (floor + 10 pp); K2 fires ≤ 0.304", ticket: "T-0013", waits: "GPU run" },
+    { id: "cov",  label: "Conformal coverage at α = 0.10", value: null, target: 0.85, dir: ">=", fmt: 3, tgt: "≥ 0.85 (NFR-006)", ticket: "T-0015", waits: "GPU run" },
+    { id: "set",  label: "Mean conformal set size", value: null, target: 2.0, dir: "<=", fmt: 2, tgt: "≤ 2.0 (NFR-006)", ticket: "T-0015", waits: "GPU run" },
+    { id: "cf",   label: "Counterfactual direction fidelity", value: null, target: 0.85, dir: ">=", fmt: 3, tgt: "≥ 0.85 on confident events (NFR-007)", ticket: "T-0017", waits: "GPU run" },
+    { id: "ttw",  label: "Proactive median time-to-warning", value: null, target: 10, dir: "<=", fmt: 1, unit: " s", tgt: "≤ 10 s after onset (NFR-012)", ticket: "T-0063", waits: "GPU run" },
+    { id: "rec",  label: "Proactive onset recall within 30 s", value: null, target: 0.70, dir: ">=", fmt: 2, tgt: "≥ 0.70 (NFR-012)", ticket: "T-0063", waits: "GPU run" },
+    { id: "fw",   label: "False warnings per print-hour", value: null, target: 1, dir: "<=", fmt: 2, tgt: "≤ 1 (NFR-012)", ticket: "T-0063", waits: "GPU run" },
+    { id: "lat",  label: "Action-path latency p95", value: null, target: 30, dir: "<=", fmt: 1, unit: " ms", tgt: "≤ 30 ms (NFR-001)", ticket: "T-0036", waits: "GPU run" },
+    { id: "vram", label: "GPU memory at inference", value: null, target: 3.5, dir: "<=", fmt: 2, unit: " GB", tgt: "≤ 3.5 GB (NFR-011)", ticket: "T-0036", waits: "GPU run" },
+    { id: "demo2",label: "Demo: frame to verdict p95", value: null, target: 0.30, dir: "<=", fmt: 2, unit: " s", tgt: "≤ 0.30 s (NFR-002)", ticket: "T-0066", waits: "GPU run" },
+    { id: "demo3",label: "Demo: event to card p95", value: null, target: 1.0, dir: "<=", fmt: 2, unit: " s", tgt: "≤ 1.0 s (NFR-003)", ticket: "T-0066", waits: "GPU run" },
+    { id: "study",label: "Operator study: accuracy, explanation ON minus OFF", value: null, target: null, dir: null, fmt: 1, unit: " pp", tgt: "CI reported, no threshold (S7)", ticket: "T-0043/44", waits: "human pilot" }
+  ],
+  acceptance: { pass: 23, fail: 0, nodata: 15 },            // STATE.md dry run
+  // Ticket board (project-context/11-tickets/BOARD.md). status: done | open | dropped; detail = board status.
+  lanes: [
+    ["Foundations", "types, config", [["T-0001","done","Scaffold the repo"],["T-0002","done","Collect the REU inheritance package"],["T-0003","done","Contracts module"],["T-0004","done","Config loader + causes.yaml"]]],
+    ["Data", "CAXTON adapter, crops, audit", [["T-0005","done","CAXTON adapter"],["T-0006","done","Data audit, K1′ PASS"],["T-0007","open","Freeze taxonomy and splits (WAITING-USER)"],["T-0009","done","Nozzle-ROI crop dataset"],["T-0024","open","L3 window from CAXTON good ranges (WAITING-USER)"],["T-0065","done","Download CAXTON, data sitting"]]],
+    ["Cause model", "xqi/explain/cause_model.py", [["T-0008","dropped","Reproduce detector baseline"],["T-0010","done","Eval harness + majority floor"],["T-0011","done","Cause model architecture"],["T-0012","done","Fold-0 training (below floor)"],["T-0013","open","Full CV and K2 check (WAITING-GPU)"],["T-0030","done","YOLO11 detector wrapper"],["T-0049","dropped","Tiled inference (COULD)"],["T-0050","dropped","Leave-one-printer-out (COULD)"],["T-0067","open","Domain-shift check (WAITING-GPU)"]]],
+    ["Explanation", "xqi/explain/", [["T-0014","done","Split-conformal sets"],["T-0015","open","Conformal coverage eval (WAITING-GPU)"],["T-0016","done","Counterfactual proposals"],["T-0017","open","Counterfactual fidelity eval (WAITING-GPU)"],["T-0018","done","EigenCAM attribution"],["T-0019","done","Telemetry sensor checks"],["T-0020","done","Explainer assembly"],["T-0057","done","Explain stack on CAXTON taxonomy"],["T-0059","done","EigenCAM on the cause backbone"],["T-0048","open","Recalibrate qhat from logs (COULD, TODO)"]]],
+    ["Proactive", "xqi/proactive.py", [["T-0060","done","EWMA + hysteresis early warning"],["T-0061","done","Proactive path in the loop"],["T-0063","open","Proactive eval on held-out prints (WAITING-GPU)"]]],
+    ["Safety gate", "xqi/gate.py", [["T-0021","done","Gate L2 and L1"],["T-0022","done","Gate L3, L4, event verdict"],["T-0023","done","Gate property test + recipe audit"],["T-0025","dropped","Envelope sign-off"]]],
+    ["Loop and printer", "orchestrator, printer, verify", [["T-0026","done","Printer protocol + FakePrinter"],["T-0027","done","OctoPrint REST client"],["T-0028","dropped","OctoPrint smoke test on printer"],["T-0029","done","Frame sources"],["T-0031","done","Confirmation tracker"],["T-0033","done","Orchestrator: baseline, critical-first"],["T-0034","done","Orchestrator action paths"],["T-0035","done","Outcome verifier"],["T-0051","done","Operator decisions + timeouts"],["T-0058","done","Explainer wired into xqi run"],["T-0062","done","CAXTON replay + FakePrinter seeding"],["T-0064","done","Hand-off package"]]],
+    ["Dashboard and study", "ui.py, store.py, study.py", [["T-0032","done","SQLite event store"],["T-0037","done","Dashboard live view"],["T-0038","open","Proposal cards (screenshot retake, WAITING-GPU)"],["T-0043","open","Operator-study mode (WAITING-HUMAN)"],["T-0044","open","Study analysis (WAITING-HUMAN)"],["T-0045","open","Run the operator study (BLOCKED)"]]],
+    ["Rig campaign", "out of scope, ADR-0009", [["T-0039","dropped","HIL dry run on Ender 5 Plus"],["T-0040","dropped","Induced-defect protocol"],["T-0041","dropped","Induced-defect campaign"],["T-0042","dropped","Rig results evaluation"]]],
+    ["Evaluation and delivery", "bench, soak, demo, report", [["T-0036","open","Latency and VRAM bench (WAITING-GPU)"],["T-0046","open","Acceptance report (WAITING-DATA)"],["T-0047","open","SDP report and paper (BLOCKED)"],["T-0052","done","2-hour soak test"],["T-0066","open","Offline end-to-end HITL demo (WAITING-GPU)"]]]
+  ],
+  sitting: [                                                 // docs/gpu-runs/SITTING-2026-11-16.md
+    ["Fetch the missing images", "~43 k images, unattended", "1 to 2 h"],
+    ["Rebuild crops, re-run audit and floor", "expect missing: 0 of 79,515", "10 to 20 min"],
+    ["T-0013 fine-tune on complete data (G1)", "decides K2", "3 to 4 h"],
+    ["Runtime model final.pt", "golden fixture + artifact test", "45 to 60 min"],
+    ["Conformal, counterfactual, proactive evals", "T-0015, T-0017, T-0063 on CPU", "~20 min"],
+    ["Latency and VRAM bench", "T-0036 on the GPU", "~5 min"],
+    ["Human block", "T-0038 retake, T-0043/44 with a real person", "~30 min"],
+    ["Domain-shift check", "T-0067, optional", "~5 min"],
+    ["Offline HITL demo", "T-0066, a person at the dashboard", "~45 min"]
+  ]
+};
+// Replay trace: generated by docs/showcase_replay.py (do not edit by hand; re-run the script)
+DATA.replay = /* REPLAY:BEGIN */{"label":"11-11 fine-tune, incomplete data, K2 FAIL; replay will be regenerated with final.pt","preds":"models/cause/preds_fold0.npz","fold":0,"config":"config/default.yaml","labels":["none","flow_low","flow_high","speed_low","speed_high","nozzle_temp_low","nozzle_temp_high","z_offset_low","z_offset_high"],"qhat":0.9972,"alpha":0.1,"n_calib":2078,"proactive":{"beta":0.8,"theta_on":0.6,"theta_off":0.4,"m":3,"cooldown_s":60.0,"max_gap_s":10.0},"tau":0.6,"mode":"advisory","hitl":{"timeout_s":90.0,"timeout_action":"noop"},"nominal":{"bed_temp":60.0,"nozzle_temp":210.0,"speed":100.0,"flow":100.0},"crops":{"none":"showcase-assets/cause_none.jpg","flow_low":"showcase-assets/cause_flow_low.jpg","flow_high":"showcase-assets/cause_flow_high.jpg","speed_low":"showcase-assets/cause_speed_low.jpg","speed_high":"showcase-assets/cause_speed_high.jpg","nozzle_temp_low":"showcase-assets/cause_nozzle_temp_low.jpg","nozzle_temp_high":"showcase-assets/cause_nozzle_temp_high.jpg","z_offset_low":"showcase-assets/cause_z_offset_low.jpg","z_offset_high":"showcase-assets/cause_z_offset_high.jpg"},"prints":{"hit":{"trial":"p156","n_frames":133,"top1":0.808,"single":78,"frames":[{"i":0,"ts":79.92,"y":-1,"dev":["flow_low","speed_low","z_offset_high"],"p":[0.915,0.049,0.027,0.002,0.002,0.003,0.0,0.001,0.001],"set":[0,1,2],"pbar":[0.049,0.027,0.002,0.002,0.003,0.0,0.001,0.001],"reset":false,"ev":[]},{"i":1,"ts":113.38,"y":-1,"dev":["flow_low","speed_low","z_offset_high"],"p":[0.061,0.0,0.928,0.0,0.0,0.0,0.0,0.0,0.01],"set":[0,2,8],"pbar":[0.0,0.928,0.0,0.0,0.0,0.0,0.0,0.01],"reset":true,"ev":[]},{"i":2,"ts":116.16,"y":-1,"dev":["flow_low","speed_low","z_offset_high"],"p":[0.927,0.001,0.066,0.0,0.0,0.0,0.0,0.001,0.005],"set":[0,2,8],"pbar":[0.0,0.756,0.0,0.0,0.0,0.0,0.0,0.009],"reset":false,"ev":[]},{"i":3,"ts":138.0,"y":-1,"dev":["flow_low","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.005,0.0,0.994,0.0,0.0,0.0,0.0,0.0,0.001],"set":[0,2],"pbar":[0.0,0.994,0.0,0.0,0.0,0.0,0.0,0.001],"reset":true,"ev":[]},{"i":4,"ts":140.79,"y":-1,"dev":["flow_low","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.993,0.0,0.006,0.0,0.0,0.0,0.0,0.0,0.0],"set":[0,2],"pbar":[0.0,0.796,0.0,0.0,0.0,0.0,0.0,0.001],"reset":false,"ev":[]},{"i":5,"ts":158.91,"y":-1,"dev":["flow_low","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.016,0.0,0.981,0.0,0.0,0.0,0.0,0.0,0.003],"set":[0,2],"pbar":[0.0,0.981,0.0,0.0,0.0,0.0,0.0,0.003],"reset":true,"ev":[]},{"i":6,"ts":197.48,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.722,0.05,0.159,0.015,0.01,0.001,0.001,0.005,0.038],"set":[0,1,2,3,4,7,8],"pbar":[0.05,0.159,0.015,0.01,0.001,0.001,0.005,0.038],"reset":true,"ev":[]},{"i":7,"ts":212.81,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.021,0.0,0.937,0.0,0.0,0.0,0.0,0.002,0.039],"set":[0,2,8],"pbar":[0.0,0.937,0.0,0.0,0.0,0.0,0.002,0.039],"reset":true,"ev":[]},{"i":8,"ts":214.67,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.016,0.0,0.854,0.001,0.0,0.0,0.0,0.007,0.121],"set":[0,2,7,8],"pbar":[0.0,0.92,0.001,0.0,0.0,0.0,0.003,0.056],"reset":false,"ev":[]},{"i":9,"ts":222.11,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.856,0.025,0.081,0.01,0.001,0.0,0.0,0.002,0.025],"set":[0,1,2,3,8],"pbar":[0.005,0.752,0.002,0.0,0.0,0.0,0.003,0.05],"reset":false,"ev":[0]},{"i":10,"ts":233.26,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.67,0.001,0.294,0.001,0.0,0.0,0.0,0.001,0.033],"set":[0,2,8],"pbar":[0.001,0.294,0.001,0.0,0.0,0.0,0.001,0.033],"reset":true,"ev":[]},{"i":11,"ts":235.12,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.173,0.535,0.04,0.002,0.002,0.001,0.001,0.01,0.237],"set":[0,1,2,7,8],"pbar":[0.108,0.243,0.001,0.0,0.0,0.0,0.002,0.074],"reset":false,"ev":[]},{"i":12,"ts":237.9,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.197,0.003,0.637,0.01,0.0,0.0,0.0,0.019,0.134],"set":[0,1,2,3,7,8],"pbar":[0.087,0.322,0.003,0.0,0.0,0.0,0.006,0.086],"reset":false,"ev":[]},{"i":13,"ts":286.69,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.273,0.002,0.63,0.009,0.0,0.001,0.0,0.011,0.073],"set":[0,2,3,7,8],"pbar":[0.002,0.63,0.009,0.0,0.001,0.0,0.011,0.073],"reset":true,"ev":[]},{"i":14,"ts":308.07,"y":-1,"dev":["flow_high","z_offset_high","nozzle_temp_low"],"p":[0.604,0.016,0.326,0.005,0.0,0.001,0.0,0.008,0.04],"set":[0,1,2,3,7,8],"pbar":[0.016,0.326,0.005,0.0,0.001,0.0,0.008,0.04],"reset":true,"ev":[]},{"i":15,"ts":338.27,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.196,0.0,0.749,0.0,0.0,0.0,0.0,0.001,0.053],"set":[0,2,8],"pbar":[0.0,0.749,0.0,0.0,0.0,0.0,0.001,0.053],"reset":true,"ev":[]},{"i":16,"ts":395.42,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_high"],"p":[0.075,0.001,0.852,0.003,0.001,0.0,0.001,0.007,0.061],"set":[0,2,3,7,8],"pbar":[0.001,0.852,0.003,0.001,0.0,0.001,0.007,0.061],"reset":true,"ev":[]},{"i":17,"ts":407.96,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_high"],"p":[0.597,0.005,0.29,0.016,0.0,0.0,0.0,0.012,0.079],"set":[0,1,2,3,7,8],"pbar":[0.005,0.29,0.016,0.0,0.0,0.0,0.012,0.079],"reset":true,"ev":[]},{"i":18,"ts":428.48,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.003,0.0,0.952,0.0,0.0,0.0,0.0,0.001,0.043],"set":[0,2,8],"pbar":[0.0,0.952,0.0,0.0,0.0,0.0,0.001,0.043],"reset":true,"ev":[]},{"i":19,"ts":442.88,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.009,0.0,0.959,0.001,0.0,0.0,0.0,0.003,0.028],"set":[0,2,7,8],"pbar":[0.0,0.959,0.001,0.0,0.0,0.0,0.003,0.028],"reset":true,"ev":[]},{"i":20,"ts":446.6,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.035,0.0,0.943,0.001,0.0,0.0,0.0,0.001,0.02],"set":[0,2,8],"pbar":[0.0,0.956,0.001,0.0,0.0,0.0,0.003,0.027],"reset":false,"ev":[]},{"i":21,"ts":448.46,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.03,0.003,0.247,0.005,0.0,0.0,0.0,0.03,0.685],"set":[0,2,3,7,8],"pbar":[0.001,0.814,0.002,0.0,0.0,0.0,0.008,0.158],"reset":false,"ev":[1]},{"i":22,"ts":482.65,"y":-1,"dev":["flow_high","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.022,0.0,0.904,0.001,0.0,0.0,0.0,0.003,0.07],"set":[0,2,7,8],"pbar":[0.0,0.904,0.001,0.0,0.0,0.0,0.003,0.07],"reset":true,"ev":[]},{"i":23,"ts":488.22,"y":-1,"dev":["flow_high","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.003,0.0,0.992,0.0,0.0,0.0,0.0,0.0,0.005],"set":[2,8],"pbar":[0.0,0.922,0.001,0.0,0.0,0.0,0.003,0.057],"reset":false,"ev":[]},{"i":24,"ts":507.74,"y":-1,"dev":["flow_high","speed_high","z_offset_high"],"p":[0.023,0.0,0.803,0.001,0.0,0.0,0.0,0.014,0.158],"set":[0,2,7,8],"pbar":[0.0,0.803,0.001,0.0,0.0,0.0,0.014,0.158],"reset":true,"ev":[]},{"i":25,"ts":512.39,"y":-1,"dev":["flow_high","speed_high","z_offset_high"],"p":[0.105,0.001,0.736,0.003,0.0,0.0,0.0,0.025,0.128],"set":[0,2,3,7,8],"pbar":[0.001,0.79,0.001,0.0,0.0,0.0,0.016,0.152],"reset":false,"ev":[]},{"i":26,"ts":529.57,"y":-1,"dev":["flow_high","speed_high","z_offset_high"],"p":[0.02,0.0,0.894,0.001,0.0,0.0,0.0,0.008,0.076],"set":[0,2,7,8],"pbar":[0.0,0.894,0.001,0.0,0.0,0.0,0.008,0.076],"reset":true,"ev":[]},{"i":27,"ts":531.9,"y":-1,"dev":["flow_high","speed_high","z_offset_high"],"p":[0.004,0.0,0.928,0.0,0.0,0.0,0.0,0.002,0.067],"set":[0,2,8],"pbar":[0.0,0.901,0.001,0.0,0.0,0.0,0.007,0.075],"reset":false,"ev":[]},{"i":28,"ts":759.58,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.008,0.0,0.922,0.001,0.0,0.0,0.0,0.007,0.062],"set":[0,2,7,8],"pbar":[0.0,0.922,0.001,0.0,0.0,0.0,0.007,0.062],"reset":true,"ev":[]},{"i":29,"ts":763.76,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.044,0.002,0.693,0.004,0.002,0.0,0.001,0.047,0.208],"set":[0,2,3,7,8],"pbar":[0.001,0.876,0.001,0.001,0.0,0.0,0.015,0.091],"reset":false,"ev":[]},{"i":30,"ts":792.17,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.031,0.003,0.509,0.012,0.004,0.0,0.001,0.108,0.331],"set":[0,2,3,4,7,8],"pbar":[0.003,0.509,0.012,0.004,0.0,0.001,0.108,0.331],"reset":true,"ev":[]},{"i":31,"ts":795.89,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.013,0.0,0.529,0.003,0.0,0.0,0.0,0.025,0.431],"set":[0,2,7,8],"pbar":[0.002,0.513,0.01,0.003,0.0,0.001,0.091,0.351],"reset":false,"ev":[]},{"i":32,"ts":798.68,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.021,0.0,0.883,0.001,0.0,0.0,0.0,0.007,0.088],"set":[0,2,7,8],"pbar":[0.002,0.587,0.008,0.002,0.0,0.0,0.075,0.299],"reset":false,"ev":[]},{"i":33,"ts":817.26,"y":-1,"dev":["flow_high","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.058,0.0,0.859,0.003,0.002,0.0,0.0,0.016,0.06],"set":[0,2,3,7,8],"pbar":[0.0,0.859,0.003,0.002,0.0,0.0,0.016,0.06],"reset":true,"ev":[]},{"i":34,"ts":978.57,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.016,0.002,0.463,0.004,0.001,0.0,0.001,0.071,0.442],"set":[0,2,3,7,8],"pbar":[0.002,0.463,0.004,0.001,0.0,0.001,0.071,0.442],"reset":true,"ev":[]},{"i":35,"ts":989.26,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.072,0.005,0.639,0.014,0.009,0.001,0.003,0.075,0.183],"set":[0,1,2,3,4,7,8],"pbar":[0.005,0.639,0.014,0.009,0.001,0.003,0.075,0.183],"reset":true,"ev":[]},{"i":36,"ts":999.94,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.029,0.008,0.255,0.023,0.011,0.001,0.005,0.129,0.541],"set":[0,1,2,3,4,6,7,8],"pbar":[0.008,0.255,0.023,0.011,0.001,0.005,0.129,0.541],"reset":true,"ev":[]},{"i":37,"ts":1004.12,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.018,0.003,0.597,0.005,0.008,0.0,0.001,0.091,0.277],"set":[0,1,2,3,4,7,8],"pbar":[0.007,0.323,0.019,0.01,0.0,0.004,0.121,0.488],"reset":false,"ev":[]},{"i":38,"ts":1004.59,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.003,0.0,0.829,0.0,0.0,0.0,0.0,0.009,0.159],"set":[0,2,7,8],"pbar":[0.005,0.425,0.015,0.008,0.0,0.003,0.099,0.422],"reset":false,"ev":[]},{"i":39,"ts":1018.06,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.16,0.01,0.266,0.033,0.014,0.002,0.01,0.093,0.412],"set":[0,1,2,3,4,6,7,8],"pbar":[0.01,0.266,0.033,0.014,0.002,0.01,0.093,0.412],"reset":true,"ev":[]},{"i":40,"ts":1024.1,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.005,0.0,0.954,0.0,0.001,0.0,0.0,0.008,0.031],"set":[0,2,7,8],"pbar":[0.008,0.404,0.026,0.011,0.002,0.008,0.076,0.336],"reset":false,"ev":[]},{"i":41,"ts":1060.41,"y":-1,"dev":["flow_high","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.036,0.001,0.738,0.004,0.002,0.0,0.001,0.03,0.188],"set":[0,2,3,7,8],"pbar":[0.001,0.738,0.004,0.002,0.0,0.001,0.03,0.188],"reset":true,"ev":[]},{"i":42,"ts":1065.99,"y":-1,"dev":["flow_high","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.008,0.001,0.522,0.002,0.001,0.0,0.0,0.046,0.421],"set":[0,2,7,8],"pbar":[0.001,0.695,0.004,0.002,0.0,0.001,0.033,0.234],"reset":false,"ev":[]},{"i":43,"ts":1066.46,"y":-1,"dev":["flow_high","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.022,0.078,0.022,0.044,0.012,0.009,0.007,0.289,0.517],"set":[0,1,2,3,4,5,6,7,8],"pbar":[0.016,0.56,0.012,0.004,0.002,0.002,0.084,0.291],"reset":false,"ev":[]},{"i":44,"ts":1075.35,"y":-1,"dev":["flow_high","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.05,0.001,0.746,0.013,0.003,0.0,0.001,0.049,0.136],"set":[0,2,3,4,7,8],"pbar":[0.013,0.597,0.012,0.004,0.002,0.002,0.077,0.26],"reset":false,"ev":[]},{"i":45,"ts":1080.0,"y":-1,"dev":["flow_high","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.019,0.002,0.526,0.008,0.001,0.0,0.001,0.032,0.411],"set":[0,2,3,7,8],"pbar":[0.011,0.583,0.011,0.003,0.001,0.002,0.068,0.29],"reset":false,"ev":[]},{"i":46,"ts":1103.22,"y":-1,"dev":["flow_high","speed_high","z_offset_high","nozzle_temp_low"],"p":[0.004,0.003,0.092,0.004,0.001,0.0,0.001,0.122,0.772],"set":[0,2,3,7,8],"pbar":[0.003,0.092,0.004,0.001,0.0,0.001,0.122,0.772],"reset":true,"ev":[]},{"i":47,"ts":1196.62,"y":-1,"dev":["flow_low","speed_low","z_offset_high"],"p":[0.009,0.0,0.889,0.001,0.0,0.0,0.0,0.005,0.096],"set":[0,2,7,8],"pbar":[0.0,0.889,0.001,0.0,0.0,0.0,0.005,0.096],"reset":true,"ev":[]},{"i":48,"ts":1198.96,"y":-1,"dev":["flow_low","speed_low","z_offset_high"],"p":[0.048,0.004,0.793,0.004,0.005,0.001,0.001,0.041,0.104],"set":[0,1,2,3,4,7,8],"pbar":[0.001,0.87,0.001,0.001,0.0,0.0,0.013,0.097],"reset":false,"ev":[]},{"i":49,"ts":1203.59,"y":-1,"dev":["flow_low","speed_low","z_offset_high"],"p":[0.006,0.001,0.319,0.008,0.0,0.0,0.0,0.04,0.625],"set":[0,2,3,7,8],"pbar":[0.001,0.76,0.003,0.001,0.0,0.0,0.018,0.203],"reset":false,"ev":[2]},{"i":50,"ts":1215.68,"y":-1,"dev":["flow_low","speed_low","z_offset_high","nozzle_temp_low"],"p":[0.01,0.0,0.756,0.002,0.0,0.0,0.0,0.012,0.219],"set":[0,2,7,8],"pbar":[0.0,0.756,0.002,0.0,0.0,0.0,0.012,0.219],"reset":true,"ev":[]},{"i":51,"ts":1345.84,"y":8,"dev":["z_offset_high"],"p":[0.069,0.051,0.049,0.072,0.004,0.005,0.004,0.352,0.394],"set":[0,1,2,3,4,5,6,7,8],"pbar":[0.051,0.049,0.072,0.004,0.005,0.004,0.352,0.394],"reset":true,"ev":[]},{"i":52,"ts":1346.31,"y":8,"dev":["z_offset_high"],"p":[0.016,0.005,0.05,0.03,0.0,0.001,0.0,0.186,0.711],"set":[0,1,2,3,7,8],"pbar":[0.042,0.049,0.063,0.003,0.004,0.003,0.319,0.457],"reset":false,"ev":[]},{"i":53,"ts":1346.77,"y":8,"dev":["z_offset_high"],"p":[0.015,0.004,0.101,0.018,0.001,0.001,0.001,0.115,0.744],"set":[0,1,2,3,7,8],"pbar":[0.034,0.06,0.054,0.003,0.004,0.003,0.278,0.515],"reset":false,"ev":[]},{"i":54,"ts":1347.24,"y":8,"dev":["z_offset_high"],"p":[0.007,0.002,0.047,0.009,0.001,0.0,0.001,0.128,0.805],"set":[0,2,3,7,8],"pbar":[0.028,0.057,0.045,0.002,0.003,0.002,0.248,0.573],"reset":false,"ev":[]},{"i":55,"ts":1347.71,"y":8,"dev":["z_offset_high"],"p":[0.024,0.006,0.067,0.014,0.003,0.001,0.001,0.261,0.623],"set":[0,1,2,3,4,7,8],"pbar":[0.023,0.059,0.039,0.002,0.003,0.002,0.251,0.583],"reset":false,"ev":[]},{"i":56,"ts":1348.17,"y":8,"dev":["z_offset_high"],"p":[0.065,0.002,0.826,0.006,0.002,0.001,0.001,0.018,0.078],"set":[0,2,3,7,8],"pbar":[0.019,0.212,0.032,0.002,0.002,0.002,0.204,0.482],"reset":false,"ev":[]},{"i":57,"ts":1348.63,"y":8,"dev":["z_offset_high"],"p":[0.067,0.002,0.704,0.021,0.0,0.0,0.0,0.032,0.173],"set":[0,2,3,7,8],"pbar":[0.016,0.311,0.03,0.002,0.002,0.002,0.17,0.42],"reset":false,"ev":[]},{"i":58,"ts":1349.1,"y":8,"dev":["z_offset_high"],"p":[0.019,0.0,0.737,0.003,0.0,0.0,0.0,0.012,0.228],"set":[0,2,3,7,8],"pbar":[0.013,0.396,0.025,0.002,0.001,0.001,0.138,0.382],"reset":false,"ev":[]},{"i":59,"ts":1349.56,"y":8,"dev":["z_offset_high"],"p":[0.005,0.0,0.236,0.004,0.0,0.0,0.0,0.04,0.713],"set":[0,2,3,7,8],"pbar":[0.01,0.364,0.021,0.001,0.001,0.001,0.119,0.448],"reset":false,"ev":[]},{"i":60,"ts":1350.02,"y":8,"dev":["z_offset_high"],"p":[0.024,0.0,0.66,0.003,0.0,0.0,0.0,0.011,0.302],"set":[0,2,3,7,8],"pbar":[0.008,0.423,0.017,0.001,0.001,0.001,0.097,0.419],"reset":false,"ev":[]},{"i":61,"ts":1350.49,"y":8,"dev":["z_offset_high"],"p":[0.003,0.0,0.954,0.0,0.0,0.0,0.0,0.001,0.042],"set":[2,8],"pbar":[0.007,0.529,0.014,0.001,0.001,0.001,0.078,0.343],"reset":false,"ev":[]},{"i":62,"ts":1350.96,"y":8,"dev":["z_offset_high"],"p":[0.005,0.0,0.526,0.002,0.0,0.0,0.0,0.029,0.438],"set":[0,2,7,8],"pbar":[0.005,0.529,0.011,0.001,0.001,0.001,0.068,0.362],"reset":false,"ev":[]},{"i":63,"ts":1351.42,"y":8,"dev":["z_offset_high"],"p":[0.034,0.023,0.075,0.027,0.002,0.005,0.002,0.187,0.646],"set":[0,1,2,3,5,7,8],"pbar":[0.009,0.438,0.014,0.001,0.002,0.001,0.092,0.419],"reset":false,"ev":[]},{"i":64,"ts":1351.89,"y":8,"dev":["z_offset_high"],"p":[0.007,0.001,0.65,0.001,0.001,0.0,0.0,0.045,0.295],"set":[0,2,7,8],"pbar":[0.007,0.48,0.012,0.001,0.001,0.001,0.082,0.394],"reset":false,"ev":[]},{"i":65,"ts":1352.35,"y":8,"dev":["z_offset_high"],"p":[0.07,0.004,0.361,0.004,0.0,0.001,0.0,0.14,0.42],"set":[0,1,2,3,7,8],"pbar":[0.007,0.456,0.01,0.001,0.001,0.001,0.094,0.399],"reset":false,"ev":[]},{"i":66,"ts":1352.81,"y":8,"dev":["z_offset_high"],"p":[0.034,0.003,0.235,0.015,0.001,0.001,0.001,0.066,0.644],"set":[0,2,3,7,8],"pbar":[0.006,0.412,0.011,0.001,0.001,0.001,0.088,0.448],"reset":false,"ev":[]},{"i":67,"ts":1353.28,"y":8,"dev":["z_offset_high"],"p":[0.04,0.004,0.586,0.012,0.002,0.001,0.001,0.095,0.26],"set":[0,1,2,3,7,8],"pbar":[0.006,0.447,0.011,0.001,0.001,0.001,0.09,0.411],"reset":false,"ev":[]},{"i":68,"ts":1353.75,"y":8,"dev":["z_offset_high"],"p":[0.304,0.068,0.219,0.014,0.007,0.016,0.003,0.155,0.214],"set":[0,1,2,3,4,5,7,8],"pbar":[0.018,0.401,0.012,0.002,0.004,0.001,0.103,0.371],"reset":false,"ev":[]},{"i":69,"ts":1354.21,"y":8,"dev":["z_offset_high"],"p":[0.015,0.003,0.328,0.009,0.002,0.001,0.002,0.071,0.571],"set":[0,1,2,3,7,8],"pbar":[0.015,0.387,0.011,0.002,0.003,0.001,0.096,0.411],"reset":false,"ev":[]},{"i":70,"ts":1354.67,"y":8,"dev":["z_offset_high"],"p":[0.012,0.002,0.109,0.008,0.0,0.0,0.0,0.093,0.776],"set":[0,2,3,7,8],"pbar":[0.012,0.331,0.011,0.002,0.003,0.001,0.096,0.484],"reset":false,"ev":[]},{"i":71,"ts":1355.14,"y":8,"dev":["z_offset_high"],"p":[0.012,0.004,0.18,0.011,0.001,0.001,0.001,0.112,0.679],"set":[0,1,2,3,7,8],"pbar":[0.011,0.301,0.011,0.002,0.002,0.001,0.099,0.523],"reset":false,"ev":[]},{"i":72,"ts":1355.6,"y":8,"dev":["z_offset_high"],"p":[0.015,0.001,0.169,0.008,0.0,0.0,0.0,0.072,0.733],"set":[0,2,3,7,8],"pbar":[0.009,0.275,0.01,0.001,0.002,0.001,0.093,0.565],"reset":false,"ev":[]},{"i":73,"ts":1356.07,"y":8,"dev":["z_offset_high"],"p":[0.026,0.017,0.165,0.025,0.004,0.002,0.004,0.133,0.623],"set":[0,1,2,3,4,6,7,8],"pbar":[0.01,0.253,0.013,0.002,0.002,0.002,0.101,0.577],"reset":false,"ev":[]},{"i":74,"ts":1356.53,"y":8,"dev":["z_offset_high"],"p":[0.025,0.001,0.638,0.006,0.001,0.0,0.0,0.045,0.284],"set":[0,2,3,7,8],"pbar":[0.009,0.33,0.012,0.002,0.002,0.001,0.09,0.518],"reset":false,"ev":[]},{"i":75,"ts":1357.0,"y":8,"dev":["z_offset_high"],"p":[0.003,0.0,0.341,0.001,0.0,0.0,0.0,0.025,0.63],"set":[0,2,7,8],"pbar":[0.007,0.332,0.009,0.001,0.001,0.001,0.077,0.54],"reset":false,"ev":[]},{"i":76,"ts":1357.46,"y":8,"dev":["z_offset_high"],"p":[0.001,0.0,0.192,0.0,0.0,0.0,0.0,0.029,0.777],"set":[2,7,8],"pbar":[0.006,0.304,0.008,0.001,0.001,0.001,0.067,0.588],"reset":false,"ev":[]},{"i":77,"ts":1357.92,"y":8,"dev":["z_offset_high"],"p":[0.004,0.0,0.69,0.0,0.0,0.0,0.0,0.015,0.29],"set":[0,2,7,8],"pbar":[0.005,0.381,0.006,0.001,0.001,0.001,0.057,0.528],"reset":false,"ev":[]},{"i":78,"ts":1358.39,"y":8,"dev":["z_offset_high"],"p":[0.007,0.0,0.771,0.0,0.0,0.0,0.0,0.009,0.212],"set":[0,2,7,8],"pbar":[0.004,0.459,0.005,0.001,0.001,0.001,0.047,0.465],"reset":false,"ev":[]},{"i":79,"ts":1358.85,"y":8,"dev":["z_offset_high"],"p":[0.01,0.003,0.267,0.011,0.0,0.0,0.001,0.082,0.626],"set":[0,2,3,7,8],"pbar":[0.003,0.421,0.006,0.001,0.001,0.001,0.054,0.497],"reset":false,"ev":[]},{"i":80,"ts":1359.32,"y":8,"dev":["z_offset_high"],"p":[0.005,0.004,0.127,0.007,0.0,0.0,0.001,0.079,0.777],"set":[0,1,2,3,7,8],"pbar":[0.004,0.362,0.006,0.001,0.001,0.001,0.059,0.553],"reset":false,"ev":[]},{"i":81,"ts":1359.79,"y":8,"dev":["z_offset_high"],"p":[0.003,0.0,0.405,0.001,0.0,0.0,0.0,0.019,0.573],"set":[0,2,7,8],"pbar":[0.003,0.37,0.005,0.001,0.0,0.0,0.051,0.557],"reset":false,"ev":[]},{"i":82,"ts":1360.25,"y":8,"dev":["z_offset_high"],"p":[0.014,0.038,0.03,0.032,0.006,0.006,0.006,0.223,0.646],"set":[0,1,2,3,4,5,6,7,8],"pbar":[0.01,0.302,0.011,0.002,0.002,0.002,0.086,0.575],"reset":false,"ev":[]},{"i":83,"ts":1360.71,"y":8,"dev":["z_offset_high"],"p":[0.016,0.002,0.182,0.004,0.001,0.0,0.001,0.056,0.739],"set":[0,2,3,7,8],"pbar":[0.008,0.278,0.009,0.001,0.001,0.001,0.08,0.608],"reset":false,"ev":[]},{"i":84,"ts":1361.18,"y":8,"dev":["z_offset_high"],"p":[0.054,0.096,0.267,0.003,0.003,0.002,0.002,0.059,0.515],"set":[0,1,2,4,7,8],"pbar":[0.026,0.276,0.008,0.002,0.002,0.001,0.075,0.589],"reset":false,"ev":[]},{"i":85,"ts":1361.64,"y":8,"dev":["z_offset_high"],"p":[0.006,0.002,0.221,0.006,0.0,0.0,0.0,0.067,0.697],"set":[0,2,3,7,8],"pbar":[0.021,0.265,0.008,0.001,0.001,0.001,0.074,0.611],"reset":false,"ev":[]},{"i":86,"ts":1362.11,"y":8,"dev":["z_offset_high"],"p":[0.004,0.001,0.099,0.002,0.0,0.0,0.0,0.053,0.841],"set":[0,2,7,8],"pbar":[0.017,0.232,0.006,0.001,0.001,0.001,0.07,0.657],"reset":false,"ev":[]},{"i":87,"ts":1362.57,"y":8,"dev":["z_offset_high"],"p":[0.007,0.001,0.283,0.005,0.0,0.0,0.0,0.053,0.651],"set":[0,2,3,7,8],"pbar":[0.014,0.242,0.006,0.001,0.001,0.001,0.066,0.656],"reset":false,"ev":[3]},{"i":88,"ts":1363.04,"y":8,"dev":["z_offset_high"],"p":[0.008,0.001,0.135,0.007,0.0,0.001,0.0,0.087,0.761],"set":[0,2,3,7,8],"pbar":[0.011,0.221,0.006,0.001,0.001,0.001,0.071,0.677],"reset":false,"ev":[]},{"i":89,"ts":1363.5,"y":8,"dev":["z_offset_high"],"p":[0.007,0.001,0.178,0.003,0.0,0.0,0.0,0.055,0.756],"set":[0,2,3,7,8],"pbar":[0.009,0.212,0.006,0.001,0.001,0.001,0.067,0.693],"reset":false,"ev":[]},{"i":90,"ts":1377.91,"y":8,"dev":["z_offset_high"],"p":[0.001,0.001,0.073,0.002,0.0,0.0,0.0,0.05,0.873],"set":[2,7,8],"pbar":[0.001,0.073,0.002,0.0,0.0,0.0,0.05,0.873],"reset":true,"ev":[]},{"i":91,"ts":1378.37,"y":8,"dev":["z_offset_high"],"p":[0.008,0.007,0.047,0.008,0.002,0.001,0.001,0.154,0.771],"set":[0,1,2,3,7,8],"pbar":[0.002,0.068,0.003,0.001,0.0,0.0,0.071,0.852],"reset":false,"ev":[]},{"i":92,"ts":1378.84,"y":8,"dev":["z_offset_high"],"p":[0.035,0.006,0.177,0.02,0.003,0.001,0.002,0.216,0.539],"set":[0,1,2,3,7,8],"pbar":[0.003,0.09,0.007,0.001,0.0,0.0,0.1,0.79],"reset":false,"ev":[]},{"i":93,"ts":1379.3,"y":8,"dev":["z_offset_high"],"p":[0.004,0.004,0.075,0.011,0.001,0.001,0.0,0.154,0.75],"set":[0,1,2,3,7,8],"pbar":[0.003,0.087,0.008,0.001,0.0,0.0,0.111,0.782],"reset":false,"ev":[]},{"i":94,"ts":1379.77,"y":8,"dev":["z_offset_high"],"p":[0.005,0.002,0.13,0.004,0.0,0.0,0.0,0.111,0.747],"set":[0,2,3,7,8],"pbar":[0.003,0.096,0.007,0.001,0.0,0.0,0.111,0.775],"reset":false,"ev":[]},{"i":95,"ts":1380.23,"y":8,"dev":["z_offset_high"],"p":[0.01,0.011,0.106,0.012,0.002,0.001,0.001,0.115,0.742],"set":[0,1,2,3,7,8],"pbar":[0.004,0.098,0.008,0.001,0.0,0.001,0.111,0.768],"reset":false,"ev":[]},{"i":96,"ts":1380.69,"y":8,"dev":["z_offset_high"],"p":[0.021,0.004,0.262,0.012,0.005,0.001,0.001,0.106,0.59],"set":[0,1,2,3,4,7,8],"pbar":[0.004,0.13,0.009,0.002,0.001,0.001,0.11,0.733],"reset":false,"ev":[]},{"i":97,"ts":1381.16,"y":8,"dev":["z_offset_high"],"p":[0.007,0.006,0.062,0.008,0.002,0.0,0.0,0.1,0.814],"set":[0,1,2,3,7,8],"pbar":[0.005,0.117,0.009,0.002,0.001,0.001,0.108,0.749],"reset":false,"ev":[]},{"i":98,"ts":1381.62,"y":8,"dev":["z_offset_high"],"p":[0.004,0.002,0.106,0.012,0.001,0.0,0.001,0.074,0.799],"set":[0,2,3,7,8],"pbar":[0.004,0.115,0.009,0.002,0.0,0.001,0.101,0.759],"reset":false,"ev":[]},{"i":99,"ts":1382.09,"y":8,"dev":["z_offset_high"],"p":[0.003,0.001,0.136,0.003,0.0,0.0,0.0,0.046,0.811],"set":[0,2,3,7,8],"pbar":[0.004,0.119,0.008,0.001,0.0,0.001,0.09,0.769],"reset":false,"ev":[]},{"i":100,"ts":1382.55,"y":8,"dev":["z_offset_high"],"p":[0.026,0.035,0.127,0.034,0.008,0.003,0.005,0.157,0.606],"set":[0,1,2,3,4,5,6,7,8],"pbar":[0.01,0.121,0.013,0.003,0.001,0.001,0.104,0.736],"reset":false,"ev":[]},{"i":101,"ts":1383.02,"y":8,"dev":["z_offset_high"],"p":[0.011,0.001,0.124,0.006,0.0,0.0,0.0,0.109,0.748],"set":[0,2,3,7,8],"pbar":[0.008,0.121,0.012,0.002,0.001,0.001,0.105,0.739],"reset":false,"ev":[]},{"i":102,"ts":1383.48,"y":8,"dev":["z_offset_high"],"p":[0.004,0.001,0.03,0.006,0.0,0.0,0.0,0.16,0.797],"set":[0,2,3,7,8],"pbar":[0.007,0.103,0.011,0.002,0.001,0.001,0.116,0.75],"reset":false,"ev":[]},{"i":103,"ts":1383.95,"y":8,"dev":["z_offset_high"],"p":[0.006,0.001,0.138,0.003,0.0,0.0,0.0,0.108,0.743],"set":[0,2,7,8],"pbar":[0.006,0.11,0.009,0.001,0.001,0.001,0.114,0.749],"reset":false,"ev":[]},{"i":104,"ts":1384.41,"y":8,"dev":["z_offset_high"],"p":[0.007,0.002,0.119,0.006,0.0,0.0,0.0,0.091,0.775],"set":[0,2,3,7,8],"pbar":[0.005,0.112,0.009,0.001,0.001,0.001,0.11,0.754],"reset":false,"ev":[]},{"i":105,"ts":1384.88,"y":8,"dev":["z_offset_high"],"p":[0.015,0.002,0.447,0.007,0.001,0.0,0.001,0.051,0.478],"set":[0,2,3,7,8],"pbar":[0.004,0.179,0.008,0.001,0.0,0.001,0.098,0.699],"reset":false,"ev":[]},{"i":106,"ts":1385.34,"y":8,"dev":["z_offset_high"],"p":[0.008,0.003,0.168,0.005,0.001,0.0,0.0,0.074,0.739],"set":[0,1,2,3,7,8],"pbar":[0.004,0.177,0.008,0.001,0.0,0.001,0.093,0.707],"reset":false,"ev":[]},{"i":107,"ts":1385.81,"y":8,"dev":["z_offset_high"],"p":[0.005,0.002,0.14,0.012,0.0,0.0,0.0,0.052,0.788],"set":[0,2,3,7,8],"pbar":[0.004,0.169,0.008,0.001,0.0,0.001,0.085,0.723],"reset":false,"ev":[]},{"i":108,"ts":1386.27,"y":8,"dev":["z_offset_high"],"p":[0.005,0.001,0.249,0.003,0.0,0.0,0.0,0.058,0.683],"set":[0,2,3,7,8],"pbar":[0.003,0.185,0.007,0.001,0.0,0.0,0.08,0.715],"reset":false,"ev":[]},{"i":109,"ts":1386.74,"y":8,"dev":["z_offset_high"],"p":[0.033,0.035,0.142,0.051,0.005,0.003,0.005,0.152,0.573],"set":[0,1,2,3,4,5,6,7,8],"pbar":[0.009,0.177,0.016,0.002,0.001,0.001,0.094,0.687],"reset":false,"ev":[]},{"i":110,"ts":1387.2,"y":8,"dev":["z_offset_high"],"p":[0.007,0.001,0.125,0.003,0.0,0.0,0.0,0.084,0.779],"set":[0,2,3,7,8],"pbar":[0.008,0.166,0.014,0.001,0.001,0.001,0.092,0.705],"reset":false,"ev":[]},{"i":111,"ts":1387.66,"y":8,"dev":["z_offset_high"],"p":[0.003,0.001,0.051,0.003,0.0,0.0,0.0,0.089,0.853],"set":[0,2,3,7,8],"pbar":[0.006,0.143,0.011,0.001,0.001,0.001,0.091,0.735],"reset":false,"ev":[]},{"i":112,"ts":1388.13,"y":8,"dev":["z_offset_high"],"p":[0.004,0.001,0.189,0.002,0.0,0.0,0.0,0.085,0.718],"set":[0,2,7,8],"pbar":[0.005,0.152,0.01,0.001,0.001,0.001,0.09,0.732],"reset":false,"ev":[]},{"i":113,"ts":1388.59,"y":8,"dev":["z_offset_high"],"p":[0.008,0.001,0.152,0.006,0.0,0.0,0.0,0.074,0.758],"set":[0,2,3,7,8],"pbar":[0.004,0.152,0.009,0.001,0.0,0.001,0.087,0.737],"reset":false,"ev":[]},{"i":114,"ts":1389.06,"y":8,"dev":["z_offset_high"],"p":[0.013,0.001,0.381,0.005,0.0,0.0,0.0,0.047,0.551],"set":[0,2,3,7,8],"pbar":[0.004,0.198,0.008,0.001,0.0,0.001,0.079,0.7],"reset":false,"ev":[]},{"i":115,"ts":1389.52,"y":8,"dev":["z_offset_high"],"p":[0.009,0.001,0.261,0.003,0.0,0.0,0.0,0.063,0.663],"set":[0,2,3,7,8],"pbar":[0.003,0.211,0.007,0.001,0.0,0.001,0.076,0.692],"reset":false,"ev":[]},{"i":116,"ts":1389.99,"y":8,"dev":["z_offset_high"],"p":[0.003,0.001,0.168,0.005,0.0,0.0,0.0,0.032,0.792],"set":[2,3,7,8],"pbar":[0.003,0.202,0.007,0.001,0.0,0.0,0.067,0.712],"reset":false,"ev":[]},{"i":117,"ts":1390.45,"y":8,"dev":["z_offset_high"],"p":[0.008,0.005,0.114,0.011,0.001,0.001,0.001,0.153,0.707],"set":[0,1,2,3,7,8],"pbar":[0.003,0.184,0.007,0.001,0.0,0.001,0.084,0.711],"reset":false,"ev":[]},{"i":118,"ts":1390.92,"y":8,"dev":["z_offset_high"],"p":[0.016,0.017,0.163,0.031,0.003,0.002,0.003,0.118,0.647],"set":[0,1,2,3,4,6,7,8],"pbar":[0.006,0.18,0.012,0.001,0.001,0.001,0.091,0.698],"reset":false,"ev":[]},{"i":119,"ts":1391.38,"y":8,"dev":["z_offset_high"],"p":[0.003,0.001,0.062,0.005,0.0,0.0,0.0,0.127,0.802],"set":[0,2,3,7,8],"pbar":[0.005,0.156,0.011,0.001,0.001,0.001,0.098,0.719],"reset":false,"ev":[]},{"i":120,"ts":1391.85,"y":8,"dev":["z_offset_high"],"p":[0.015,0.002,0.068,0.016,0.0,0.001,0.0,0.159,0.739],"set":[0,2,3,7,8],"pbar":[0.004,0.139,0.012,0.001,0.001,0.001,0.11,0.723],"reset":false,"ev":[]},{"i":121,"ts":1392.31,"y":8,"dev":["z_offset_high"],"p":[0.003,0.001,0.075,0.003,0.0,0.0,0.0,0.128,0.789],"set":[0,2,3,7,8],"pbar":[0.004,0.126,0.01,0.001,0.001,0.001,0.114,0.736],"reset":false,"ev":[]},{"i":122,"ts":1392.78,"y":8,"dev":["z_offset_high"],"p":[0.009,0.0,0.562,0.002,0.0,0.0,0.0,0.033,0.394],"set":[0,2,7,8],"pbar":[0.003,0.213,0.008,0.001,0.0,0.0,0.098,0.668],"reset":false,"ev":[]},{"i":123,"ts":1393.24,"y":8,"dev":["z_offset_high"],"p":[0.008,0.001,0.266,0.003,0.0,0.0,0.0,0.054,0.667],"set":[0,2,3,7,8],"pbar":[0.003,0.224,0.007,0.0,0.0,0.0,0.089,0.668],"reset":false,"ev":[]},{"i":124,"ts":1393.7,"y":8,"dev":["z_offset_high"],"p":[0.011,0.0,0.706,0.002,0.0,0.0,0.0,0.027,0.253],"set":[0,2,7,8],"pbar":[0.002,0.32,0.006,0.0,0.0,0.0,0.077,0.585],"reset":false,"ev":[]},{"i":125,"ts":1394.17,"y":8,"dev":["z_offset_high"],"p":[0.004,0.001,0.128,0.004,0.0,0.0,0.0,0.053,0.809],"set":[0,2,3,7,8],"pbar":[0.002,0.282,0.006,0.0,0.0,0.0,0.072,0.629],"reset":false,"ev":[]},{"i":126,"ts":1394.64,"y":8,"dev":["z_offset_high"],"p":[0.015,0.002,0.288,0.015,0.0,0.0,0.001,0.083,0.596],"set":[0,2,3,7,8],"pbar":[0.002,0.283,0.008,0.0,0.0,0.0,0.074,0.623],"reset":false,"ev":[]},{"i":127,"ts":1395.1,"y":8,"dev":["z_offset_high"],"p":[0.011,0.011,0.084,0.017,0.003,0.001,0.002,0.169,0.702],"set":[0,1,2,3,4,7,8],"pbar":[0.004,0.243,0.01,0.001,0.001,0.001,0.093,0.639],"reset":false,"ev":[]},{"i":128,"ts":1395.56,"y":8,"dev":["z_offset_high"],"p":[0.027,0.001,0.472,0.006,0.001,0.0,0.0,0.05,0.443],"set":[0,2,3,7,8],"pbar":[0.003,0.289,0.009,0.001,0.0,0.001,0.085,0.599],"reset":false,"ev":[]},{"i":129,"ts":1396.03,"y":-1,"dev":["z_offset_high","nozzle_temp_low"],"p":[0.005,0.001,0.187,0.007,0.0,0.0,0.0,0.037,0.762],"set":[0,2,3,7,8],"pbar":[0.003,0.269,0.008,0.001,0.0,0.001,0.075,0.632],"reset":false,"ev":[]},{"i":130,"ts":1409.04,"y":-1,"dev":["speed_high","z_offset_high","nozzle_temp_low"],"p":[0.007,0.0,0.389,0.002,0.0,0.0,0.0,0.036,0.565],"set":[0,2,7,8],"pbar":[0.0,0.389,0.002,0.0,0.0,0.0,0.036,0.565],"reset":true,"ev":[]},{"i":131,"ts":1414.15,"y":-1,"dev":["speed_high","z_offset_high","nozzle_temp_low"],"p":[0.008,0.001,0.06,0.003,0.0,0.0,0.0,0.116,0.81],"set":[0,2,3,7,8],"pbar":[0.001,0.323,0.002,0.0,0.0,0.0,0.052,0.614],"reset":false,"ev":[]},{"i":132,"ts":1444.82,"y":-1,"dev":["speed_high","z_offset_high","nozzle_temp_low"],"p":[0.006,0.001,0.055,0.003,0.0,0.0,0.0,0.047,0.888],"set":[0,2,3,7,8],"pbar":[0.001,0.055,0.003,0.0,0.0,0.0,0.047,0.888],"reset":true,"ev":[]}],"events":[{"i":9,"ts":222.11,"cause":"flow_high","pbar":0.752,"correct":true,"set":["none","flow_low","flow_high","speed_low","z_offset_high"],"flags":[],"proposals":[{"cause":"flow_high","var":"flow","from":100.0,"delta":-8.76,"to":91.24,"gcode":["M221 S91"],"sentence":"Most likely cause: flow high (p=0.08). Smallest in-envelope change that undoes it: flow 100→91.2384 % (-8.76164). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M221 S91"],"layers":[{"layer":"L2","passed":true,"why":"L2: -8.76164 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 91 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 91 % within [90, 110]"}]},{"cause":"flow_low","var":"flow","from":100.0,"delta":8.76,"to":108.76,"gcode":["M221 S109"],"sentence":"Most likely cause: flow low (p=0.02). Smallest in-envelope change that undoes it: flow 100→108.762 % (+8.76164). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M221 S109"],"layers":[{"layer":"L2","passed":true,"why":"L2: +8.76164 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 109 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 109 % within [90, 110]"}]},{"cause":"speed_low","var":"speed","from":100.0,"delta":8.76,"to":108.76,"gcode":["M220 S109"],"sentence":"Most likely cause: speed low (p=0.01). Smallest in-envelope change that undoes it: speed 100→108.762 % (+8.76164). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M220 S109"],"layers":[{"layer":"L2","passed":true,"why":"L2: +8.76164 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 109 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 109 % within [80, 110]"}]}],"manual":{"z_offset_high":"Nozzle likely too far from the bed: lower the Z offset (babystep down ~0.05 mm) or re-level."},"l4":"L4: |C| = 5","verdict":"ESCALATE","reason":"manual:z_offset_high"},{"i":21,"ts":448.46,"cause":"flow_high","pbar":0.814,"correct":true,"set":["none","flow_high","speed_low","z_offset_low","z_offset_high"],"flags":[],"proposals":[{"cause":"flow_high","var":"flow","from":100.0,"delta":-9.07,"to":90.93,"gcode":["M221 S91"],"sentence":"Most likely cause: flow high (p=0.25). Smallest in-envelope change that undoes it: flow 100→90.9301 % (-9.06994). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M221 S91"],"layers":[{"layer":"L2","passed":true,"why":"L2: -9.06994 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 91 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 91 % within [90, 110]"}]},{"cause":"speed_low","var":"speed","from":100.0,"delta":9.07,"to":109.07,"gcode":["M220 S109"],"sentence":"Most likely cause: speed low (p=0.01). Smallest in-envelope change that undoes it: speed 100→109.07 % (+9.06994). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M220 S109"],"layers":[{"layer":"L2","passed":true,"why":"L2: +9.06994 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 109 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 109 % within [80, 110]"}]}],"manual":{"z_offset_low":"Nozzle likely too close to the bed: raise the Z offset (babystep up ~0.05 mm) or re-level.","z_offset_high":"Nozzle likely too far from the bed: lower the Z offset (babystep down ~0.05 mm) or re-level."},"l4":"L4: |C| = 5","verdict":"ESCALATE","reason":"manual:z_offset_low"},{"i":49,"ts":1203.59,"cause":"flow_high","pbar":0.76,"correct":false,"set":["none","flow_high","speed_low","z_offset_low","z_offset_high"],"flags":[],"proposals":[{"cause":"flow_high","var":"flow","from":100.0,"delta":-8.8,"to":91.2,"gcode":["M221 S91"],"sentence":"Most likely cause: flow high (p=0.32). Smallest in-envelope change that undoes it: flow 100→91.2006 % (-8.7994). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M221 S91"],"layers":[{"layer":"L2","passed":true,"why":"L2: -8.7994 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 91 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 91 % within [90, 110]"}]},{"cause":"speed_low","var":"speed","from":100.0,"delta":8.8,"to":108.8,"gcode":["M220 S109"],"sentence":"Most likely cause: speed low (p=0.01). Smallest in-envelope change that undoes it: speed 100→108.799 % (+8.7994). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M220 S109"],"layers":[{"layer":"L2","passed":true,"why":"L2: +8.7994 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 109 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 109 % within [80, 110]"}]}],"manual":{"z_offset_low":"Nozzle likely too close to the bed: raise the Z offset (babystep up ~0.05 mm) or re-level.","z_offset_high":"Nozzle likely too far from the bed: lower the Z offset (babystep down ~0.05 mm) or re-level."},"l4":"L4: |C| = 5","verdict":"ESCALATE","reason":"manual:z_offset_low"},{"i":87,"ts":1362.57,"cause":"z_offset_high","pbar":0.656,"correct":true,"set":["none","flow_high","speed_low","z_offset_low","z_offset_high"],"flags":[],"proposals":[{"cause":"flow_high","var":"flow","from":100.0,"delta":-8.28,"to":91.72,"gcode":["M221 S92"],"sentence":"Most likely cause: flow high (p=0.28). Smallest in-envelope change that undoes it: flow 100→91.7222 % (-8.27777). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M221 S92"],"layers":[{"layer":"L2","passed":true,"why":"L2: -8.27777 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 92 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 92 % within [90, 110]"}]},{"cause":"speed_low","var":"speed","from":100.0,"delta":8.28,"to":108.28,"gcode":["M220 S108"],"sentence":"Most likely cause: speed low (p=0.00). Smallest in-envelope change that undoes it: speed 100→108.278 % (+8.27777). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M220 S108"],"layers":[{"layer":"L2","passed":true,"why":"L2: +8.27777 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 108 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 108 % within [80, 110]"}]}],"manual":{"z_offset_low":"Nozzle likely too close to the bed: raise the Z offset (babystep up ~0.05 mm) or re-level.","z_offset_high":"Nozzle likely too far from the bed: lower the Z offset (babystep down ~0.05 mm) or re-level."},"l4":"L4: |C| = 5","verdict":"ESCALATE","reason":"manual:z_offset_low"}]},"miss":{"trial":"p172","n_frames":130,"top1":0.0,"single":85,"frames":[{"i":0,"ts":0.0,"y":8,"dev":["z_offset_high"],"p":[0.001,0.962,0.0,0.001,0.03,0.001,0.0,0.004,0.001],"set":[1,4,7],"pbar":[0.962,0.0,0.001,0.03,0.001,0.0,0.004,0.001],"reset":false,"ev":[]},{"i":1,"ts":0.46,"y":8,"dev":["z_offset_high"],"p":[0.006,0.88,0.005,0.002,0.088,0.002,0.0,0.012,0.006],"set":[0,1,2,4,7,8],"pbar":[0.945,0.001,0.001,0.042,0.001,0.0,0.006,0.002],"reset":false,"ev":[]},{"i":2,"ts":0.93,"y":8,"dev":["z_offset_high"],"p":[0.005,0.899,0.006,0.003,0.065,0.002,0.0,0.014,0.006],"set":[0,1,2,3,4,7,8],"pbar":[0.936,0.002,0.001,0.046,0.001,0.0,0.008,0.003],"reset":false,"ev":[0]},{"i":3,"ts":1.39,"y":8,"dev":["z_offset_high"],"p":[0.0,0.961,0.0,0.0,0.033,0.0,0.0,0.002,0.002],"set":[1,4],"pbar":[0.941,0.002,0.001,0.044,0.001,0.0,0.007,0.003],"reset":false,"ev":[]},{"i":4,"ts":1.86,"y":8,"dev":["z_offset_high"],"p":[0.0,0.957,0.0,0.001,0.035,0.001,0.0,0.003,0.002],"set":[1,4,7],"pbar":[0.944,0.001,0.001,0.042,0.001,0.0,0.006,0.003],"reset":false,"ev":[]},{"i":5,"ts":2.32,"y":8,"dev":["z_offset_high"],"p":[0.0,0.982,0.0,0.0,0.013,0.001,0.0,0.002,0.001],"set":[1,4],"pbar":[0.952,0.001,0.001,0.036,0.001,0.0,0.005,0.002],"reset":false,"ev":[]},{"i":6,"ts":2.79,"y":8,"dev":["z_offset_high"],"p":[0.0,0.96,0.0,0.001,0.035,0.001,0.0,0.002,0.001],"set":[1,4],"pbar":[0.954,0.001,0.001,0.036,0.001,0.0,0.004,0.002],"reset":false,"ev":[]},{"i":7,"ts":3.25,"y":8,"dev":["z_offset_high"],"p":[0.0,0.966,0.0,0.0,0.03,0.001,0.0,0.001,0.001],"set":[1,4],"pbar":[0.956,0.001,0.001,0.035,0.001,0.0,0.004,0.002],"reset":false,"ev":[]},{"i":8,"ts":3.72,"y":8,"dev":["z_offset_high"],"p":[0.002,0.948,0.0,0.001,0.04,0.0,0.0,0.001,0.007],"set":[1,4,8],"pbar":[0.955,0.001,0.001,0.036,0.001,0.0,0.003,0.003],"reset":false,"ev":[]},{"i":9,"ts":4.18,"y":8,"dev":["z_offset_high"],"p":[0.003,0.937,0.0,0.001,0.046,0.0,0.0,0.002,0.01],"set":[1,4,8],"pbar":[0.951,0.001,0.001,0.038,0.001,0.0,0.003,0.004],"reset":false,"ev":[]},{"i":10,"ts":4.65,"y":8,"dev":["z_offset_high"],"p":[0.0,0.978,0.0,0.0,0.019,0.0,0.0,0.001,0.001],"set":[1,4],"pbar":[0.956,0.001,0.001,0.034,0.001,0.0,0.003,0.004],"reset":false,"ev":[]},{"i":11,"ts":5.11,"y":8,"dev":["z_offset_high"],"p":[0.0,0.24,0.003,0.003,0.674,0.0,0.0,0.037,0.042],"set":[1,2,4,7,8],"pbar":[0.813,0.001,0.001,0.162,0.001,0.0,0.01,0.011],"reset":false,"ev":[]},{"i":12,"ts":5.58,"y":8,"dev":["z_offset_high"],"p":[0.0,0.99,0.0,0.0,0.004,0.0,0.0,0.001,0.005],"set":[1,4,8],"pbar":[0.849,0.001,0.001,0.13,0.0,0.0,0.008,0.01],"reset":false,"ev":[]},{"i":13,"ts":6.04,"y":8,"dev":["z_offset_high"],"p":[0.0,0.961,0.001,0.003,0.027,0.002,0.0,0.003,0.003],"set":[1,4,7,8],"pbar":[0.871,0.001,0.001,0.11,0.001,0.0,0.007,0.009],"reset":false,"ev":[]},{"i":14,"ts":6.5,"y":8,"dev":["z_offset_high"],"p":[0.0,0.962,0.0,0.001,0.03,0.0,0.0,0.002,0.004],"set":[1,4,8],"pbar":[0.889,0.001,0.001,0.094,0.001,0.0,0.006,0.008],"reset":false,"ev":[]},{"i":15,"ts":6.97,"y":8,"dev":["z_offset_high"],"p":[0.0,0.971,0.0,0.001,0.022,0.0,0.0,0.002,0.003],"set":[1,4],"pbar":[0.906,0.001,0.001,0.079,0.001,0.0,0.005,0.007],"reset":false,"ev":[]},{"i":16,"ts":7.43,"y":8,"dev":["z_offset_high"],"p":[0.001,0.679,0.001,0.002,0.28,0.0,0.0,0.013,0.025],"set":[1,4,7,8],"pbar":[0.86,0.001,0.001,0.12,0.001,0.0,0.007,0.01],"reset":false,"ev":[]},{"i":17,"ts":7.9,"y":8,"dev":["z_offset_high"],"p":[0.001,0.921,0.001,0.001,0.069,0.001,0.0,0.004,0.003],"set":[1,4,7,8],"pbar":[0.873,0.001,0.001,0.109,0.001,0.0,0.006,0.009],"reset":false,"ev":[]},{"i":18,"ts":8.36,"y":8,"dev":["z_offset_high"],"p":[0.0,0.907,0.001,0.001,0.081,0.001,0.0,0.004,0.004],"set":[1,4,7,8],"pbar":[0.879,0.001,0.001,0.104,0.001,0.0,0.006,0.008],"reset":false,"ev":[]},{"i":19,"ts":8.83,"y":8,"dev":["z_offset_high"],"p":[0.002,0.376,0.007,0.004,0.464,0.0,0.0,0.044,0.102],"set":[1,2,3,4,7,8],"pbar":[0.779,0.002,0.002,0.176,0.001,0.0,0.013,0.027],"reset":false,"ev":[]},{"i":20,"ts":9.29,"y":8,"dev":["z_offset_high"],"p":[0.003,0.918,0.001,0.004,0.053,0.0,0.0,0.004,0.018],"set":[1,3,4,7,8],"pbar":[0.807,0.002,0.002,0.151,0.0,0.0,0.011,0.025],"reset":false,"ev":[]},{"i":21,"ts":9.76,"y":8,"dev":["z_offset_high"],"p":[0.0,0.915,0.001,0.002,0.074,0.0,0.0,0.002,0.006],"set":[1,4,8],"pbar":[0.828,0.001,0.002,0.136,0.0,0.0,0.01,0.021],"reset":false,"ev":[]},{"i":22,"ts":10.22,"y":8,"dev":["z_offset_high"],"p":[0.002,0.666,0.003,0.008,0.229,0.004,0.001,0.051,0.037],"set":[1,2,3,4,5,7,8],"pbar":[0.796,0.002,0.003,0.154,0.001,0.0,0.018,0.024],"reset":false,"ev":[]},{"i":23,"ts":10.69,"y":8,"dev":["z_offset_high"],"p":[0.001,0.968,0.0,0.001,0.025,0.0,0.0,0.003,0.003],"set":[1,4,7],"pbar":[0.83,0.001,0.003,0.128,0.001,0.0,0.015,0.02],"reset":false,"ev":[]},{"i":24,"ts":11.15,"y":8,"dev":["z_offset_high"],"p":[0.001,0.274,0.003,0.005,0.664,0.002,0.0,0.03,0.021],"set":[1,2,3,4,7,8],"pbar":[0.719,0.002,0.003,0.236,0.001,0.0,0.018,0.02],"reset":false,"ev":[]},{"i":25,"ts":11.62,"y":8,"dev":["z_offset_high"],"p":[0.001,0.367,0.002,0.006,0.562,0.002,0.0,0.034,0.026],"set":[1,3,4,7,8],"pbar":[0.649,0.002,0.004,0.301,0.001,0.0,0.021,0.021],"reset":false,"ev":[]},{"i":26,"ts":12.08,"y":8,"dev":["z_offset_high"],"p":[0.004,0.656,0.002,0.008,0.253,0.001,0.0,0.029,0.047],"set":[0,1,3,4,7,8],"pbar":[0.65,0.002,0.005,0.291,0.001,0.0,0.023,0.026],"reset":false,"ev":[]},{"i":27,"ts":12.55,"y":8,"dev":["z_offset_high"],"p":[0.0,0.824,0.0,0.004,0.155,0.0,0.0,0.005,0.012],"set":[1,3,4,7,8],"pbar":[0.685,0.002,0.004,0.264,0.001,0.0,0.019,0.024],"reset":false,"ev":[]},{"i":28,"ts":13.01,"y":8,"dev":["z_offset_high"],"p":[0.001,0.498,0.004,0.004,0.457,0.002,0.0,0.018,0.016],"set":[1,2,3,4,7,8],"pbar":[0.647,0.002,0.004,0.303,0.001,0.0,0.019,0.022],"reset":false,"ev":[]},{"i":29,"ts":13.47,"y":8,"dev":["z_offset_high"],"p":[0.001,0.407,0.004,0.003,0.554,0.001,0.0,0.016,0.015],"set":[1,2,4,7,8],"pbar":[0.599,0.002,0.004,0.353,0.001,0.0,0.018,0.021],"reset":false,"ev":[]},{"i":30,"ts":13.94,"y":8,"dev":["z_offset_high"],"p":[0.008,0.46,0.004,0.067,0.356,0.001,0.0,0.032,0.072],"set":[0,1,2,3,4,7,8],"pbar":[0.571,0.003,0.017,0.354,0.001,0.0,0.021,0.031],"reset":false,"ev":[]},{"i":31,"ts":14.41,"y":8,"dev":["z_offset_high"],"p":[0.003,0.618,0.001,0.021,0.242,0.0,0.0,0.021,0.094],"set":[0,1,3,4,7,8],"pbar":[0.581,0.002,0.017,0.331,0.001,0.0,0.021,0.044],"reset":false,"ev":[]},{"i":32,"ts":14.87,"y":8,"dev":["z_offset_high"],"p":[0.001,0.328,0.002,0.006,0.615,0.0,0.0,0.016,0.032],"set":[1,3,4,7,8],"pbar":[0.53,0.002,0.015,0.388,0.001,0.0,0.02,0.041],"reset":false,"ev":[]},{"i":33,"ts":15.33,"y":8,"dev":["z_offset_high"],"p":[0.005,0.695,0.002,0.006,0.246,0.001,0.0,0.028,0.017],"set":[0,1,3,4,7,8],"pbar":[0.563,0.002,0.013,0.36,0.001,0.0,0.022,0.036],"reset":false,"ev":[]},{"i":34,"ts":15.79,"y":8,"dev":["z_offset_high"],"p":[0.004,0.374,0.003,0.013,0.532,0.001,0.0,0.049,0.024],"set":[0,1,3,4,7,8],"pbar":[0.525,0.002,0.013,0.394,0.001,0.0,0.027,0.034],"reset":false,"ev":[]},{"i":35,"ts":16.26,"y":8,"dev":["z_offset_high"],"p":[0.0,0.005,0.002,0.003,0.917,0.0,0.0,0.059,0.013],"set":[1,3,4,7,8],"pbar":[0.421,0.002,0.011,0.499,0.001,0.0,0.034,0.03],"reset":false,"ev":[]},{"i":36,"ts":16.73,"y":8,"dev":["z_offset_high"],"p":[0.001,0.976,0.0,0.0,0.016,0.0,0.0,0.006,0.001],"set":[1,4,7],"pbar":[0.532,0.002,0.009,0.402,0.001,0.0,0.028,0.024],"reset":false,"ev":[]},{"i":37,"ts":17.19,"y":8,"dev":["z_offset_high"],"p":[0.002,0.345,0.005,0.01,0.597,0.001,0.0,0.031,0.009],"set":[1,2,3,4,7,8],"pbar":[0.495,0.002,0.009,0.441,0.001,0.0,0.029,0.021],"reset":false,"ev":[]},{"i":38,"ts":17.66,"y":8,"dev":["z_offset_high"],"p":[0.001,0.08,0.005,0.007,0.771,0.0,0.0,0.047,0.09],"set":[1,2,3,4,7,8],"pbar":[0.412,0.003,0.009,0.507,0.001,0.0,0.032,0.035],"reset":false,"ev":[]},{"i":39,"ts":18.12,"y":8,"dev":["z_offset_high"],"p":[0.005,0.164,0.017,0.019,0.561,0.001,0.0,0.104,0.129],"set":[0,1,2,3,4,7,8],"pbar":[0.362,0.006,0.011,0.518,0.001,0.0,0.047,0.054],"reset":false,"ev":[]},{"i":40,"ts":18.59,"y":8,"dev":["z_offset_high"],"p":[0.003,0.618,0.002,0.028,0.292,0.001,0.0,0.025,0.03],"set":[0,1,3,4,7,8],"pbar":[0.413,0.005,0.014,0.473,0.001,0.0,0.042,0.049],"reset":false,"ev":[]},{"i":41,"ts":19.05,"y":8,"dev":["z_offset_high"],"p":[0.003,0.682,0.001,0.037,0.213,0.001,0.0,0.032,0.03],"set":[0,1,3,4,7,8],"pbar":[0.467,0.004,0.019,0.421,0.001,0.0,0.04,0.045],"reset":false,"ev":[]},{"i":42,"ts":19.51,"y":8,"dev":["z_offset_high"],"p":[0.001,0.061,0.005,0.006,0.868,0.001,0.0,0.031,0.028],"set":[1,2,3,4,7,8],"pbar":[0.386,0.004,0.016,0.51,0.001,0.0,0.038,0.042],"reset":false,"ev":[]},{"i":43,"ts":19.98,"y":8,"dev":["z_offset_high"],"p":[0.002,0.084,0.01,0.011,0.811,0.001,0.0,0.043,0.037],"set":[1,2,3,4,7,8],"pbar":[0.326,0.005,0.015,0.571,0.001,0.0,0.039,0.041],"reset":false,"ev":[]},{"i":44,"ts":20.45,"y":8,"dev":["z_offset_high"],"p":[0.009,0.183,0.006,0.006,0.666,0.001,0.0,0.049,0.08],"set":[0,1,2,3,4,7,8],"pbar":[0.297,0.006,0.013,0.59,0.001,0.0,0.041,0.049],"reset":false,"ev":[]},{"i":45,"ts":20.91,"y":8,"dev":["z_offset_high"],"p":[0.002,0.067,0.003,0.007,0.825,0.0,0.0,0.044,0.051],"set":[1,2,3,4,7,8],"pbar":[0.251,0.005,0.012,0.637,0.001,0.0,0.042,0.049],"reset":false,"ev":[]},{"i":46,"ts":21.37,"y":8,"dev":["z_offset_high"],"p":[0.001,0.523,0.003,0.009,0.419,0.001,0.0,0.038,0.005],"set":[1,2,3,4,7,8],"pbar":[0.305,0.005,0.011,0.593,0.001,0.0,0.041,0.04],"reset":false,"ev":[]},{"i":47,"ts":21.84,"y":8,"dev":["z_offset_high"],"p":[0.002,0.911,0.0,0.001,0.042,0.001,0.0,0.03,0.013],"set":[1,4,7,8],"pbar":[0.427,0.004,0.009,0.483,0.001,0.0,0.039,0.035],"reset":false,"ev":[]},{"i":48,"ts":22.3,"y":8,"dev":["z_offset_high"],"p":[0.0,0.841,0.0,0.0,0.096,0.0,0.0,0.013,0.049],"set":[1,4,7,8],"pbar":[0.509,0.003,0.008,0.406,0.001,0.0,0.034,0.038],"reset":false,"ev":[]},{"i":49,"ts":22.77,"y":8,"dev":["z_offset_high"],"p":[0.001,0.041,0.004,0.01,0.877,0.001,0.0,0.055,0.013],"set":[1,2,3,4,7,8],"pbar":[0.416,0.003,0.008,0.5,0.001,0.0,0.038,0.033],"reset":false,"ev":[]},{"i":50,"ts":23.23,"y":8,"dev":["z_offset_high"],"p":[0.001,0.015,0.002,0.007,0.906,0.001,0.0,0.054,0.014],"set":[1,3,4,7,8],"pbar":[0.336,0.003,0.008,0.581,0.001,0.0,0.041,0.029],"reset":false,"ev":[]},{"i":51,"ts":23.7,"y":8,"dev":["z_offset_high"],"p":[0.0,0.026,0.002,0.009,0.905,0.0,0.0,0.042,0.015],"set":[1,3,4,7,8],"pbar":[0.274,0.003,0.008,0.646,0.001,0.0,0.041,0.026],"reset":false,"ev":[]},{"i":52,"ts":24.16,"y":8,"dev":["z_offset_high"],"p":[0.001,0.225,0.0,0.004,0.699,0.0,0.0,0.041,0.03],"set":[1,3,4,7,8],"pbar":[0.264,0.002,0.007,0.656,0.001,0.0,0.041,0.027],"reset":false,"ev":[]},{"i":53,"ts":24.63,"y":8,"dev":["z_offset_high"],"p":[0.001,0.048,0.002,0.003,0.891,0.0,0.0,0.03,0.025],"set":[1,3,4,7,8],"pbar":[0.221,0.002,0.007,0.703,0.0,0.0,0.039,0.027],"reset":false,"ev":[1]},{"i":54,"ts":25.09,"y":8,"dev":["z_offset_high"],"p":[0.001,0.046,0.003,0.003,0.902,0.0,0.0,0.022,0.022],"set":[1,3,4,7,8],"pbar":[0.186,0.002,0.006,0.743,0.0,0.0,0.035,0.026],"reset":false,"ev":[]},{"i":55,"ts":25.55,"y":8,"dev":["z_offset_high"],"p":[0.003,0.034,0.002,0.056,0.761,0.0,0.001,0.085,0.058],"set":[0,1,3,4,7,8],"pbar":[0.155,0.002,0.016,0.747,0.0,0.0,0.045,0.032],"reset":false,"ev":[]},{"i":56,"ts":26.02,"y":8,"dev":["z_offset_high"],"p":[0.013,0.62,0.003,0.051,0.238,0.001,0.001,0.043,0.032],"set":[0,1,3,4,7,8],"pbar":[0.248,0.002,0.023,0.645,0.001,0.0,0.045,0.032],"reset":false,"ev":[]},{"i":57,"ts":26.49,"y":8,"dev":["z_offset_high"],"p":[0.001,0.192,0.001,0.007,0.662,0.0,0.0,0.052,0.084],"set":[1,3,4,7,8],"pbar":[0.237,0.002,0.02,0.648,0.0,0.0,0.046,0.043],"reset":false,"ev":[]},{"i":58,"ts":26.95,"y":8,"dev":["z_offset_high"],"p":[0.004,0.477,0.003,0.014,0.324,0.002,0.001,0.103,0.073],"set":[0,1,3,4,7,8],"pbar":[0.285,0.002,0.019,0.584,0.001,0.0,0.058,0.049],"reset":false,"ev":[]},{"i":59,"ts":27.41,"y":8,"dev":["z_offset_high"],"p":[0.01,0.592,0.003,0.028,0.281,0.001,0.0,0.054,0.03],"set":[0,1,2,3,4,7,8],"pbar":[0.346,0.002,0.02,0.523,0.001,0.0,0.057,0.045],"reset":false,"ev":[]},{"i":60,"ts":27.88,"y":8,"dev":["z_offset_high"],"p":[0.0,0.005,0.001,0.004,0.952,0.0,0.0,0.03,0.007],"set":[1,3,4,7,8],"pbar":[0.278,0.002,0.017,0.609,0.001,0.0,0.051,0.037],"reset":false,"ev":[]},{"i":61,"ts":28.34,"y":8,"dev":["z_offset_high"],"p":[0.001,0.016,0.003,0.01,0.897,0.001,0.0,0.053,0.019],"set":[1,2,3,4,7,8],"pbar":[0.226,0.002,0.016,0.666,0.001,0.0,0.052,0.034],"reset":false,"ev":[]},{"i":62,"ts":28.81,"y":8,"dev":["z_offset_high"],"p":[0.004,0.114,0.003,0.044,0.557,0.002,0.001,0.144,0.132],"set":[0,1,2,3,4,7,8],"pbar":[0.203,0.003,0.021,0.644,0.001,0.0,0.07,0.053],"reset":false,"ev":[]},{"i":63,"ts":29.27,"y":8,"dev":["z_offset_high"],"p":[0.002,0.02,0.009,0.047,0.829,0.001,0.001,0.056,0.034],"set":[1,2,3,4,7,8],"pbar":[0.167,0.004,0.026,0.681,0.001,0.0,0.067,0.05],"reset":false,"ev":[]},{"i":64,"ts":29.74,"y":8,"dev":["z_offset_high"],"p":[0.001,0.087,0.004,0.004,0.802,0.0,0.0,0.048,0.054],"set":[1,2,3,4,7,8],"pbar":[0.151,0.004,0.022,0.706,0.001,0.0,0.063,0.051],"reset":false,"ev":[]},{"i":65,"ts":30.2,"y":8,"dev":["z_offset_high"],"p":[0.0,0.02,0.002,0.001,0.928,0.0,0.0,0.028,0.02],"set":[1,4,7,8],"pbar":[0.124,0.004,0.018,0.75,0.001,0.0,0.056,0.044],"reset":false,"ev":[]},{"i":66,"ts":30.67,"y":8,"dev":["z_offset_high"],"p":[0.02,0.293,0.006,0.11,0.451,0.001,0.001,0.071,0.047],"set":[0,1,2,3,4,7,8],"pbar":[0.158,0.004,0.036,0.69,0.001,0.001,0.059,0.045],"reset":false,"ev":[]},{"i":67,"ts":31.13,"y":8,"dev":["z_offset_high"],"p":[0.005,0.105,0.002,0.019,0.775,0.0,0.0,0.054,0.039],"set":[0,1,3,4,7,8],"pbar":[0.148,0.004,0.033,0.707,0.001,0.0,0.058,0.044],"reset":false,"ev":[]},{"i":68,"ts":31.59,"y":8,"dev":["z_offset_high"],"p":[0.001,0.001,0.005,0.002,0.948,0.0,0.0,0.029,0.015],"set":[2,4,7,8],"pbar":[0.118,0.004,0.027,0.755,0.001,0.0,0.052,0.038],"reset":false,"ev":[]},{"i":69,"ts":32.06,"y":8,"dev":["z_offset_high"],"p":[0.016,0.489,0.005,0.033,0.341,0.002,0.001,0.084,0.029],"set":[0,1,2,3,4,7,8],"pbar":[0.192,0.004,0.028,0.672,0.001,0.0,0.059,0.036],"reset":false,"ev":[]},{"i":70,"ts":32.52,"y":8,"dev":["z_offset_high"],"p":[0.013,0.368,0.003,0.035,0.394,0.001,0.0,0.128,0.058],"set":[0,1,3,4,7,8],"pbar":[0.227,0.004,0.029,0.617,0.001,0.0,0.073,0.041],"reset":false,"ev":[]},{"i":71,"ts":32.99,"y":8,"dev":["z_offset_high"],"p":[0.001,0.024,0.007,0.032,0.878,0.001,0.0,0.031,0.027],"set":[1,2,3,4,7,8],"pbar":[0.187,0.004,0.03,0.669,0.001,0.0,0.064,0.038],"reset":false,"ev":[]},{"i":72,"ts":33.46,"y":8,"dev":["z_offset_high"],"p":[0.001,0.054,0.008,0.061,0.777,0.001,0.0,0.043,0.054],"set":[1,2,3,4,7,8],"pbar":[0.16,0.005,0.036,0.691,0.001,0.0,0.06,0.041],"reset":false,"ev":[]},{"i":73,"ts":33.92,"y":8,"dev":["z_offset_high"],"p":[0.002,0.254,0.002,0.01,0.55,0.0,0.0,0.072,0.109],"set":[1,3,4,7,8],"pbar":[0.179,0.005,0.031,0.663,0.001,0.0,0.062,0.055],"reset":false,"ev":[]},{"i":74,"ts":34.38,"y":8,"dev":["z_offset_high"],"p":[0.001,0.008,0.005,0.005,0.899,0.0,0.0,0.052,0.03],"set":[1,2,3,4,7,8],"pbar":[0.145,0.005,0.026,0.71,0.001,0.0,0.06,0.05],"reset":false,"ev":[]},{"i":75,"ts":34.85,"y":8,"dev":["z_offset_high"],"p":[0.001,0.024,0.002,0.001,0.853,0.0,0.0,0.049,0.069],"set":[1,4,7,8],"pbar":[0.121,0.004,0.021,0.739,0.001,0.0,0.058,0.054],"reset":false,"ev":[]},{"i":76,"ts":35.31,"y":8,"dev":["z_offset_high"],"p":[0.003,0.182,0.013,0.016,0.627,0.001,0.001,0.116,0.041],"set":[1,2,3,4,7,8],"pbar":[0.133,0.006,0.02,0.716,0.001,0.0,0.07,0.051],"reset":false,"ev":[]},{"i":77,"ts":35.78,"y":8,"dev":["z_offset_high"],"p":[0.009,0.112,0.005,0.083,0.597,0.001,0.001,0.107,0.085],"set":[0,1,2,3,4,7,8],"pbar":[0.129,0.006,0.032,0.692,0.001,0.001,0.077,0.058],"reset":false,"ev":[]},{"i":78,"ts":36.24,"y":8,"dev":["z_offset_high"],"p":[0.002,0.101,0.008,0.004,0.632,0.0,0.0,0.099,0.155],"set":[1,2,3,4,7,8],"pbar":[0.123,0.006,0.027,0.68,0.0,0.0,0.082,0.077],"reset":false,"ev":[]},{"i":79,"ts":36.71,"y":8,"dev":["z_offset_high"],"p":[0.005,0.176,0.005,0.04,0.533,0.001,0.001,0.161,0.077],"set":[0,1,2,3,4,7,8],"pbar":[0.134,0.006,0.029,0.651,0.001,0.001,0.098,0.077],"reset":false,"ev":[]},{"i":80,"ts":37.17,"y":8,"dev":["z_offset_high"],"p":[0.009,0.519,0.003,0.021,0.34,0.001,0.001,0.074,0.032],"set":[0,1,2,3,4,7,8],"pbar":[0.211,0.005,0.028,0.589,0.001,0.001,0.093,0.068],"reset":false,"ev":[]},{"i":81,"ts":37.63,"y":8,"dev":["z_offset_high"],"p":[0.001,0.011,0.012,0.018,0.901,0.001,0.0,0.043,0.013],"set":[1,2,3,4,7,8],"pbar":[0.171,0.007,0.026,0.651,0.001,0.001,0.083,0.057],"reset":false,"ev":[]},{"i":82,"ts":38.1,"y":8,"dev":["z_offset_high"],"p":[0.004,0.044,0.001,0.004,0.772,0.0,0.0,0.055,0.12],"set":[0,1,3,4,7,8],"pbar":[0.145,0.005,0.021,0.675,0.001,0.0,0.077,0.07],"reset":false,"ev":[]},{"i":83,"ts":38.56,"y":8,"dev":["z_offset_high"],"p":[0.002,0.091,0.008,0.013,0.665,0.001,0.0,0.172,0.048],"set":[1,2,3,4,7,8],"pbar":[0.135,0.006,0.02,0.673,0.001,0.0,0.096,0.065],"reset":false,"ev":[]},{"i":84,"ts":39.04,"y":8,"dev":["z_offset_high"],"p":[0.001,0.029,0.003,0.007,0.855,0.0,0.0,0.059,0.046],"set":[1,3,4,7,8],"pbar":[0.113,0.005,0.017,0.71,0.001,0.0,0.089,0.062],"reset":false,"ev":[]},{"i":85,"ts":116.16,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.006,0.027,0.003,0.026,0.732,0.001,0.002,0.153,0.051],"set":[0,1,2,3,4,7,8],"pbar":[0.027,0.003,0.026,0.732,0.001,0.002,0.153,0.051],"reset":true,"ev":[]},{"i":86,"ts":116.63,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.003,0.011,0.003,0.011,0.774,0.0,0.001,0.154,0.043],"set":[0,1,3,4,7,8],"pbar":[0.024,0.003,0.023,0.74,0.001,0.002,0.153,0.049],"reset":false,"ev":[]},{"i":87,"ts":117.09,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.003,0.01,0.007,0.011,0.687,0.001,0.002,0.209,0.07],"set":[0,1,2,3,4,7,8],"pbar":[0.021,0.004,0.02,0.73,0.001,0.002,0.164,0.053],"reset":false,"ev":[]},{"i":88,"ts":117.55,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.002,0.001,0.035,0.005,0.794,0.0,0.0,0.116,0.047],"set":[2,3,4,7,8],"pbar":[0.017,0.01,0.017,0.743,0.001,0.001,0.155,0.052],"reset":false,"ev":[]},{"i":89,"ts":118.02,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.001,0.001,0.003,0.004,0.915,0.0,0.0,0.066,0.01],"set":[3,4,7,8],"pbar":[0.014,0.009,0.015,0.777,0.0,0.001,0.137,0.044],"reset":false,"ev":[]},{"i":90,"ts":118.49,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.003,0.016,0.005,0.011,0.673,0.001,0.002,0.223,0.065],"set":[0,1,2,3,4,7,8],"pbar":[0.014,0.008,0.014,0.756,0.001,0.001,0.154,0.048],"reset":false,"ev":[]},{"i":91,"ts":118.95,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.006,0.02,0.006,0.028,0.687,0.001,0.001,0.22,0.031],"set":[0,1,2,3,4,7,8],"pbar":[0.015,0.008,0.017,0.742,0.001,0.001,0.168,0.045],"reset":false,"ev":[]},{"i":92,"ts":119.42,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.005,0.02,0.005,0.027,0.696,0.001,0.001,0.213,0.033],"set":[0,1,2,3,4,7,8],"pbar":[0.016,0.007,0.019,0.733,0.001,0.001,0.177,0.042],"reset":false,"ev":[]},{"i":93,"ts":119.88,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.004,0.013,0.005,0.031,0.654,0.0,0.001,0.257,0.035],"set":[0,1,2,3,4,7,8],"pbar":[0.016,0.007,0.021,0.717,0.001,0.001,0.193,0.041],"reset":false,"ev":[]},{"i":94,"ts":120.34,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.001,0.006,0.001,0.012,0.784,0.0,0.0,0.178,0.018],"set":[1,3,4,7,8],"pbar":[0.014,0.005,0.019,0.731,0.0,0.001,0.19,0.036],"reset":false,"ev":[]},{"i":95,"ts":120.81,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_high"],"p":[0.002,0.002,0.014,0.006,0.825,0.0,0.0,0.116,0.035],"set":[2,3,4,7,8],"pbar":[0.011,0.007,0.017,0.749,0.0,0.001,0.175,0.036],"reset":false,"ev":[]},{"i":96,"ts":121.27,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.003,0.003,0.04,0.01,0.641,0.0,0.001,0.199,0.104],"set":[1,2,3,4,7,8],"pbar":[0.01,0.014,0.015,0.728,0.0,0.001,0.18,0.05],"reset":false,"ev":[]},{"i":97,"ts":121.74,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.002,0.003,0.016,0.008,0.766,0.0,0.001,0.13,0.076],"set":[2,3,4,7,8],"pbar":[0.008,0.014,0.014,0.735,0.0,0.001,0.17,0.055],"reset":false,"ev":[]},{"i":98,"ts":122.2,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.002,0.001,0.022,0.006,0.747,0.0,0.0,0.143,0.078],"set":[2,3,4,7,8],"pbar":[0.007,0.016,0.012,0.738,0.0,0.001,0.164,0.059],"reset":false,"ev":[]},{"i":99,"ts":122.66,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.004,0.002,0.03,0.007,0.681,0.0,0.001,0.172,0.104],"set":[0,2,3,4,7,8],"pbar":[0.006,0.019,0.011,0.726,0.0,0.001,0.166,0.068],"reset":false,"ev":[]},{"i":100,"ts":123.13,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.002,0.009,0.003,0.007,0.601,0.001,0.001,0.295,0.08],"set":[1,2,3,4,7,8],"pbar":[0.006,0.016,0.01,0.701,0.0,0.001,0.192,0.071],"reset":false,"ev":[]},{"i":101,"ts":123.6,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.038,0.075,0.013,0.135,0.376,0.002,0.003,0.291,0.067],"set":[0,1,2,3,4,7,8],"pbar":[0.02,0.015,0.035,0.636,0.001,0.001,0.212,0.07],"reset":false,"ev":[]},{"i":102,"ts":124.06,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.014,0.027,0.018,0.027,0.717,0.0,0.0,0.177,0.019],"set":[0,1,2,3,4,7,8],"pbar":[0.022,0.016,0.034,0.652,0.001,0.001,0.205,0.06],"reset":false,"ev":[]},{"i":103,"ts":124.52,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.007,0.01,0.02,0.014,0.588,0.001,0.004,0.24,0.116],"set":[0,1,2,3,4,6,7,8],"pbar":[0.019,0.017,0.03,0.639,0.001,0.002,0.212,0.071],"reset":false,"ev":[]},{"i":104,"ts":124.99,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.002,0.002,0.028,0.005,0.744,0.0,0.001,0.163,0.055],"set":[2,3,4,7,8],"pbar":[0.016,0.019,0.025,0.66,0.001,0.001,0.202,0.068],"reset":false,"ev":[]},{"i":105,"ts":125.46,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.003,0.002,0.039,0.006,0.666,0.0,0.001,0.207,0.076],"set":[0,2,3,4,7,8],"pbar":[0.013,0.023,0.021,0.662,0.001,0.001,0.203,0.069],"reset":false,"ev":[]},{"i":106,"ts":125.92,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.003,0.002,0.043,0.006,0.558,0.0,0.001,0.242,0.143],"set":[0,2,3,4,7,8],"pbar":[0.011,0.027,0.018,0.641,0.001,0.001,0.211,0.084],"reset":false,"ev":[]},{"i":107,"ts":126.38,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.004,0.002,0.041,0.006,0.648,0.0,0.001,0.219,0.078],"set":[0,2,3,4,7,8],"pbar":[0.009,0.03,0.016,0.642,0.001,0.001,0.213,0.083],"reset":false,"ev":[]},{"i":108,"ts":126.85,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.003,0.002,0.026,0.006,0.691,0.0,0.001,0.22,0.051],"set":[0,2,3,4,7,8],"pbar":[0.008,0.029,0.014,0.652,0.0,0.001,0.214,0.077],"reset":false,"ev":[]},{"i":109,"ts":127.31,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.024,0.004,0.098,0.029,0.606,0.0,0.001,0.177,0.061],"set":[0,1,2,3,4,7,8],"pbar":[0.007,0.043,0.017,0.643,0.0,0.001,0.207,0.073],"reset":false,"ev":[]},{"i":110,"ts":127.78,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.018,0.032,0.009,0.045,0.57,0.002,0.008,0.224,0.093],"set":[0,1,2,3,4,6,7,8],"pbar":[0.012,0.036,0.022,0.628,0.001,0.002,0.21,0.077],"reset":false,"ev":[]},{"i":111,"ts":128.24,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.017,0.037,0.007,0.035,0.712,0.001,0.004,0.13,0.056],"set":[0,1,2,3,4,6,7,8],"pbar":[0.017,0.03,0.025,0.645,0.001,0.003,0.194,0.073],"reset":false,"ev":[]},{"i":112,"ts":128.71,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.019,0.058,0.008,0.053,0.591,0.001,0.004,0.204,0.062],"set":[0,1,2,3,4,6,7,8],"pbar":[0.025,0.026,0.03,0.634,0.001,0.003,0.196,0.071],"reset":false,"ev":[]},{"i":113,"ts":129.17,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.003,0.02,0.005,0.021,0.511,0.001,0.002,0.356,0.08],"set":[1,2,3,4,7,8],"pbar":[0.024,0.021,0.029,0.61,0.001,0.003,0.228,0.073],"reset":false,"ev":[]},{"i":114,"ts":129.64,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.002,0.002,0.02,0.007,0.799,0.0,0.0,0.13,0.041],"set":[2,3,4,7,8],"pbar":[0.02,0.021,0.024,0.647,0.001,0.002,0.208,0.066],"reset":false,"ev":[]},{"i":115,"ts":130.1,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.003,0.002,0.037,0.008,0.696,0.0,0.0,0.171,0.083],"set":[0,2,3,4,7,8],"pbar":[0.016,0.024,0.021,0.657,0.001,0.002,0.201,0.07],"reset":false,"ev":[]},{"i":116,"ts":130.56,"y":-1,"dev":["speed_low","z_offset_high"],"p":[0.003,0.01,0.005,0.007,0.702,0.001,0.002,0.202,0.067],"set":[0,1,2,3,4,7,8],"pbar":[0.015,0.02,0.018,0.666,0.001,0.002,0.201,0.069],"reset":false,"ev":[]},{"i":117,"ts":131.03,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.011,0.037,0.012,0.052,0.472,0.001,0.002,0.333,0.081],"set":[0,1,2,3,4,7,8],"pbar":[0.019,0.019,0.025,0.627,0.001,0.002,0.228,0.071],"reset":false,"ev":[]},{"i":118,"ts":131.49,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.004,0.016,0.005,0.018,0.566,0.001,0.001,0.346,0.045],"set":[0,1,2,3,4,7,8],"pbar":[0.019,0.016,0.024,0.615,0.001,0.002,0.251,0.066],"reset":false,"ev":[]},{"i":119,"ts":131.96,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.003,0.023,0.003,0.032,0.63,0.0,0.0,0.279,0.029],"set":[0,1,2,3,4,7,8],"pbar":[0.02,0.013,0.025,0.618,0.001,0.001,0.257,0.059],"reset":false,"ev":[]},{"i":120,"ts":132.42,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.002,0.019,0.004,0.024,0.599,0.0,0.0,0.304,0.048],"set":[1,2,3,4,7,8],"pbar":[0.019,0.011,0.025,0.614,0.001,0.001,0.266,0.057],"reset":false,"ev":[]},{"i":121,"ts":132.89,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.002,0.006,0.019,0.016,0.709,0.0,0.001,0.165,0.081],"set":[1,2,3,4,7,8],"pbar":[0.017,0.013,0.023,0.633,0.001,0.001,0.246,0.062],"reset":false,"ev":[]},{"i":122,"ts":133.35,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.003,0.005,0.048,0.012,0.593,0.0,0.001,0.207,0.13],"set":[0,1,2,3,4,7,8],"pbar":[0.014,0.02,0.021,0.625,0.0,0.001,0.238,0.075],"reset":false,"ev":[]},{"i":123,"ts":133.82,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.003,0.004,0.032,0.015,0.68,0.0,0.001,0.15,0.112],"set":[0,1,2,3,4,7,8],"pbar":[0.012,0.022,0.02,0.636,0.0,0.001,0.22,0.083],"reset":false,"ev":[]},{"i":124,"ts":134.29,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.004,0.002,0.041,0.011,0.696,0.0,0.001,0.141,0.103],"set":[0,2,3,4,7,8],"pbar":[0.01,0.026,0.018,0.648,0.0,0.001,0.205,0.087],"reset":false,"ev":[]},{"i":125,"ts":134.75,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.002,0.002,0.026,0.007,0.778,0.0,0.001,0.104,0.081],"set":[2,3,4,7,8],"pbar":[0.009,0.026,0.016,0.674,0.0,0.001,0.184,0.086],"reset":false,"ev":[]},{"i":126,"ts":135.21,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.002,0.004,0.002,0.01,0.797,0.0,0.0,0.153,0.031],"set":[1,3,4,7,8],"pbar":[0.008,0.021,0.015,0.699,0.0,0.001,0.178,0.075],"reset":false,"ev":[]},{"i":127,"ts":135.67,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.01,0.03,0.021,0.032,0.529,0.001,0.009,0.228,0.14],"set":[0,1,2,3,4,6,7,8],"pbar":[0.012,0.021,0.018,0.665,0.001,0.002,0.188,0.088],"reset":false,"ev":[]},{"i":128,"ts":136.14,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.002,0.011,0.005,0.008,0.775,0.0,0.0,0.151,0.047],"set":[1,2,3,4,7,8],"pbar":[0.012,0.018,0.016,0.687,0.0,0.002,0.181,0.08],"reset":false,"ev":[]},{"i":129,"ts":136.61,"y":-1,"dev":["speed_low","z_offset_high","nozzle_temp_low"],"p":[0.002,0.003,0.006,0.004,0.658,0.0,0.001,0.239,0.087],"set":[1,2,3,4,7,8],"pbar":[0.01,0.015,0.014,0.681,0.0,0.002,0.192,0.081],"reset":false,"ev":[]}],"events":[{"i":2,"ts":0.93,"cause":"flow_low","pbar":0.936,"correct":false,"set":["none","flow_low","flow_high","speed_low","speed_high","z_offset_low","z_offset_high"],"flags":[],"proposals":[{"cause":"flow_low","var":"flow","from":100.0,"delta":9.68,"to":109.68,"gcode":["M221 S110"],"sentence":"Most likely cause: flow low (p=0.90). Smallest in-envelope change that undoes it: flow 100→109.68 % (+9.67999). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M221 S110"],"layers":[{"layer":"L2","passed":true,"why":"L2: +9.67999 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 110 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 110 % within [90, 110]"}]},{"cause":"speed_high","var":"speed","from":100.0,"delta":-9.68,"to":90.32,"gcode":["M220 S90"],"sentence":"Most likely cause: speed high (p=0.06). Smallest in-envelope change that undoes it: speed 100→90.32 % (-9.67999). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M220 S90"],"layers":[{"layer":"L2","passed":true,"why":"L2: -9.67999 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 90 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 90 % within [80, 110]"}]},{"cause":"flow_high","var":"flow","from":100.0,"delta":-9.68,"to":90.32,"gcode":["M221 S90"],"sentence":"Most likely cause: flow high (p=0.01). Smallest in-envelope change that undoes it: flow 100→90.32 % (-9.67999). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M221 S90"],"layers":[{"layer":"L2","passed":true,"why":"L2: -9.67999 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 90 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 90 % within [90, 110]"}]},{"cause":"speed_low","var":"speed","from":100.0,"delta":9.68,"to":109.68,"gcode":["M220 S110"],"sentence":"Most likely cause: speed low (p=0.00). Smallest in-envelope change that undoes it: speed 100→109.68 % (+9.67999). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M220 S110"],"layers":[{"layer":"L2","passed":true,"why":"L2: +9.67999 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 110 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 110 % within [80, 110]"}]}],"manual":{"z_offset_low":"Nozzle likely too close to the bed: raise the Z offset (babystep up ~0.05 mm) or re-level.","z_offset_high":"Nozzle likely too far from the bed: lower the Z offset (babystep down ~0.05 mm) or re-level."},"l4":"L4: |C| = 7","verdict":"ESCALATE","reason":"manual:z_offset_low"},{"i":53,"ts":24.63,"cause":"speed_high","pbar":0.703,"correct":false,"set":["flow_low","speed_low","speed_high","z_offset_low","z_offset_high"],"flags":[],"proposals":[{"cause":"speed_high","var":"speed","from":100.0,"delta":-8.52,"to":91.48,"gcode":["M220 S91"],"sentence":"Most likely cause: speed high (p=0.89). Smallest in-envelope change that undoes it: speed 100→91.4841 % (-8.51595). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M220 S91"],"layers":[{"layer":"L2","passed":true,"why":"L2: -8.51595 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 91 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 91 % within [80, 110]"}]},{"cause":"flow_low","var":"flow","from":100.0,"delta":8.52,"to":108.52,"gcode":["M221 S109"],"sentence":"Most likely cause: flow low (p=0.05). Smallest in-envelope change that undoes it: flow 100→108.516 % (+8.51595). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M221 S109"],"layers":[{"layer":"L2","passed":true,"why":"L2: +8.51595 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 109 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 109 % within [90, 110]"}]},{"cause":"speed_low","var":"speed","from":100.0,"delta":8.52,"to":108.52,"gcode":["M220 S109"],"sentence":"Most likely cause: speed low (p=0.00). Smallest in-envelope change that undoes it: speed 100→108.516 % (+8.51595). Expected to clear within 150 s if the cause is right.","passed":true,"final_gcode":["M220 S109"],"layers":[{"layer":"L2","passed":true,"why":"L2: +8.51595 % within ±10"},{"layer":"L1","passed":true,"why":"L1: 109 % within [50, 150]"},{"layer":"L3","passed":true,"why":"L3: 109 % within [80, 110]"}]}],"manual":{"z_offset_low":"Nozzle likely too close to the bed: raise the Z offset (babystep up ~0.05 mm) or re-level.","z_offset_high":"Nozzle likely too far from the bed: lower the Z offset (babystep down ~0.05 mm) or re-level."},"l4":"L4: |C| = 5","verdict":"ESCALATE","reason":"manual:z_offset_low"}]}}}/* REPLAY:END */;
+</script>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const n0 = v => Math.round(v).toLocaleString("en-US");
+const f = (v, d = 3) => v == null ? "-" : Number(v).toFixed(d);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const get = path => path.split(".").reduce((o, k) => o?.[k], DATA);
+
+const ICON = {
+  pass: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  fail: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  wait: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.5V6l1.6 1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>'
+};
+const pill = (kind, text) => `<span class="pill ${kind}">${ICON[kind] || ""}${esc(text)}</span>`;
+const meets = (v, t, dir) => dir === "<=" ? v <= t : v >= t;
+
+/* ---------- derived values ---------- */
+const tickets = DATA.lanes.flatMap(l => l[2]);
+const T = Object.fromEntries(tickets.map(t => [t[0], t]));
+const cnt = s => tickets.filter(t => t[1] === s).length;
+const done = cnt("done"), dropped = cnt("dropped"), open = cnt("open"), inScope = tickets.length - dropped;
+const runs = DATA.k2.runs;
+const g1 = runs[runs.length - 1];
+const g1Verdict = g1.top1 == null ? "wait" : (g1.top1 > g1.floor + 0.05 ? "pass" : "fail");
+// K2 "fires" once per evaluation date (the 11-16 probes are one check with two heads)
+const k2Fails = new Set(runs.filter(r => r.top1 != null && r.top1 <= r.floor + 0.05).map(r => r.date)).size;
+const pendingG1 = DATA.pending.find(p => p.id === "g1");
+if (pendingG1 && g1.top1 != null && pendingG1.value == null) pendingG1.value = g1.top1;
+
+/* ---------- nav rail ---------- */
+const sections = $$("main section");
+$("#railList").innerHTML = sections.map((s, i) =>
+  `<li><a href="#${s.id}" data-id="${s.id}"><i>${String(i + 1).padStart(2, "0")}</i>${esc(s.dataset.title)}</a></li>`).join("");
+const io = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if (!e.isIntersecting) return;
+    $$(".rail a").forEach(a => a.setAttribute("aria-current", a.dataset.id === e.target.id ? "true" : "false"));
+    $("#where").innerHTML = `<b>XQI</b> · ${esc(e.target.dataset.title)}`;
+  });
+}, { rootMargin: "-45% 0px -50% 0px" });
+sections.forEach(s => io.observe(s));
+
+/* ---------- theme ---------- */
+const root = document.documentElement;
+function setTheme(t) {
+  root.dataset.theme = t;
+  $("#themeBtn").textContent = t === "dark" ? "Light theme" : "Dark theme";
+  $("#themeBtn").setAttribute("aria-pressed", String(t === "light"));
+  try { localStorage.setItem("xqi-theme", t); } catch (e) {}
+}
+try { const s = localStorage.getItem("xqi-theme"); if (s) setTheme(s); } catch (e) {}
+const flip = () => setTheme(root.dataset.theme === "dark" ? "light" : "dark");
+$("#themeBtn").addEventListener("click", flip);
+$("#themeBtn2").addEventListener("click", flip);
+
+/* ---------- tooltip ---------- */
+const tip = $("#tip");
+function showTip(el, x, y) {
+  tip.innerHTML = el.dataset.tip;
+  tip.classList.add("on");
+  const r = tip.getBoundingClientRect();
+  if (x == null) { const b = el.getBoundingClientRect(); x = b.left + b.width / 2; y = b.top; }
+  let L = Math.min(Math.max(8, x - r.width / 2), innerWidth - r.width - 8);
+  let Tp = y - r.height - 12; if (Tp < 8) Tp = y + 18;
+  tip.style.left = L + "px"; tip.style.top = Tp + "px";
+}
+document.addEventListener("pointermove", e => {
+  const el = e.target.closest?.("[data-tip]");
+  if (el) showTip(el, e.clientX, e.clientY); else tip.classList.remove("on");
+});
+document.addEventListener("focusin", e => { const el = e.target.closest?.("[data-tip]"); if (el) showTip(el); });
+document.addEventListener("focusout", () => tip.classList.remove("on"));
+
+/* ---------- chart helpers ---------- */
+function table(cols, rows) {
+  return `<details class="tbl"><summary>Show data table</summary><div class="tw"><table><thead><tr>${cols.map(c => `<th scope="col">${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
+}
+// Horizontal bars. rows: {label, value|null, show, tip, cls, refs:[{at, cls, tip}], zone}
+function hbars(el, { rows, max, ticks = [], lw, lwm, aria }) {
+  const pc = v => (Math.max(0, v) / max * 100).toFixed(2) + "%";
+  const gl = ticks.map(t => `<div class="hb-gl" style="left:${pc(t)}"></div>`).join("");
+  el.innerHTML = `<div class="hb" role="img" aria-label="${esc(aria)}" style="${lw ? `--lw:${lw}px;` : ""}${lwm ? `--lw-m:${lwm}px` : ""}">` +
+    rows.map((r, i) => {
+      const refs = (r.refs || []).map(x => `<div class="hb-ref ${x.cls || ""}" style="left:${pc(x.at)}" ${x.tip ? `data-tip="${esc(x.tip)}"` : ""}></div>`).join("");
+      const zone = r.zone != null ? `<div class="hb-zone" style="width:${pc(r.zone)}"></div>` : "";
+      const bar = r.value == null
+        ? `<div class="hb-bar pend" style="--w:${pc(r.pendW ?? max * .5)};--d:${i * 90}ms" data-tip="${esc(r.tip || "")}" tabindex="0"></div><span class="hb-pendtxt">awaiting GPU run</span>`
+        : `<div class="hb-bar ${r.cls || ""}" style="--w:${pc(r.value)};--d:${i * 90}ms" data-tip="${esc(r.tip || "")}" tabindex="0"></div>`;
+      return `<div class="hb-row"><span class="hb-l" title="${esc(r.label)}">${esc(r.label)}</span><div class="hb-plot">${gl}${zone}${bar}${refs}</div><span class="hb-v">${esc(r.show ?? "")}</span></div>`;
+    }).join("") +
+    (ticks.length ? `<div class="hb-axis"><span></span><div>${ticks.map(t => `<span style="left:${pc(t)}">${t}</span>`).join("")}</div><span></span></div>` : "") +
+    `</div>`;
+}
+function lineChart({ xs, ys, yMin, yMax, yTicks, color, label, hiIdx }) {
+  const W = 300, H = 170, l = 34, r = 10, t = 14, b = 26;
+  const X = i => l + (i / (xs.length - 1)) * (W - l - r);
+  const Y = v => t + (1 - (v - yMin) / (yMax - yMin)) * (H - t - b);
+  const d = ys.map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+  let len = 0; for (let i = 1; i < ys.length; i++) len += Math.hypot(X(i) - X(i - 1), Y(ys[i]) - Y(ys[i - 1]));
+  return `<figure style="margin:0"><figcaption class="small" style="color:var(--ink-2);margin-bottom:6px">${esc(label)}</figcaption>
+  <svg class="lc" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}: ${ys.map((v, i) => `epoch ${xs[i]} ${v}`).join(", ")}">
+  ${yTicks.map(v => `<line class="gl" x1="${l}" x2="${W - r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${l - 6}" y="${Y(v) + 3}" text-anchor="end">${v}</text>`).join("")}
+  <line class="ax" x1="${l}" x2="${W - r}" y1="${H - b}" y2="${H - b}"/>
+  ${xs.map((x, i) => `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${x}</text>`).join("")}
+  <text x="${W - r}" y="${H - 8 - 12}" text-anchor="end">epoch</text>
+  <path class="ln draw" d="${d}" stroke="${color}" style="--len:${Math.ceil(len)}"/>
+  ${ys.map((v, i) => `<circle cx="${X(i)}" cy="${Y(v)}" r="${i === hiIdx ? 5 : 3.5}" fill="${color}"/><rect class="hit" x="${X(i) - 14}" y="${t}" width="28" height="${H - t - b}" data-tip="<b>Epoch ${xs[i]}</b><br>${esc(label)}: ${v}" tabindex="0"/>`).join("")}
+  ${hiIdx != null ? `<text x="${X(hiIdx)}" y="${Y(ys[hiIdx]) + 18}" text-anchor="middle" style="fill:var(--ink-2)">best</text>` : ""}
+  </svg></figure>`;
+}
+
+/* ---------- hero stats ---------- */
+$("#heroStats").innerHTML = [
+  [DATA.audit.images, "CAXTON images in our subset", ""],
+  [DATA.audit.prints, "prints, split by print, never by image", ""],
+  [DATA.gate.violations, `gate violations in ${n0(DATA.gate.cases)} random cases`, ""],
+  [done, `of ${inScope} in-scope tickets done`, ""]
+].map(([v, l]) => `<div><div class="stat-n count" data-value="${v}">${n0(v)}</div><div class="stat-l">${esc(l)}</div></div>`).join("");
+
+/* ---------- problem ---------- */
+$("#deckVerdicts").innerHTML = [["Explainable", "fail", "Absent"], ["Recommendations", "fail", "Absent"], ["Safe", "warn", "Partial"]]
+  .map(([k, c, v]) => `<div class="verdict"><span>${k}</span>${pill(c, v)}</div>`).join("");
+const byRecipe = {};
+DATA.recipes.forEach(r => (byRecipe[r[0]] ||= []).push(r));
+const GC = { nozzle_temp: "M104", speed: "M220", flow: "M221", bed_temp: "M140" };
+$("#recipes").innerHTML = Object.entries(byRecipe).map(([name, rs]) =>
+  `<div class="recipe"><h4>${esc(name)}</h4><div class="gchips">${rs.map(r =>
+    `<span class="gchip ${r[4] ? "bad" : ""}" data-tip="<b>${esc(r[1])}</b> ${r[2]} → ${r[3]} ${esc(r[6])}<br>${r[4] ? "breaks " + esc(r[4]) + "; gate sends " + r[5] : "within the envelope"}" tabindex="0">${GC[r[1]]} S${r[3]}</span>`).join("")}</div></div>`).join("");
+const broke = DATA.recipes.filter(r => r[4]).length;
+$("#recipeLine").innerHTML = `<b>${broke} of ${DATA.recipes.length}</b> fixed recipe changes break the envelope as written. The gate clips every one of them to a safe step.`;
+
+/* ---------- taxonomy ---------- */
+const AUD = Object.fromEntries(DATA.audit.causes.map(c => [c[0], c]));
+const VARS = [["flow", "M221"], ["speed", "M220"], ["nozzle_temp", "M104"], ["z_offset", "manual"]];
+const cellH = c => { const a = AUD[c]; return `<div class="cell" data-tip="<b>${c}</b><br>${n0(a[1])} single-cause images in ${a[2]} prints" tabindex="0"><b>${c}</b><span>${n0(a[1])} img · ${a[2]} prints</span></div>`; };
+$("#taxonomy").innerHTML = `<span></span><span class="h">low</span><span class="h">high</span>` +
+  VARS.map(([v, g]) => `<div class="var">${v.replace("_", " ")}<small>${g}</small></div>${cellH(v + "_low")}${cellH(v + "_high")}`).join("") +
+  `<div class="var">nominal<small>no change</small></div><div class="cell none-cell" data-tip="<b>none</b><br>${n0(AUD.none[1])} images in ${AUD.none[2]} prints" tabindex="0"><b>none</b><span>${n0(AUD.none[1])} img · ${AUD.none[2]} prints</span></div>`;
+
+/* ---------- objectives ---------- */
+const P = Object.fromEntries(DATA.pending.map(p => [p.id, p]));
+const st = (...ids) => { // combine pending tiles into one status
+  const ps = ids.map(i => P[i]);
+  if (ps.some(p => p.value == null)) return pill("wait", "awaiting " + ps.find(p => p.value == null).waits);
+  return ps.every(p => p.target == null || meets(p.value, p.target, p.dir)) ? pill("pass", "PASS") : pill("fail", "FAIL");
+};
+const s1 = g1Verdict === "wait" ? pill("wait", `K2 fired ${k2Fails}×, G1 pending`) : g1Verdict === "pass" && meets(g1.top1, g1.floor + 0.10, ">=") ? pill("pass", "PASS") : pill("fail", "FAIL");
+const METRICS = [
+  ["S1", "Cause top-1 on unseen prints", "≥ floor + 10 pp, bootstrap 95% CI", s1],
+  ["S2", "Conformal cause-set coverage", "≥ 0.85 at α = 0.10, mean size ≤ 2.0", st("cov", "set")],
+  ["S3", "Gate envelope violations", "0 in 100,000 random cases", DATA.gate.violations === 0 ? pill("pass", "PASS") : pill("fail", "FAIL")],
+  ["S4", "Explanation latency, action path", "≤ 30 ms p95 (cause + conformal + gate)", st("lat")],
+  ["S5", "Proactive early warning", "median ≤ 10 s, recall@30 s ≥ 0.70, ≤ 1 false / print-hour", st("ttw", "rec", "fw")],
+  ["S6", "Counterfactual direction", "right variable and sign in ≥ 0.85 of confident events", st("cf")],
+  ["S7", "HITL study (SHOULD)", "explanation ON vs OFF, CI reported", st("study")]
+];
+$("#metrics").innerHTML = METRICS.map(([id, t, thr, s], i) =>
+  `<div class="metric reveal" style="--d:${i * 50}ms"><div class="top"><span class="id">${id}</span>${s}</div><h3>${t}</h3><span class="thr">${thr}</span></div>`).join("");
+$("#kills").innerHTML = [
+  ["K1′", "Dataset access: licence filled and ≥ 4 setpoint causes with ≥ 200 single-cause images in ≥ 5 prints.", pill("pass", "PASS, 2026-11-10")],
+  ["K2", "Leave-prints-out top-1 ≤ floor + 5 pp → pivot to ADR-0002 option 1, or a DESCEND.", g1Verdict === "pass" ? pill("pass", "PASS at G1") : g1Verdict === "fail" ? pill("fail", `FIRED ${k2Fails}×`) : pill("fail", `FIRED ${k2Fails}×, G1 decides`)],
+  ["K3", "No printer and OctoPrint access by week 6. Dropped: hardware is out of scope.", pill("drop", "DROPPED")]
+].map(([k, p, s], i) => `<div class="kcard reveal" style="--d:${i * 70}ms"><div class="k">${k}</div><p>${p}</p>${s}</div>`).join("");
+
+/* ---------- pipeline ---------- */
+const NODES = [
+  { id: "crop", row: 0, label: "Camera crop", sub: "224 px nozzle ROI", kicker: "Input", files: ["xqi/camera.py", "scripts/build_crops.py"], tk: ["T-0029", "T-0062", "T-0009"], fr: "FR-002, FR-031",
+    what: "Frames come from a replay folder or a CAXTON print (caxton:<crops.csv>#<trial>). The nozzle region is cropped and resized to 224 px. The real camera belongs to the integrating team." },
+  { id: "cause", row: 1, label: "Cause model", sub: "ResNet18 → 9 causes", kicker: "Causability", files: ["xqi/explain/cause_model.py", "scripts/train_cause.py"], tk: ["T-0011", "T-0057", "T-0012", "T-0013"], fr: "FR-007, NFR-005",
+    what: "Predicts a probability over none plus 4 setpoints × low/high. It sees the crop only: setpoints and telemetry never enter, because they are the labels (ADR-0002). Accuracy is the open question (K2)." },
+  { id: "cam", row: 2, col: 0, n: 3, label: "EigenCAM", sub: "heatmap", kicker: "Explanation", files: ["xqi/explain/attribution.py"], tk: ["T-0018", "T-0059"], fr: "FR-009",
+    what: "First principal component of backbone.layer4 activations, sign fixed by Σ(A·v₁) (07 §11). Saved as a PNG beside the crop. Runs off the action path." },
+  { id: "conf", row: 2, col: 1, n: 3, label: "Conformal set", sub: "LAC, α = 0.10", kicker: "Explanation", files: ["xqi/explain/conformal.py"], tk: ["T-0014", "T-0015"], fr: "FR-008, NFR-006",
+    what: "Split-conformal LAC with a stored qhat returns every cause the model can't rule out at 90% coverage. The set is the range of plausible fixes; L4 only auto-applies when it has one member." },
+  { id: "cf", row: 2, col: 2, n: 3, label: "Counterfactual", sub: "G-code + sentence", kicker: "Explanation", files: ["xqi/explain/counterfactual.py", "xqi/explain/__init__.py"], tk: ["T-0016", "T-0017", "T-0020"], fr: "FR-011, NFR-007",
+    what: "One proposal per actionable cause in the set: a severity-scaled change (for example flow +5%), its G-code and a plain sentence. Z-offset causes give manual advice instead of G-code." },
+  { id: "warn", row: 3, label: "Early warning", sub: "EWMA + hysteresis", kicker: "Proactive", files: ["xqi/proactive.py"], tk: ["T-0060", "T-0061", "T-0063"], fr: "FR-029, FR-030, NFR-012",
+    what: "Every n frames, smooth each cause's probability. Warn after m evaluations above θ_on; re-arm below θ_off after a cooldown. A warning is always PROPOSE or ESCALATE, never APPLY." },
+  { id: "L2", row: 4, col: 0, n: 4, label: "L2", sub: "rate, cooldown", kicker: "Safety gate", files: ["xqi/gate.py"], tk: ["T-0021", "T-0023"], fr: "FR-012",
+    what: "Rejects a change during its cooldown and clips the step size (for example −20 °C becomes −5 °C, −20% flow becomes −10%). Runs first so later layers see the clipped value." },
+  { id: "L1", row: 4, col: 1, n: 4, label: "L1", sub: "physical limits", kicker: "Safety gate", files: ["xqi/gate.py"], tk: ["T-0021", "T-0023"], fr: "FR-012, NFR-004",
+    what: "Rounds exactly as the G-code will, then rejects anything outside hard limits (for example flow 50 to 150%, nozzle 170 to 240 °C). Missing printer state rejects: the gate fails closed." },
+  { id: "L3", row: 4, col: 2, n: 4, label: "L3", sub: "process window", kicker: "Safety gate", files: ["xqi/gate.py"], tk: ["T-0022", "T-0024"], fr: "FR-012",
+    what: "Passes only values inside the PLA process window, or strictly closer to it than the current setpoint (current config: flow 90 to 110%, nozzle 195 to 225 °C)." },
+  { id: "L4", row: 4, col: 3, n: 4, label: "L4", sub: "event verdict", kicker: "Safety gate", files: ["xqi/gate.py"], tk: ["T-0022"], fr: "FR-013",
+    what: "APPLY only with one cause in the set, p_top ≥ τ and no sensor flags. Otherwise PROPOSE (a card) or ESCALATE. Early warnings are never APPLY." },
+  { id: "ui", row: 5, label: "HITL dashboard", sub: "Streamlit + SQLite", kicker: "Human in the loop", files: ["xqi/ui.py", "xqi/ui_data.py", "xqi/store.py"], tk: ["T-0032", "T-0037", "T-0038"], fr: "FR-015, FR-016, FR-021",
+    what: "Live view plus one card per pending event: crop, heatmap, cause set with probabilities, gated proposal. Every stage is persisted to events.sqlite as an audit log." },
+  { id: "op", row: 6, label: "Operator", sub: "approve, modify, reject", kicker: "Human in the loop", files: ["xqi/orchestrator.py"], tk: ["T-0051", "T-0034"], fr: "FR-017, FR-018, FR-019",
+    what: "Apply, Modify, Reject, Pause or Stop. A modified value is re-gated before dispatch. No answer within the timeout runs the configured timeout action and is logged." },
+  { id: "printer", row: 7, label: "Printer protocol", sub: "hand-off boundary", kicker: "Boundary", boundary: true, files: ["xqi/printer.py", "docs/HANDOFF.md"], tk: ["T-0026", "T-0064"], fr: "FR-032",
+    what: "get_state, send_gcode, pause, resume, estop. We ship FakePrinter and a conformance test; the integrating team implements the protocol for their hardware." },
+  { id: "verify", row: 8, label: "Outcome verifier", sub: "resolved, persisted, worsened", kicker: "Feedback", files: ["xqi/verify.py"], tk: ["T-0035"], fr: "FR-020",
+    what: "After an applied action, watches the following frames and classifies the outcome as resolved, persisted or worsened. Applied warnings are not verifier-watched." }
+];
+function drawPipe(narrow) {
+  const svg = $("#pipe"), W = narrow ? 380 : 560, cx = W / 2, NH = 46, GAP = 24, mainW = narrow ? 230 : 260, subSpan = narrow ? 364 : 480;
+  const GROUP = { 2: narrow ? "Explainer" : "Explainer · xqi/explain/__init__.py", 4: narrow ? "Safety gate, fail-closed" : "Safety gate, fail-closed · xqi/gate.py" };
+  let y = 18; const rowY = [];
+  for (let r = 0; r <= 8; r++) { if (GROUP[r]) y += 18; rowY[r] = y; y += NH + GAP + (GROUP[r] ? 8 : 0) + (r === 6 ? 14 : 0); }
+  svg.setAttribute("viewBox", `0 0 ${W} ${y}`);
+  const geo = n => {
+    if (n.n) { const g = 8, w = (subSpan - g * (n.n - 1)) / n.n, x0 = cx - subSpan / 2; return { x: x0 + n.col * (w + g), y: rowY[n.row], w, h: NH }; }
+    return { x: cx - mainW / 2, y: rowY[n.row], w: mainW, h: NH };
+  };
+  NODES.forEach(n => n.g = geo(n));
+  const C = n => ({ x: n.g.x + n.g.w / 2, y: n.g.y + n.g.h / 2 });
+  const by = id => NODES.find(n => n.id === id);
+  const L2c = C(by("L2")), L4c = C(by("L4"));
+  const preGate = rowY[4] - 22, postGate = rowY[4] + NH + 12;
+  const d = `M${cx},4 L${cx},${preGate} L${L2c.x},${preGate} L${L2c.x},${L2c.y} L${L4c.x},${L4c.y} L${L4c.x},${postGate} L${cx},${postGate} L${cx},${C(by("verify")).y}`;
+  let s = `<path class="flow" d="${d}" id="flowPath"/>`;
+  Object.entries(GROUP).forEach(([r, t]) => {
+    const yy = rowY[r] - 18;
+    s += `<rect class="grp" x="${cx - subSpan / 2 - 8}" y="${yy - 4}" width="${subSpan + 16}" height="${NH + 30}" rx="12"/><text class="glabel" x="${cx - subSpan / 2}" y="${yy + 8}">${esc(t)}</text>`;
+  });
+  // ADR-0002: setpoints and telemetry are blocked from the cause model
+  const cg = by("cause").g, ay = cg.y + cg.h / 2, ax = cg.x + cg.w;
+  s += `<text class="ann bad" x="${W - 4}" y="${ay - 8}" text-anchor="end">setpoints,</text><text class="ann bad" x="${W - 4}" y="${ay + 5}" text-anchor="end">telemetry</text>
+    <line x1="${W - 4}" y1="${ay + 14}" x2="${ax + 6}" y2="${ay + 14}" stroke="var(--bad-ink)" stroke-dasharray="3 3"/>
+    <path class="block" d="M${ax + 12},${ay + 8} l10,12 m0,-12 l-10,12"/>
+    <text class="ann" x="4" y="${ay + 4}">image</text><text class="ann" x="4" y="${ay + 17}">only</text>`;
+  const wg = by("warn").g;
+  s += `<text class="ann" x="4" y="${wg.y + 20}">never</text><text class="ann" x="4" y="${wg.y + 33}">auto</text>`;
+  const b7 = rowY[7] - 16;
+  s += `<line class="bline" x1="4" x2="${W - 4}" y1="${b7}" y2="${b7}"/><text class="ann" x="${W - 4}" y="${b7 - 6}" text-anchor="end" style="fill:var(--accent)">hand-off boundary · integrating team below</text>`;
+  s += NODES.map(n => {
+    const showSub = !narrow || n.g.w >= 100;
+    return `<g class="node${n.boundary ? " boundary" : ""}" id="n-${n.id}" data-id="${n.id}" tabindex="0" role="button" aria-label="${esc(n.label)}: ${esc(n.sub)}. Show details.">
+    <rect x="${n.g.x}" y="${n.g.y}" width="${n.g.w}" height="${n.g.h}" rx="10"/>
+    <text x="${n.g.x + n.g.w / 2}" y="${n.g.y + (showSub ? 20 : 28)}" text-anchor="middle">${esc(n.label)}</text>
+    ${showSub ? `<text class="sub" x="${n.g.x + n.g.w / 2}" y="${n.g.y + 35}" text-anchor="middle">${esc(n.sub)}</text>` : ""}</g>`;
+  }).join("");
+  s += `<rect class="frame" id="frame" width="12" height="12" rx="3" x="-20" y="-20"/>`;
+  svg.innerHTML = s;
+  $$("#pipe .node").forEach(g => {
+    g.addEventListener("click", () => select(g.dataset.id));
+    g.addEventListener("focus", () => select(g.dataset.id));
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(g.dataset.id); } });
+    g.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") select(g.dataset.id); });
+  });
+  const path = $("#flowPath"), L = path.getTotalLength(), lk = [];
+  for (let i = 0; i <= L; i += 3) {
+    const p = path.getPointAtLength(i);
+    const hit = NODES.find(n => p.x >= n.g.x && p.x <= n.g.x + n.g.w && p.y >= n.g.y && p.y <= n.g.y + n.g.h);
+    lk.push([p.x, p.y, hit ? hit.id : null]);
+  }
+  return lk;
+}
+let selected = "cause";
+function select(id) {
+  const n = NODES.find(x => x.id === id); if (!n) return;
+  selected = id;
+  $$("#pipe .node").forEach(g => g.classList.toggle("sel", g.dataset.id === id));
+  const body = $("#detail");
+  const render = () => {
+    body.innerHTML = `<div class="kicker">${esc(n.kicker)}</div><h3>${esc(n.label)}</h3><p>${esc(n.what)}</p>
+      <dl><dt>Code</dt><dd>${n.files.map(x => `<code>${esc(x)}</code>`).join("")}</dd>
+      <dt>Tickets</dt><dd>${n.tk.map(t => { const k = T[t]; const s = k ? k[1] : "done"; return pill(s === "done" ? "pass" : s === "open" ? "wait" : "drop", t); }).join("")}</dd>
+      <dt>Spec</dt><dd>${esc(n.fr)}</dd></dl>
+      <p class="hint">Hover, tap or Tab through the stages. Enter selects.</p>`;
+    body.classList.remove("swap");
+  };
+  if (reduce || !body.innerHTML) render(); else { body.classList.add("swap"); setTimeout(render, 120); }
+}
+const narrowMQ = matchMedia("(max-width: 600px)");
+let lookup = drawPipe(narrowMQ.matches);
+narrowMQ.addEventListener("change", () => { lookup = drawPipe(narrowMQ.matches); select(selected); });
+select("cause");
+// travelling frame (paused off-screen and under reduced motion)
+if (!reduce) {
+  let last = null, t0 = null, visible = false;
+  const DUR = 11000;
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; if (visible) requestAnimationFrame(tick); }).observe($("#pipe"));
+  function tick(ts) {
+    if (!visible) { t0 = null; return; }
+    if (t0 == null) t0 = ts;
+    const k = Math.floor(((ts - t0) % DUR) / DUR * (lookup.length - 1));
+    const [x, y, id] = lookup[k], frame = $("#frame");
+    frame.setAttribute("x", x - 6); frame.setAttribute("y", y - 6);
+    if (id !== last) { $$("#pipe .node.hot").forEach(g => g.classList.remove("hot")); if (id) $("#n-" + id)?.classList.add("hot"); last = id; }
+    requestAnimationFrame(tick);
+  }
+}
+
+/* ---------- replay ---------- */
+(function replayPlayer() {
+  const R = DATA.replay;
+  if (!R) { $("#rpFoot").textContent = "No replay trace embedded. Run: uv run python docs/showcase_replay.py"; return; }
+  const L = R.labels, NC = L.filter(c => c !== "none");
+  const st = { key: "hit", i: 0, playing: false, speed: 1, timer: null, shown: -1 };
+  const P = () => R.prints[st.key];
+  const fmtc = c => c.replace(/_/g, " ");
+  const trueCause = f => f.y >= 0 ? L[f.y] : (f.dev[0] || "none");
+  $("#rpLabel").textContent = "Model: " + R.label;
+  $("#rpFoot").textContent = `Source: ${R.preds} (fold ${R.fold}), ${R.config} (mode ${R.mode}). Conformal qhat = ${R.qhat} from ${R.n_calib} single-cause calibration frames of the same fold. ` +
+    `FakePrinter at the config's nominal setpoints (flow ${R.nominal.flow}%, speed ${R.nominal.speed}%, nozzle ${R.nominal.nozzle_temp} °C): CAXTON's logged setpoint values are not on the dev machine, so the per-row set_process seeding is skipped. Generated by docs/showcase_replay.py.`;
+
+  function frameEvents(f) { return f.ev.map(k => P().events[k]); }
+  function lastEvent(idx) { // latest event at or before frame idx
+    const fr = P().frames; for (let j = idx; j >= 0; j--) if (fr[j].ev.length) return P().events[fr[j].ev[fr[j].ev.length - 1]];
+    return null;
+  }
+
+  /* static parts per print */
+  function setupPrint() {
+    const p = P(), fr = p.frames, n = fr.length;
+    $("#rpHitBtn").textContent = `Hit · ${R.prints.hit.trial}`; $("#rpMissBtn").textContent = `Miss · ${R.prints.miss.trial}`;
+    $$(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.print === st.key)));
+    const sc = $("#rpScrub"); sc.max = n - 1;
+    $("#rpTicks").innerHTML = fr.map((f, j) => f.ev.map(k => `<i class="${p.events[k].correct ? "ok" : "bad"}" style="left:${(j / Math.max(1, n - 1) * 100).toFixed(2)}%"></i>`).join("")).join("");
+    drawEw();
+    st.shown = -1;
+    $("#rpLog").innerHTML = "";
+  }
+
+  /* EWMA chart: x = frame index (the ts axis has gaps), all 8 causes muted, the leading cause highlighted */
+  const EW = { W: 560, H: 200, l: 30, r: 8, t: 10, b: 22 };
+  function drawEw() {
+    // viewBox = the rendered width, so the labels stay at their CSS size on a phone
+    EW.W = Math.max(300, Math.round($("#rpEw").parentElement.clientWidth || 560));
+    EW.H = EW.W < 500 ? 220 : 200;
+    const p = P(), fr = p.frames, n = fr.length, { W, H, l, r, t, b } = EW;
+    const X = j => l + j / Math.max(1, n - 1) * (W - l - r), Y = v => t + (1 - v) * (H - t - b);
+    const pr = R.proactive;
+    const seg = c => { let d = "", up = false; fr.forEach((f, j) => { if (f.reset) up = false; d += `${up ? "L" : "M"}${X(j).toFixed(1)},${Y(f.pbar[c]).toFixed(1)}`; up = true; }); return d; };
+    let s = `<defs><clipPath id="ewClip"><rect id="ewClipR" x="0" y="0" width="${l}" height="${H}"/></clipPath></defs>`;
+    s += [0, 0.5, 1].map(v => `<line class="rs" x1="${l}" x2="${W - r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${l - 5}" y="${Y(v) + 3}" text-anchor="end">${v}</text>`).join("");
+    fr.forEach((f, j) => { if (f.reset) s += `<line class="rs" x1="${X(j)}" x2="${X(j)}" y1="${t}" y2="${H - b}" stroke-dasharray="1 3"/>`; });
+    s += `<g clip-path="url(#ewClip)">${NC.map((c, k) => `<path class="bg" data-c="${k}" d="${seg(k)}"/>`).join("")}<path class="fg" id="ewFg" d=""/>`;
+    p.events.forEach(e => { const j = fr.findIndex(f => f.i === e.i); s += `<circle class="wm" cx="${X(j)}" cy="${Y(e.pbar)}" r="5" fill="${e.correct ? "var(--good)" : "var(--bad)"}" data-tip="<b>warning ${esc(e.cause)}</b><br>p̄ ${e.pbar} at ${e.ts} s · ${e.correct ? "in the true deviation set" : "not a true deviation"}" tabindex="0"/>`; });
+    s += `</g><line class="on" x1="${l}" x2="${W - r}" y1="${Y(pr.theta_on)}" y2="${Y(pr.theta_on)}"/><text x="${W - r}" y="${Y(pr.theta_on) - 4}" text-anchor="end" style="fill:var(--bad-ink)">θ_on ${pr.theta_on}</text>`;
+    s += `<line class="off" x1="${l}" x2="${W - r}" y1="${Y(pr.theta_off)}" y2="${Y(pr.theta_off)}"/><text x="${W - r}" y="${Y(pr.theta_off) + 11}" text-anchor="end">θ_off ${pr.theta_off}</text>`;
+    s += `<line class="head" id="ewHead" x1="${l}" x2="${l}" y1="${t}" y2="${H - b}"/><text x="${l}" y="${H - 6}">frame 1</text><text x="${W - r}" y="${H - 6}" text-anchor="end">frame ${n}</text>`;
+    const svg = $("#rpEw"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = s;
+    EW.X = X; EW.Y = Y;
+    $("#rpEwNote").textContent = `β = ${pr.beta}, warn after m = ${pr.m} evaluations above θ_on, re-arm below θ_off, cooldown ${pr.cooldown_s} s, reset after a ${pr.max_gap_s} s gap (dotted verticals). Grey: all 8 causes; blue: the leading cause now. Dots: warnings (green = a true deviation, red = not).`;
+  }
+
+  function lightStrip(hasEvent) {
+    const cells = $$("#rpStrip div"), panels = [0, 1, 2, 3, 4, 5, 6].map(k => $("#rp" + k));
+    cells.forEach(c => c.classList.remove("hot", "idle"));
+    panels.forEach(p => p.classList.remove("hot"));
+    const n = hasEvent ? 7 : 4, gap = reduce ? 0 : Math.min(70, 220 / st.speed / 7);
+    cells.forEach((c, k) => { if (k >= n) c.classList.add("idle"); });
+    for (let k = 0; k < n; k++) {
+      const go = () => { cells[k].classList.add("hot"); panels[k].classList.add("hot"); };
+      gap ? setTimeout(go, k * gap) : go();
+    }
+    setTimeout(() => { cells.forEach(c => c.classList.remove("hot")); panels.forEach(p => p.classList.remove("hot")); }, reduce ? 600 : n * gap + 350);
+  }
+
+  function render(animate) {
+    const p = P(), fr = p.frames, f = fr[st.i], n = fr.length, tc = trueCause(f);
+    $("#rpScrub").value = st.i;
+    // 1 frame
+    const img = $("#rpImg"); const src = R.crops[tc];
+    if (img.getAttribute("src") !== src) { img.src = src; img.alt = `Representative CAXTON crop for ${fmtc(tc)} (not this frame)`; }
+    $("#rpFrame").textContent = `${f.i + 1} of ${p.n_frames} (${p.trial})`;
+    $("#rpTs").textContent = `${f.ts.toFixed(2)} s`;
+    $("#rpTrue").innerHTML = (f.dev.length ? f.dev : ["none"]).map(c => `<span class="chip true">${esc(c)}</span>`).join("") + (f.y < 0 && f.dev.length > 1 ? `<span class="chip">multi, not scored</span>` : "");
+    // 2 cause model
+    const top = f.p.indexOf(Math.max(...f.p));
+    $("#rpProbs").innerHTML = L.map((c, k) => `<div class="pb-row${k === top ? " top" : ""}${f.dev.includes(c) || (!f.dev.length && c === "none") ? " tru" : ""}"><span>${esc(c)}</span><span class="t"><i style="--p:${f.p[k]}"></i></span><span class="v">${f.p[k].toFixed(3)}</span></div>`).join("");
+    const ok = f.dev.length ? f.dev.includes(L[top]) : L[top] === "none";
+    $("#rpTop").innerHTML = `top-1 <b>${esc(L[top])}</b> vs true <b>${esc(f.dev.join(" + ") || "none")}</b> ${pill(ok ? "pass" : "fail", ok ? "match" : "wrong")}`;
+    // 3 conformal
+    $("#rpSetN").innerHTML = `${f.set.length}<small>of 9 causes in the set</small>`;
+    $("#rpSet").innerHTML = L.map((c, k) => `<span class="chip ${f.set.includes(k) ? "in" : "out"}">${esc(c)}</span>`).join("");
+    $("#rpQ").textContent = `LAC at α = ${R.alpha}: keep every cause with p ≥ 1 − qhat = ${(1 - R.qhat).toFixed(4)}. qhat ${R.qhat} is fitted on this fold's calibration prints; a model this overconfident on unseen prints needs a tiny threshold, so sets are large.`;
+    // 4 EWMA
+    const X = EW.X, xh = X(st.i);
+    $("#ewClipR").setAttribute("width", xh + 1);
+    const lead = f.pbar.indexOf(Math.max(...f.pbar));
+    const fgd = $(`#rpEw path.bg[data-c="${lead}"]`).getAttribute("d");
+    $("#ewFg").setAttribute("d", fgd);
+    $("#ewHead").setAttribute("x1", xh); $("#ewHead").setAttribute("x2", xh);
+    // panels 5 to 7 from the latest event
+    const fe = frameEvents(f), e = lastEvent(st.i);
+    ["rp4", "rp5", "rp6"].forEach(id => $("#" + id).classList.toggle("dim", !e));
+    if (!e) {
+      $("#rpCf").innerHTML = `<span class="muted">No early warning yet in this print. Explanation, gate and card run only when a warning fires.</span>`;
+      $("#rpLayers").innerHTML = ["L2", "L1", "L3", "L4"].map(x => `<div class="layer skip"><b>${x}</b><span>waiting for an event</span></div>`).join("");
+      $("#rpVerdict").innerHTML = "";
+      $("#rpCard").innerHTML = `<span class="muted small">No card yet.</span>`;
+      $("#rpVerify").textContent = "";
+    } else {
+      const pr = e.proposals.find(x => x.cause === e.cause) || e.proposals[0];
+      const manual = Object.entries(e.manual);
+      $("#rpCf").innerHTML = (pr ? `<p>${esc(pr.sentence)}</p><p style="margin-top:6px">Proposed: <code>${esc(pr.gcode.join(" "))}</code>${e.proposals.length > 1 ? ` <span class="muted">(+${e.proposals.length - 1} more for other causes in the set)</span>` : ""}</p>` : `<p>No G-code proposal: ${esc(fmtc(e.cause))} has no setpoint action.</p>`) +
+        (manual.length ? `<p style="margin-top:6px" class="muted">Manual advice (${esc(manual[0][0])}): ${esc(manual[0][1])}</p>` : "");
+      const lay = pr ? pr.layers : [];
+      const cell = (name, l) => l ? `<div class="layer ${l.passed ? "pass" : "fail"}"><b>${name} ${l.passed ? ICON.pass : ICON.fail}</b><span>${esc(l.why.replace(/^L\d: /, ""))}</span></div>` : `<div class="layer skip"><b>${name}</b><span>not reached</span></div>`;
+      $("#rpLayers").innerHTML = ["L2", "L1", "L3"].map(x => cell(x, lay.find(l => l.layer === x))).join("") +
+        `<div class="layer ${e.l4 === "pass" ? "pass" : "fail"}"><b>L4 ${e.l4 === "pass" ? ICON.pass : ICON.fail}</b><span>${esc(e.l4.replace(/^L4: /, ""))}; a warning is never auto-applied</span></div>`;
+      const vk = e.verdict === "APPLY" ? "pass" : e.verdict === "ESCALATE" ? "warn" : "wait";
+      $("#rpVerdict").innerHTML = `verdict ${pill(vk, e.verdict)} <span class="muted small">${esc(e.reason)}${e.reason.startsWith("manual") ? ": a z-offset cause is in the set, so the card carries manual advice" : ""}</span>`;
+      $("#rpCard").innerHTML = `<div class="hd"><b>Early warning · ${esc(fmtc(e.cause))}</b><span class="muted">p̄ ${e.pbar} · ${e.ts} s</span></div>
+        <div class="setchips">${e.set.map(c => `<span class="chip in">${esc(c)}</span>`).join("")}</div>
+        ${pr ? `<div class="gc">${esc(pr.final_gcode.join(" ") || "blocked")} <span class="muted">after the gate</span></div>` : ""}
+        ${manual.length ? `<div class="adv">${esc(manual[0][1])}</div>` : ""}
+        <div class="btns"><button type="button" disabled>Approve</button><button type="button" disabled>Modify</button><button type="button" disabled>Reject</button></div>`;
+      $("#rpVerify").textContent = `No operator in the replay, so the card stays pending; after hitl.timeout_s = ${R.hitl.timeout_s} s the loop runs timeout_action "${R.hitl.timeout_action}". Outcome verifier: not run, nothing was applied (and applied warnings are not verifier-watched).`;
+    }
+    // log
+    if (st.i < st.shown || st.shown < 0) { $("#rpLog").innerHTML = ""; st.shown = -1; }
+    const items = [];
+    for (let j = st.shown + 1; j <= st.i; j++) frameEvents(fr[j]).forEach(ev => items.push(ev));
+    st.shown = st.i;
+    const ol = $("#rpLog");
+    ol.querySelector(".empty")?.remove();
+    items.forEach(ev => {
+      ol.querySelectorAll("li.cur").forEach(x => x.classList.remove("cur"));
+      ol.insertAdjacentHTML("afterbegin", `<li class="cur"><div class="ts">${ev.ts} s · frame ${ev.i + 1}</div><b>warning ${esc(ev.cause)}</b> p̄ ${ev.pbar} · ${ev.correct ? "true deviation" : "wrong cause"}<br>set of ${ev.set.length} · ${ev.proposals.length} proposal${ev.proposals.length === 1 ? "" : "s"} · <b>${esc(ev.verdict)}</b> ${esc(ev.reason)}</li>`);
+    });
+    if (!ol.children.length) ol.innerHTML = `<li class="empty">Events appear here as the replay reaches them.</li>`;
+    $("#rpLogN").textContent = `${ol.querySelectorAll("li:not(.empty)").length} of ${p.events.length}`;
+    $("#rpRead").innerHTML = `<span>print <b>${p.trial}</b></span><span>frame <b>${f.i + 1}</b>/${p.n_frames}</span><span>t <b>${f.ts.toFixed(1)} s</b></span><span>top-1 on single-cause frames <b>${p.top1 == null ? "n/a" : p.top1.toFixed(3)}</b> (${p.single} frames)</span>${fe.length ? `<span style="color:var(--accent)">warning fired</span>` : ""}`;
+    if (animate) lightStrip(fe.length > 0);
+  }
+
+  function go(i, animate = true) { st.i = Math.max(0, Math.min(P().frames.length - 1, i)); render(animate); }
+  function tick() {
+    if (st.i >= P().frames.length - 1) { pause(); return; }
+    go(st.i + 1);
+    st.timer = setTimeout(tick, 1000 / (4 * st.speed));
+  }
+  function play() {
+    if (st.playing) return;
+    if (st.i >= P().frames.length - 1) go(0, false);
+    st.playing = true; $("#rpPlay").setAttribute("aria-label", "Pause");
+    $("#rpPlayIcon").innerHTML = '<path d="M4 3h3v10H4zM9 3h3v10H9z" fill="currentColor"/>';
+    tick();
+  }
+  function pause() {
+    st.playing = false; clearTimeout(st.timer); $("#rpPlay").setAttribute("aria-label", "Play");
+    $("#rpPlayIcon").innerHTML = '<path d="M5 3l8 5-8 5z" fill="currentColor"/>';
+  }
+  const toggle = () => st.playing ? pause() : play();
+  $("#rpPlay").addEventListener("click", toggle);
+  $("#rpPrev").addEventListener("click", () => { pause(); go(st.i - 1); });
+  $("#rpNext").addEventListener("click", () => { pause(); go(st.i + 1); });
+  $("#rpScrub").addEventListener("input", e => { pause(); go(+e.target.value, false); });
+  $("#rpSpeed").addEventListener("change", e => { st.speed = +e.target.value; });
+  $$(".seg button").forEach(b => b.addEventListener("click", () => { pause(); st.key = b.dataset.print; st.i = 0; setupPrint(); render(false); }));
+  $("#player").addEventListener("keydown", e => {
+    if (e.target.tagName === "SELECT") return;
+    if (e.key === " " || e.key === "k") { e.preventDefault(); toggle(); }
+    else if (e.key === "," || (e.key === "ArrowLeft" && e.target.id !== "rpScrub")) { e.preventDefault(); pause(); go(st.i - 1); }
+    else if (e.key === "." || (e.key === "ArrowRight" && e.target.id !== "rpScrub")) { e.preventDefault(); pause(); go(st.i + 1); }
+  });
+  setupPrint(); render(false);
+  let rw = 0;
+  new ResizeObserver(() => { const w = $("#rpEw").parentElement.clientWidth; if (Math.abs(w - rw) > 24) { rw = w; drawEw(); render(false); } }).observe($("#rp3"));
+  // start once when the section first comes into view; pause when it leaves
+  // autoplay when the player comes into view; scrolling away pauses, and only that kind of pause resumes on return
+  let auto = !reduce;
+  ["#rpPlay", "#rpPrev", "#rpNext", "#rpScrub"].forEach(q => $(q).addEventListener("pointerdown", () => { auto = false; }));
+  $("#player").addEventListener("keydown", () => { auto = false; });
+  $("#rpScrub").addEventListener("input", () => { auto = false; });
+  $$(".seg button").forEach(b => b.addEventListener("click", () => { auto = false; }));
+  new IntersectionObserver(es => es.forEach(en => {
+    if (en.isIntersecting && auto && !st.playing) play();
+    else if (!en.isIntersecting && st.playing) pause();
+  }), { threshold: 0.25 }).observe($("#player"));
+})();
+
+/* ---------- built ---------- */
+$("#builtTiles").innerHTML = [
+  [done, `tickets done of ${inScope} in scope`],
+  [open, "open: waiting on the GPU sitting, a person or a user decision"],
+  [dropped, "dropped as hardware, out of scope (ADR-0009)"],
+  [DATA.tests.passed, `tests passing (${DATA.tests.skipped} skipped), ruff clean`]
+].map(([v, l]) => `<div class="tile"><div class="stat-n count" data-value="${v}">${n0(v)}</div><div class="stat-l">${esc(l)}</div></div>`).join("");
+$("#laneLegend").innerHTML = `<span><i class="sw done"></i>done (${done})</span><span><i class="sw open"></i>open (${open})</span><span><i class="sw dropped"></i>dropped (${dropped})</span>`;
+let ci = 0;
+$("#lanes").innerHTML = DATA.lanes.map(([name, sub, ts]) => {
+  const d = ts.filter(t => t[1] === "done").length, sc = ts.filter(t => t[1] !== "dropped").length;
+  return `<div class="lane"><h3>${esc(name)}<small>${esc(sub)} · ${sc ? `${d}/${sc} done` : "dropped"}</small></h3><div class="chips">${ts.map(t =>
+    `<span class="tchip ${t[1]}" style="--d:${(ci++) * 12}ms" data-tip="<b>${t[0]}</b> ${esc(t[2])}<br>${t[1]}" tabindex="0">${t[0].slice(2)}</span>`).join("")}</div></div>`;
+}).join("") + table(["ticket", "status", "title"], tickets.map(t => [t[0], t[1], t[2]]));
+
+/* ---------- results ---------- */
+const A = DATA.audit;
+$("#auditPill").innerHTML = pill(A.verdict === "PASS" ? "pass" : "fail", "K1′ " + A.verdict);
+hbars($("#auditChart"), {
+  max: 10000, ticks: [0, 2500, 5000, 7500, 10000], lw: 128, lwm: 100,
+  aria: "Single-cause images per cause. " + A.causes.map(c => `${c[0]} ${c[1]}`).join(", "),
+  rows: A.causes.map(c => ({ label: c[0], value: c[1], show: n0(c[1]), tip: `<b>${c[0]}</b><br>${n0(c[1])} images in ${c[2]} prints<br>rule: ≥ ${A.ruleImages} in ≥ ${A.rulePrints} prints`,
+    refs: [{ at: A.ruleImages, cls: "soft", tip: `K1′ minimum: ${A.ruleImages} images` }] }))
+});
+$("#auditChart").insertAdjacentHTML("beforeend", `<p class="small muted" style="margin-top:10px">Dashed line: 200-image minimum. Every cause clears it in 18 or more prints.</p>` + table(["cause", "single-cause images", "prints"], A.causes.map(c => [c[0], c[1], c[2]])));
+
+const G = DATA.gate;
+$("#gatePill").innerHTML = pill(G.violations === 0 ? "pass" : "fail", G.violations === 0 ? "PASS" : "FAIL");
+$("#gateCases").textContent = n0(G.cases);
+const gs = [["dispatched", G.dispatched, "var(--series)"], ["blocked at L2", G.blocked_L2, "color-mix(in srgb,var(--series) 62%,var(--surface))"], ["blocked at L1", G.blocked_L1, "color-mix(in srgb,var(--series) 42%,var(--surface))"], ["blocked at L3", G.blocked_L3, "color-mix(in srgb,var(--series) 25%,var(--surface))"]];
+$("#gateStack").innerHTML = `<div class="stack" role="img" aria-label="${gs.map(g => `${g[0]} ${g[1]}`).join(", ")}">${gs.map((g, i) =>
+  `<div style="flex:${g[1]};background:${g[2]};--d:${i * 120}ms" data-tip="<b>${g[0]}</b><br>${n0(g[1])} (${(g[1] / G.cases * 100).toFixed(1)}%)" tabindex="0"></div>`).join("")}</div>
+  <div class="stack-keys">${gs.map(g => `<div><b>${n0(g[1])}</b><span><i class="sw" style="background:${g[2]};border:0"></i>${g[0]}</span></div>`).join("")}</div>
+  <p class="small muted" style="margin-top:12px">${n0(G.clipped)} proposals were clipped by L2 to a smaller step instead of being rejected.</p>`;
+
+$("#recipePill").innerHTML = `${ICON.fail}${broke} of ${DATA.recipes.length} break limits`;
+$("#recipeGrid").innerHTML = DATA.recipes.map(r =>
+  `<div class="rc ${r[4] ? "broke" : ""}"><div>${esc(r[0])} · ${esc(r[1].replace("_", " "))}</div>
+  <div class="v">${r[2]} → ${r[3]} ${esc(r[6])} ${r[4] ? `<span style="color:var(--bad-ink)">raw</span> · gate ${r[5]}` : "· passes"}</div>
+  <div class="why">${r[4] ? "breaks " + esc(r[4]) : "within L2, L1, L3"}</div></div>`).join("");
+
+const S = DATA.soak;
+$("#soakPill").innerHTML = pill(S.pass ? "pass" : "fail", S.pass ? "PASS" : "FAIL");
+const vmax = Math.max(...Object.values(S.verdicts));
+hbars($("#soakChart"), { max: vmax, lw: 76, lwm: 76, aria: "Soak verdict mix: " + Object.entries(S.verdicts).map(e => e.join(" ")).join(", "),
+  rows: Object.entries(S.verdicts).map(([k, v]) => ({ label: k, value: v, show: v, tip: `<b>${k}</b><br>${v} events` })) });
+
+const nWait = DATA.pending.filter(p => p.value == null).length;
+$("#pendPill").innerHTML = `${ICON.wait}${nWait} of ${DATA.pending.length} awaiting`;
+$("#pending").innerHTML = DATA.pending.map(p => {
+  if (p.value == null) return `<div class="ptile"><span class="lbl">${esc(p.label)}</span><span class="val wait"><i class="pulse"></i>awaiting ${esc(p.waits)}</span><span class="tgt">${esc(p.tgt)} · ${esc(p.ticket)}</span></div>`;
+  const ok = p.target == null ? null : meets(p.value, p.target, p.dir);
+  return `<div class="ptile has"><span class="lbl">${esc(p.label)}</span><span class="val">${f(p.value, p.fmt)}${esc(p.unit || "")}</span>${ok == null ? "" : pill(ok ? "pass" : "fail", ok ? "PASS" : "FAIL")}<span class="tgt">${esc(p.tgt)} · ${esc(p.ticket)}</span></div>`;
+}).join("");
+
+const AC = DATA.acceptance, acTot = AC.pass + AC.fail + AC.nodata;
+$("#accPill").innerHTML = pill(AC.fail ? "fail" : "wait", `${AC.pass} PASS · ${AC.fail} FAIL · ${AC.nodata} NO DATA`);
+const cells = [...Array(AC.pass).fill("pass"), ...Array(AC.fail).fill("fail"), ...Array(AC.nodata).fill("nodata")];
+$("#accWaffle").innerHTML = `<div class="waffle" role="img" aria-label="Acceptance: ${AC.pass} pass, ${AC.fail} fail, ${AC.nodata} no data, of ${acTot}">${cells.map((c, i) => `<i class="${c}" style="--d:${i * 18}ms"></i>`).join("")}</div>`;
+$("#accKeys").innerHTML = `<div class="stack-keys" style="margin:0">
+  <div><b>${AC.pass}</b><span><i class="sw" style="background:var(--good);border:0"></i>PASS</span></div>
+  <div><b>${AC.fail}</b><span><i class="sw" style="background:var(--bad);border:0"></i>FAIL</span></div>
+  <div><b>${AC.nodata}</b><span><i class="sw" style="border:1.5px dashed var(--pending)"></i>NO DATA</span></div></div>
+  <p class="small muted" style="margin-top:14px">${acTot} requirements in total. T-0046 closes when the NO DATA rows have evidence.</p>`;
+
+/* ---------- failures ---------- */
+$("#k2Count").textContent = `K2 ×${k2Fails}`;
+$("#k2Twice").textContent = ["no times", "once", "twice"][k2Fails] || k2Fails + " times";
+hbars($("#k2Chart"), {
+  max: 0.8, ticks: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], lw: 290, lwm: 110,
+  aria: "Top-1 vs floor. " + runs.map(r => `${r.label}: top-1 ${r.top1 ?? "pending"}, floor ${r.floor}`).join("; "),
+  rows: runs.map(r => ({
+    label: r.label, value: r.top1, show: r.top1 == null ? "-" : f(r.top1), zone: r.floor + 0.05, pendW: r.floor + 0.10,
+    tip: r.top1 == null ? `<b>${esc(r.label)}</b><br>awaiting GPU run. Floor ${f(r.floor)}; K2 fires at ≤ ${f(r.floor + 0.05)}` :
+      `<b>${esc(r.label)}</b><br>top-1 ${f(r.top1)} vs floor ${f(r.floor)}<br>${((r.top1 - r.floor) * 100).toFixed(1)} pp to floor · K2 ${r.top1 <= r.floor + 0.05 ? "FIRES" : "clear"}`,
+    refs: [{ at: r.floor, tip: `floor ${f(r.floor)}` }, { at: r.floor + 0.10, cls: "soft", tip: `NFR-005 target ${f(r.floor + 0.10)}` }]
+  }))
+});
+$("#k2Chart").insertAdjacentHTML("beforeend", table(["run", "top-1", "floor", "gap (pp)", "K2"], runs.map(r =>
+  [r.label, f(r.top1), f(r.floor), r.top1 == null ? "-" : ((r.top1 - r.floor) * 100).toFixed(1), r.top1 == null ? "pending" : r.top1 <= r.floor + 0.05 ? "FAIL" : "PASS"])));
+
+const balRows = runs.filter(r => r.balanced != null || r === g1).map(r => ({ label: r.short, value: r.balanced, show: r.balanced == null ? "-" : f(r.balanced), pendW: 0.25,
+  tip: r.balanced == null ? "awaiting GPU run" : `<b>${esc(r.label)}</b><br>balanced ${f(r.balanced)} vs chance ${f(DATA.k2.chance)}`, refs: [{ at: DATA.k2.chance, cls: "chance", tip: "chance 1/9 = 0.111" }] }));
+hbars($("#balChart"), { max: 0.5, ticks: [0, 0.1, 0.2, 0.3, 0.4, 0.5], lw: 150, lwm: 100, aria: "Balanced accuracy vs chance 0.111", rows: balRows });
+$("#balChart").insertAdjacentHTML("beforeend", `<p class="small muted" style="margin-top:10px">G1 must beat 0.194 clearly, with a print-bootstrap interval, to count as signal.</p>`);
+
+const CL = DATA.k2.cliff;
+hbars($("#cliffChart"), { max: 0.5, ticks: [0, 0.1, 0.2, 0.3, 0.4, 0.5], lw: 150, lwm: 100, aria: `Balanced accuracy: same prints ${CL.samePrint}, new prints ${CL.newPrint}`,
+  rows: [{ label: "same prints (leaky)", value: CL.samePrint, show: f(CL.samePrint), cls: "dim", tip: "random image split inside the train prints", refs: [{ at: DATA.k2.chance, cls: "chance" }] },
+         { label: "new prints", value: CL.newPrint, show: f(CL.newPrint), tip: "train prints vs held-out calib prints", refs: [{ at: DATA.k2.chance, cls: "chance" }] }] });
+
+const O = DATA.k2.overfit, best = O.calibLoss.indexOf(Math.min(...O.calibLoss));
+$("#overfit").innerHTML =
+  lineChart({ xs: O.epochs, ys: O.trainAcc, yMin: 0.4, yMax: 0.9, yTicks: [0.4, 0.6, 0.8], color: "var(--series)", label: "Train accuracy" }) +
+  lineChart({ xs: O.epochs, ys: O.calibLoss, yMin: 2.0, yMax: 3.0, yTicks: [2.0, 2.5, 3.0], color: "var(--bad-ink)", label: "Calibration loss (lower is better)", hiIdx: best });
+
+const used = DATA.k2.cropsUsed, tot = DATA.k2.cropsTotal;
+$("#incomplete").innerHTML = `<div class="big" style="font-size:2.6rem">${(used / tot * 100).toFixed(1)}%<small>of crops</small></div>
+  <div class="split-bar" role="img" aria-label="${n0(used)} of ${n0(tot)} crops used"><div style="flex:${used};background:var(--series)" data-tip="${n0(used)} crops used" tabindex="0"></div><div style="flex:${tot - used};border:1.5px dashed var(--pending);border-left:0;--d:200ms" data-tip="${n0(tot - used)} crops missing" tabindex="0"></div></div>
+  <p class="small muted">${n0(used)} of ${n0(tot)} crops. The other ${n0(tot - used)} images had not been fetched yet. The floor on that subset was 0.625, because z_offset_high dominated it.</p>`;
+
+hbars($("#recallChart"), { max: 0.7, ticks: [0, 0.2, 0.4, 0.6], lw: 128, lwm: 100, aria: "Per-cause recall: " + DATA.k2.recall.map(r => r.join(" ")).join(", "),
+  rows: DATA.k2.recall.map(([c, v]) => ({ label: c, value: v, show: f(v), cls: (c === "none" || c.startsWith("z_offset")) ? "dim" : "", tip: `<b>${c}</b><br>recall ${f(v)}${c.startsWith("z_offset") || c === "none" ? "" : "<br>actionable by G-code"}` })) });
+$("#recallChart").insertAdjacentHTML("beforeend", `<p class="small muted" style="margin-top:10px">Solid bars: causes with a G-code fix. Faded: none and z-offset (manual).</p>`);
+
+hbars($("#litChart"), { max: 1, ticks: [0, 0.25, 0.5, 0.75, 1], lwm: 100, aria: "CAXTON published 0.843 on a random image split; no held-out-print result published", lw: 180,
+  rows: [{ label: "CAXTON, random images", value: DATA.k2.caxtonPublished, show: f(DATA.k2.caxtonPublished), cls: "dim", tip: "Brion and Pattinson 2022, random_split by image" },
+         { label: "Held-out prints", value: 0, show: "none", tip: "No held-out-print accuracy has been published for CAXTON" }] });
+
+/* ---------- overcome ---------- */
+const GATES = [
+  ["G1", "Fine-tune on complete data", "The 9-way fine-tune on all 79,515 crops, same frozen splits. Runs at the sitting.", `Clears the floor with a print-bootstrap CI, and balanced accuracy clearly above 0.194`, g1Verdict],
+  ["G2", "Cheapest multipliers, if G1 shows signal", "Window aggregation over frames, lag and loss hygiene, LP-FT with weight averaging and stronger regularisation, then a fine-tuned 4-head variant.", "Judged on calibration prints: the balanced-accuracy gain needs a CI that excludes 0", "next"],
+  ["G3", "DINOv2, if ResNet18 plateaus", "DINOv2 ViT-S/14 with registers, used as an LP-FT starting point rather than a frozen probe.", "Calibration-print balanced accuracy with CI vs the ResNet18 recipe", "next"]
+];
+$("#gates").innerHTML = GATES.map(([id, h, p, rule, s], i) =>
+  `<div class="gate ${i === 0 ? "now" : ""}"><div class="gid">${id} ${s === "wait" ? pill("wait", "awaiting GPU run") : s === "pass" ? pill("pass", "PASS") : s === "fail" ? pill("fail", "K2 FAIL") : ""}</div><h3>${esc(h)}</h3><p>${esc(p)}</p><div class="rule">${esc(rule)}</div></div>`).join("");
+$("#sitting").innerHTML = DATA.sitting.map(([b, d, t], i) =>
+  `<li><span class="n">${String(i + 1).padStart(2, "0")}</span><b>${esc(b)}</b><span>${esc(d)} <span class="t">· ${esc(t)}</span></span></li>`).join("");
+
+/* ---------- roadmap ---------- */
+const ROAD = [
+  ["Run the GPU sitting", "Krish", "wait", "Complete the data, run G1, build final.pt, then the conformal, counterfactual, proactive and latency evaluations, the human block and the demo (docs/gpu-runs/SITTING-2026-11-16.md).", true],
+  ["Decide on K2", "User", "wait", "If G1 clears K2, continue to G2. If not, choose the ADR-0002 option 1 pivot or a DESCEND flagged post-hoc."],
+  ["Three approvals", "User", "wait", "D6 latency definitions (T-0066), the L3 process window (T-0024) and the frozen taxonomy with Dr. Meti (T-0007)."],
+  ["Acceptance report", "T-0046", "wait", `Re-run scripts/acceptance.py with the sitting reports, so the ${DATA.acceptance.nodata} NO DATA rows get evidence.`],
+  ["SDP report and paper", "T-0047", "wait", "One chapter per session. The report states the leave-prints-out setting and that CAXTON's 84.3% is not comparable."],
+  ["Operator study sessions", "T-0045 (SHOULD)", "wait", "Real participants, explanation ON vs OFF, after the human pilot confirms the protocol."]
+];
+$("#road").innerHTML = ROAD.map(([h, who, s, p, now]) =>
+  `<li class="${now ? "now" : ""}"><h3>${esc(h)} <span class="who">${esc(who)}</span></h3><p>${esc(p)}</p></li>`).join("");
+$("#asOf").textContent = DATA.asOf;
+
+/* ---------- reveals and count-up ---------- */
+function countUp(el) {
+  const end = el.dataset.value != null ? +el.dataset.value : +get(el.dataset.path);
+  if (reduce || !isFinite(end) || end === 0) { el.textContent = n0(end || 0); return; }
+  const t0 = performance.now(), D = 1300;
+  const step = t => { const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 4); el.textContent = n0(end * e); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+$$(".count").forEach(el => el.textContent = reduce ? n0(el.dataset.value != null ? +el.dataset.value : +get(el.dataset.path)) : "0");
+const rio = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  e.target.classList.add("in");
+  $$(".count", e.target).forEach(countUp);
+  rio.unobserve(e.target);
+}), { threshold: 0.12, rootMargin: "0px 0px -5% 0px" });
+$$(".reveal").forEach(el => rio.observe(el));
+
+/* ---------- present mode + keys ---------- */
+const all = [...sections];
+const curIdx = () => { const y = innerHeight * 0.3; let k = 0; all.forEach((s, i) => { if (s.getBoundingClientRect().top <= y) k = i; }); return k; };
+const go = d => { const i = Math.min(all.length - 1, Math.max(0, curIdx() + d)); all[i].scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }); };
+function togglePresent() {
+  const on = root.classList.toggle("present");
+  try { if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {}); else if (!on && document.fullscreenElement) document.exitFullscreen?.(); } catch (e) {}
+}
+$("#presentBtn").addEventListener("click", togglePresent);
+document.addEventListener("keydown", e => {
+  if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.closest?.("#player")) return;
+  const k = e.key;
+  if (k === "p" || k === "P") { togglePresent(); return; }
+  if (k === "ArrowRight" || k === "PageDown" || (k === "ArrowDown" && root.classList.contains("present"))) { e.preventDefault(); go(1); }
+  else if (k === "ArrowLeft" || k === "PageUp" || (k === "ArrowUp" && root.classList.contains("present"))) { e.preventDefault(); go(-1); }
+});
+})();
+</script>
+</body>
+</html>

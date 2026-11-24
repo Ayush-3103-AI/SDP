@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FFF Fix Assistant</title>
+<meta name="description" content="Explainable, human-approved correction for FFF 3D printing: heatmap, plain-English cause, ranked safe fixes.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2318181b'/%3E%3Cpath d='M9 10h14l-4 7h-6z' fill='%23fafafa'/%3E%3Ccircle cx='16' cy='22' r='2.5' fill='%23ea580c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      border: 'hsl(var(--border))', input: 'hsl(var(--input))', ring: 'hsl(var(--ring))',
+      background: 'hsl(var(--background))', foreground: 'hsl(var(--foreground))',
+      primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+      secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+      muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+      accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+      destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--primary-foreground))' },
+      card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
+      success: 'hsl(var(--success))', warn: 'hsl(var(--warn))', heat: 'hsl(var(--heat))',
+    },
+    borderColor: { DEFAULT: 'hsl(var(--border))' },
+    borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+    fontFamily: { sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'], mono: ['Geist Mono', 'ui-monospace', 'monospace'] },
+    keyframes: {
+      in: { from: { opacity: 0, transform: 'translateY(4px)' }, to: { opacity: 1, transform: 'none' } },
+      grow: { from: { transform: 'scaleX(0)' }, to: { transform: 'scaleX(1)' } },
+      shimmer: { '100%': { transform: 'translateX(100%)' } },
+      dash: { to: { strokeDashoffset: '-24' } },
+    },
+    animation: { in: 'in .3s cubic-bezier(.23,1,.32,1) both', grow: 'grow .6s cubic-bezier(.23,1,.32,1) both',
+                 shimmer: 'shimmer 1.4s infinite', dash: 'dash 1.2s linear infinite' },
+  } },
+};
+</script>
+<style>
+  :root{--background:0 0% 100%;--foreground:240 10% 3.9%;--card:0 0% 100%;--card-foreground:240 10% 3.9%;
+    --primary:240 5.9% 10%;--primary-foreground:0 0% 98%;--secondary:240 4.8% 95.9%;--secondary-foreground:240 5.9% 10%;
+    --muted:240 4.8% 95.9%;--muted-foreground:240 3.8% 46.1%;--accent:240 4.8% 95.9%;--accent-foreground:240 5.9% 10%;
+    --destructive:0 72% 51%;--border:240 5.9% 90%;--input:240 5.9% 90%;--ring:240 5.9% 10%;--radius:.625rem;
+    --success:142 64% 30%;--warn:32 95% 38%;--heat:21 90% 48%}
+  .dark{--background:240 10% 3.9%;--foreground:0 0% 98%;--card:240 7% 6.5%;--card-foreground:0 0% 98%;
+    --primary:0 0% 98%;--primary-foreground:240 5.9% 10%;--secondary:240 3.7% 15.9%;--secondary-foreground:0 0% 98%;
+    --muted:240 3.7% 15.9%;--muted-foreground:240 5% 64.9%;--accent:240 3.7% 15.9%;--accent-foreground:0 0% 98%;
+    --destructive:0 63% 50%;--border:240 3.7% 15.9%;--input:240 3.7% 15.9%;--ring:240 4.9% 83.9%;
+    --success:142 55% 48%;--warn:38 92% 55%;--heat:24 95% 58%}
+  *,::before,::after{border-color:hsl(var(--border))}
+  html{font-feature-settings:"ss01","cv11"}
+  body{background:hsl(var(--background));color:hsl(var(--foreground))}
+  .tabular{font-variant-numeric:tabular-nums}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:20px;background:transparent}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:hsl(var(--secondary))}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-5px;border-radius:50%;
+    background:hsl(var(--background));border:2px solid hsl(var(--primary));box-shadow:0 1px 2px rgb(0 0 0/.15)}
+  input[type=range]::-moz-range-track{height:6px;border-radius:99px;background:hsl(var(--secondary))}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:hsl(var(--background));
+    border:2px solid hsl(var(--primary))}
+  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:hsl(var(--border));border-radius:99px}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 rounded-md bg-primary px-3 py-2 text-primary-foreground">Skip to content</a>
+
+<!-- App bar -->
+<header class="sticky top-0 z-30 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+  <div class="mx-auto flex h-14 max-w-[1440px] items-center gap-4 px-4 lg:px-6">
+    <div class="flex items-center gap-2.5">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" class="fill-primary"/><path d="M9 10h14l-4 7h-6z" class="fill-primary-foreground"/><circle cx="16" cy="22" r="2.5" fill="hsl(var(--heat))"/></svg>
+      <div class="leading-tight">
+        <div class="text-sm font-semibold tracking-tight">FFF Fix Assistant</div>
+        <div class="text-[11px] text-muted-foreground">SDP · explainable, human-approved correction</div>
+      </div>
+    </div>
+    <div class="ml-auto flex items-center gap-2">
+      <span class="hidden items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[11px] text-muted-foreground md:inline-flex">final.pt · ResNet18 · CPU</span>
+      <button id="k2" class="hidden items-center gap-1.5 rounded-md border border-warn/30 bg-warn/10 px-2 py-1 text-[11px] font-medium text-warn sm:inline-flex" title="On unseen prints the cause model scores top-1 0.209 vs an always-majority floor of 0.254, so kill criterion K2 is not met. Read its answers as a demonstration of the pipeline.">
+        <span class="h-1.5 w-1.5 rounded-full bg-warn"></span>K2 not met · demo model
+      </button>
+      <label class="ml-1 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground select-none">
+        <span class="hidden sm:inline">Reveal labels</span>
+        <button id="reveal" role="switch" aria-checked="false" aria-label="Reveal dataset labels" class="relative h-5 w-9 rounded-full bg-input transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-checked:bg-primary">
+          <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-background shadow transition-transform"></span>
+        </button>
+      </label>
+      <button id="theme" aria-label="Toggle dark mode" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="mx-auto grid max-w-[1440px] gap-5 px-4 py-5 lg:grid-cols-[232px_minmax(0,1fr)_372px] lg:px-6">
+
+  <!-- Samples rail -->
+  <aside class="order-3 lg:order-1" aria-label="Samples">
+    <div class="rounded-lg border bg-card lg:sticky lg:top-[76px]">
+      <div class="flex items-center justify-between border-b px-3 py-2.5">
+        <div class="text-sm font-medium">Frames</div>
+        <span id="count" class="font-mono text-[11px] text-muted-foreground"></span>
+      </div>
+      <div class="p-3">
+        <label id="drop" class="flex cursor-pointer flex-col items-center gap-1 rounded-md border border-dashed px-3 py-3 text-center text-xs text-muted-foreground transition-colors hover:border-ring/40 hover:bg-accent">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <span><span class="font-medium text-foreground">Upload a frame</span> or drop it here</span>
+          <input id="file" type="file" accept="image/png,image/jpeg" class="sr-only">
+        </label>
+      </div>
+      <div id="grid" class="grid max-h-[calc(100vh-260px)] grid-cols-4 gap-1.5 overflow-y-auto px-3 pb-3 lg:grid-cols-3" role="listbox" aria-label="Sample frames"></div>
+    </div>
+  </aside>
+
+  <!-- Viewer + fixes -->
+  <section class="order-1 min-w-0 space-y-5 lg:order-2">
+    <div class="rounded-lg border bg-card">
+      <div class="flex flex-wrap items-center gap-3 border-b px-4 py-2.5">
+        <div class="inline-flex h-8 items-center rounded-md bg-muted p-0.5 text-xs" role="tablist" aria-label="View">
+          <button data-view="overlay" role="tab" class="view rounded-[5px] px-3 py-1 font-medium transition-all">Overlay</button>
+          <button data-view="original" role="tab" class="view rounded-[5px] px-3 py-1 font-medium transition-all">Original</button>
+          <button data-view="heat" role="tab" class="view rounded-[5px] px-3 py-1 font-medium transition-all">Heatmap</button>
+        </div>
+        <label class="flex items-center gap-2 text-xs text-muted-foreground">
+          <input id="outline" type="checkbox" checked class="h-3.5 w-3.5 accent-[hsl(var(--primary))]"> Outline
+        </label>
+        <div class="ml-auto flex items-center gap-1.5">
+          <button id="prev" aria-label="Previous frame" class="inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+          <span id="pos" class="min-w-[72px] text-center font-mono text-xs tabular text-muted-foreground"></span>
+          <button id="next" aria-label="Next frame" class="inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+          <button id="shuffle" class="ml-1 inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle</button>
+        </div>
+      </div>
+
+      <div class="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_200px]">
+        <figure class="relative mx-auto aspect-square w-full max-w-[560px] overflow-hidden rounded-md bg-muted">
+          <img id="img" alt="Nozzle close-up frame" class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300">
+          <img id="heat" alt="" aria-hidden="true" class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300">
+          <svg id="svg" class="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div id="skel" class="absolute inset-0 hidden overflow-hidden bg-muted"><div class="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-background/50 to-transparent"></div></div>
+          <figcaption id="truth" class="absolute left-2 top-2 hidden rounded-md bg-background/90 px-2 py-1 text-[11px] font-medium shadow-sm backdrop-blur"></figcaption>
+        </figure>
+        <div class="flex flex-col gap-5 text-sm">
+          <div>
+            <div class="mb-1 text-xs font-medium text-muted-foreground">Explaining</div>
+            <div id="explaining" class="font-medium">–</div>
+          </div>
+          <div>
+            <div class="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground"><span>Heatmap opacity</span><span id="opv" class="font-mono tabular">70%</span></div>
+            <input id="opacity" type="range" min="0" max="100" value="70" class="w-full" aria-label="Heatmap opacity">
+          </div>
+          <div>
+            <div class="mb-1.5 text-xs font-medium text-muted-foreground">Influence on the decision</div>
+            <div class="h-2 rounded-full" style="background:linear-gradient(90deg,#000004,#420a68,#932667,#dd513a,#fca50a,#fcffa4)"></div>
+            <div class="mt-1 flex justify-between text-[11px] text-muted-foreground"><span>none</span><span>strong</span></div>
+          </div>
+          <p class="text-xs leading-relaxed text-muted-foreground">Grad-CAM: how strongly each pixel pushed the model toward the cause it names. The outline marks the strongest region.</p>
+          <div class="mt-auto rounded-md bg-muted px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground"><div>inference <span id="msm" class="text-foreground tabular">–</span></div><div>grad-cam <span id="msc" class="text-foreground tabular">–</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fixes -->
+    <div class="rounded-lg border bg-card">
+      <div class="flex flex-wrap items-end justify-between gap-2 border-b px-4 py-3">
+        <div>
+          <h2 class="text-base font-semibold tracking-tight">Recommended fixes</h2>
+          <p class="text-xs text-muted-foreground">Ranked by the model. Every command is checked by the four-layer safety gate before it can be sent.</p>
+        </div>
+        <span class="hidden font-mono text-[11px] text-muted-foreground md:block">1–4 select · Enter review</span>
+      </div>
+      <div id="fixes" class="grid gap-2 p-3" role="radiogroup" aria-label="Recommended fixes"></div>
+      <div class="flex items-center justify-between gap-3 border-t px-4 py-3">
+        <p id="hint" class="text-xs text-muted-foreground">Choose a fix to continue.</p>
+        <button id="review" disabled class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[.98] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Review &amp; send</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Inspector -->
+  <aside class="order-2 space-y-5 lg:order-3 lg:sticky lg:top-[76px] lg:self-start lg:max-h-[calc(100vh-92px)] lg:overflow-y-auto" aria-label="Diagnosis">
+    <div class="rounded-lg border bg-card">
+      <div class="p-5" id="diag">
+        <div class="text-xs font-medium text-muted-foreground">Most likely cause</div>
+        <h1 id="cause" class="mt-1 text-[28px] font-semibold leading-tight tracking-tight">–</h1>
+        <div class="mt-3 flex items-center gap-3">
+          <div class="h-2 flex-1 overflow-hidden rounded-full bg-secondary"><div id="bar" class="h-full origin-left rounded-full bg-primary transition-[width] duration-500" style="width:0"></div></div>
+          <span id="pct" class="font-mono text-sm font-medium tabular">–</span>
+        </div>
+        <div id="conf" class="mt-1 text-xs text-muted-foreground"></div>
+        <dl class="mt-5 space-y-4 text-sm" id="dl"></dl>
+        <div class="mt-5">
+          <div class="mb-2 text-xs font-medium text-muted-foreground">Also possible</div>
+          <div id="alts" class="flex flex-wrap gap-1.5"></div>
+        </div>
+      </div>
+      <div class="border-t">
+        <button id="probsToggle" aria-expanded="true" class="flex w-full items-center justify-between px-5 py-3 text-xs font-medium text-muted-foreground hover:text-foreground">
+          <span>Model output · all nine causes</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="transition-transform" id="chev" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div id="probs" class="space-y-1.5 px-5 pb-5"></div>
+      </div>
+    </div>
+    <div class="rounded-lg border bg-card">
+      <div class="flex items-center justify-between border-b px-4 py-2.5"><div class="text-sm font-medium">Activity</div><span id="logn" class="font-mono text-[11px] text-muted-foreground">0</span></div>
+      <ol id="log" class="max-h-64 divide-y overflow-y-auto text-xs"><li class="px-4 py-4 text-muted-foreground">Decisions you send appear here.</li></ol>
+    </div>
+  </aside>
+</main>
+
+<p class="mx-auto max-w-[1440px] px-4 pb-8 text-[11px] leading-relaxed text-muted-foreground lg:px-6">
+  Real: CAXTON images, the trained cause model, Grad-CAM, the proposal code and the four-layer safety gate from the SDP codebase. Simulated: the printer (nominal setpoints) and the command send. Explanation sentences are fixed plain-English templates per cause. The cause model does not yet beat an always-majority baseline on unseen prints; some samples may come from prints it trained on.
+</p>
+
+<!-- Confirm dialog -->
+<div id="dlg" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-[2px]" data-close></div>
+  <div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4"><div class="pointer-events-auto w-[min(92vw,460px)] animate-in rounded-lg border bg-background p-6 shadow-2xl">
+    <h3 id="dlgTitle" class="text-lg font-semibold tracking-tight">Confirm correction</h3>
+    <p id="dlgSub" class="mt-1 text-sm text-muted-foreground"></p>
+    <div id="dlgBody" class="mt-5"></div>
+    <div class="mt-6 flex justify-end gap-2">
+      <button data-close class="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Cancel</button>
+      <button id="send" class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"></button>
+    </div>
+  </div></div>
+</div>
+
+<!-- Toasts -->
+<div id="toasts" class="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(92vw,380px)] flex-col gap-2" aria-live="polite"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = p => `${Math.round(p * 100)}%`;
+const S = { samples: [], idx: 0, upload: null, reveal: false, view: 'overlay', a: null, pick: null, log: [], req: 0 };
+
+function store(k, v) { try { v === undefined ? (v = localStorage.getItem(k)) : localStorage.setItem(k, v); } catch { return null; } return v; }
+const dark = store('fff-theme') ? store('fff-theme') === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+document.documentElement.classList.toggle('dark', dark);
+$('#theme').onclick = () => { const d = document.documentElement.classList.toggle('dark'); store('fff-theme', d ? 'dark' : 'light'); };
+
+const ICON = {
+  check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+  x: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+};
+
+function renderGrid() {
+  $('#grid').innerHTML = S.samples.map((s, i) => `
+    <button role="option" aria-selected="${i === S.idx && !S.upload}" data-i="${i}" title="Frame ${String(i + 1).padStart(2, '0')}${S.reveal ? ' · ' + s.truth_label : ''}"
+      class="group relative aspect-square overflow-hidden rounded-md bg-muted outline-none ring-offset-2 ring-offset-card transition-all focus-visible:ring-2 focus-visible:ring-ring ${i === S.idx && !S.upload ? 'ring-2 ring-primary' : 'hover:opacity-90'}">
+      <img src="/samples/${encodeURIComponent(s.file)}" alt="" loading="lazy" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105">
+      ${S.reveal ? `<span class="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white">${esc(s.truth_label)}</span>` : ''}
+    </button>`).join('');
+  $('#count').textContent = `${S.samples.length} frames`;
+}
+
+function setView(v) {
+  S.view = v;
+  document.querySelectorAll('.view').forEach(b => {
+    const on = b.dataset.view === v;
+    b.setAttribute('aria-selected', on);
+    b.className = `view rounded-[5px] px-3 py-1 font-medium transition-all ${on ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`;
+  });
+  applyLayers();
+}
+
+function applyLayers() {
+  const op = $('#opacity').value / 100;
+  $('#opv').textContent = `${$('#opacity').value}%`;
+  $('#img').style.opacity = S.view === 'heat' ? 0.12 : 1;
+  $('#heat').style.opacity = S.view === 'original' ? 0 : S.view === 'heat' ? 1 : op;
+  $('#svg').style.opacity = $('#outline').checked ? 1 : 0;
+}
+
+async function analyse() {
+  const id = ++S.req;
+  $('#skel').classList.remove('hidden');
+  $('#review').disabled = true;
+  const body = S.upload ? { data: S.upload.data } : { file: S.samples[S.idx].file };
+  let a;
+  try {
+    const r = await fetch('/api/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    a = await r.json();
+    if (!r.ok) throw new Error(a.error || 'Analysis failed');
+  } catch (e) { if (id === S.req) { $('#skel').classList.add('hidden'); toast('Could not analyse the frame', e.message, 'err'); } return; }
+  if (id !== S.req) return;  // a newer frame was requested meanwhile
+  S.a = a; S.pick = null;
+  $('#dlg').classList.add('hidden');  // a new frame invalidates any open confirmation
+  render();
+}
+
+function render() {
+  const a = S.a, s = S.samples[S.idx];
+  $('#img').src = a.image; $('#heat').src = a.heat;
+  $('#skel').classList.add('hidden');
+  $('#svg').innerHTML = a.outline.map(pts => `<polygon points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="white" stroke-width="0.012" stroke-linejoin="round" opacity=".9"/>
+    <polygon points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="hsl(var(--heat))" stroke-width="0.006" stroke-dasharray="0.02 0.012" stroke-linejoin="round" class="animate-dash"/>`).join('');
+  $('#pos').textContent = S.upload ? 'upload' : `${String(S.idx + 1).padStart(2, '0')} / ${S.samples.length}`;
+  $('#explaining').textContent = `Grad-CAM for “${a.explain_cls}”`;
+  $('#msm').textContent = `${a.ms_model} ms`; $('#msc').textContent = `${a.ms_cam} ms`;
+
+  const t = $('#truth');
+  if (S.reveal && !S.upload) {
+    const ok = s.truth === a.top;
+    t.innerHTML = `<span class="text-muted-foreground">Dataset label</span> ${esc(s.truth_label)} <span class="${ok ? 'text-success' : 'text-destructive'}">· ${ok ? 'model matches' : 'model differs'}</span>`;
+    t.classList.remove('hidden');
+  } else t.classList.add('hidden');
+
+  $('#cause').textContent = a.top === 'none' ? 'No defect' : a.top_label[0].toUpperCase() + a.top_label.slice(1);
+  $('#bar').style.width = pct(a.p_top);
+  $('#bar').className = `h-full rounded-full transition-[width] duration-500 ${a.p_top >= .7 ? 'bg-success' : a.p_top >= .4 ? 'bg-primary' : 'bg-warn'}`;
+  $('#pct').textContent = pct(a.p_top);
+  $('#conf').textContent = a.p_top >= .7 ? 'Fairly confident' : a.p_top >= .4 ? 'Moderately sure' : 'Unsure: treat as a lead, not a verdict';
+  const rows = [['What it sees', a.look], ['Why it happens', a.why], ['Evidence', a.evidence]].filter(r => r[1]);
+  $('#dl').innerHTML = rows.map(([k, v], i) => `<div class="animate-in" style="animation-delay:${i * 60}ms"><dt class="text-xs font-medium text-muted-foreground">${k}</dt><dd class="mt-0.5 leading-relaxed">${esc(v)}</dd></div>`).join('');
+  $('#alts').innerHTML = a.probs.filter(p => p.cause !== a.top).slice(0, 3).map(p =>
+    `<span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs">${esc(p.label)}<span class="font-mono text-muted-foreground tabular">${pct(p.p)}</span></span>`).join('');
+  $('#probs').innerHTML = a.probs.map((p, i) => `
+    <div class="grid grid-cols-[118px_1fr_36px] items-center gap-2 text-xs ${p.cause === a.top ? 'font-medium text-foreground' : 'text-muted-foreground'}">
+      <span class="truncate">${esc(p.label)}</span>
+      <span class="h-1.5 overflow-hidden rounded-full bg-secondary"><span class="block h-full origin-left animate-grow rounded-full ${p.cause === a.top ? 'bg-heat' : 'bg-muted-foreground/40'}" style="width:${(p.p * 100).toFixed(1)}%;animation-delay:${i * 35}ms"></span></span>
+      <span class="text-right font-mono tabular">${pct(p.p)}</span>
+    </div>`).join('');
+  renderFixes();
+  renderGrid();
+  applyLayers();
+}
+
+function gateBadges(f) {
+  if (f.layers.length) return f.layers.map(l => `<span title="${esc(l.reason)}" class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px] font-medium ${l.passed ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}">${l.passed ? ICON.check : ICON.x}${l.layer}</span>`).join('');
+  return `<span class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">${f.kind === 'manual' ? 'Manual step · nothing sent' : 'Nothing sent'}</span>`;
+}
+
+function renderFixes() {
+  const fx = S.a.fixes;
+  $('#fixes').innerHTML = fx.map((f, i) => {
+    const on = S.pick === i;
+    return `<button role="radio" aria-checked="${on}" data-f="${i}" style="animation-delay:${i * 50}ms"
+      class="group grid animate-in grid-cols-[20px_minmax(0,1fr)_auto] items-start gap-3 rounded-md border p-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'border-primary bg-accent/60 shadow-sm' : 'hover:border-ring/30 hover:bg-accent/40'}">
+      <span class="mt-0.5 grid h-4 w-4 place-items-center rounded-full border ${on ? 'border-primary' : 'border-input'}"><span class="h-2 w-2 rounded-full bg-primary transition-transform ${on ? 'scale-100' : 'scale-0'}"></span></span>
+      <span class="min-w-0">
+        <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span class="text-sm font-medium">${esc(f.title)}</span>
+          ${f.change ? `<span class="font-mono text-xs text-muted-foreground">${esc(f.change)}</span>` : ''}
+        </span>
+        <span class="mt-0.5 block text-xs leading-relaxed text-muted-foreground">${esc(f.detail)}</span>
+        <span class="mt-2 flex flex-wrap items-center gap-1.5">
+          ${f.gcode ? `<code class="rounded bg-primary px-1.5 py-0.5 font-mono text-[11px] text-primary-foreground">${esc(f.gcode)}</code>` : ''}
+          ${gateBadges(f)}
+        </span>
+      </span>
+      <span class="text-right">
+        <span class="block font-mono text-xs tabular ${f.p == null ? 'text-muted-foreground' : ''}">${f.p == null ? '—' : pct(f.p)}</span>
+        <span class="block text-[10px] text-muted-foreground">${f.p == null ? 'fallback' : `#${i + 1} · likely`}</span>
+      </span>
+    </button>`;
+  }).join('');
+  const f = fx[S.pick];
+  $('#review').disabled = !f || f.kind === 'blocked';
+  $('#hint').innerHTML = !f ? 'Choose a fix to continue.' : f.gcode ? `Will send <code class="font-mono text-foreground">${esc(f.gcode)}</code> after you confirm.` : 'Nothing is sent to the printer; the choice is logged.';
+}
+
+function openDialog() {
+  const f = S.a.fixes[S.pick];
+  if (!f || f.kind === 'blocked') return;
+  $('#dlgSub').textContent = f.gcode ? 'This command passed every gate layer and will go to the (simulated) printer.' : 'No printer command is sent. Your decision is logged.';
+  const steps = f.layers.map(l => `<li class="flex gap-3"><span class="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full ${l.passed ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}">${l.passed ? ICON.check : ICON.x}</span><span><span class="font-medium">${l.layer}</span> <span class="text-muted-foreground">${esc(l.reason.replace(/^L\d: /, ''))}</span></span></li>`).join('');
+  $('#dlgBody').innerHTML = `
+    <div class="rounded-md border p-4">
+      <div class="text-sm font-medium">${esc(f.title)}${f.change ? ` <span class="font-mono text-xs font-normal text-muted-foreground">${esc(f.change)}</span>` : ''}</div>
+      <div class="mt-1 text-xs text-muted-foreground">${esc(f.detail)}</div>
+      ${f.gcode ? `<pre class="mt-3 rounded-md bg-primary px-3 py-2 font-mono text-sm text-primary-foreground">${esc(f.gcode)}</pre>` : ''}
+    </div>
+    ${steps ? `<div class="mt-4 text-xs font-medium text-muted-foreground">Safety gate</div><ol class="mt-2 space-y-2 text-sm">${steps}</ol>
+      <p class="mt-3 text-xs text-muted-foreground">After sending, the outcome check watches the next ${S.a.verify_s} s to confirm the defect clears.</p>` : ''}`;
+  $('#send').textContent = f.gcode ? `Send ${f.gcode}` : 'Log decision';
+  $('#dlg').classList.remove('hidden');
+  $('#send').focus();
+}
+const closeDialog = () => { $('#dlg').classList.add('hidden'); $('#review').focus(); };
+
+async function send() {
+  const f = S.a && S.a.fixes[S.pick];
+  if (!f) return closeDialog();
+  const frame = S.upload ? S.upload.name : `Frame ${String(S.idx + 1).padStart(2, '0')}`;
+  const r = await fetch('/api/decide', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: S.upload ? S.upload.name : S.samples[S.idx].file, top: S.a.top, p_top: S.a.p_top.toFixed(3), choice: f.title, gcode: f.gcode }) });
+  const { time } = await r.json();
+  closeDialog();
+  S.log.unshift({ time, frame, cause: S.a.top_label, choice: f.title, gcode: f.gcode });
+  $('#logn').textContent = S.log.length;
+  $('#log').innerHTML = S.log.map(l => `<li class="animate-in px-4 py-2.5"><div class="flex justify-between gap-2"><span class="font-medium">${esc(l.choice)}</span><span class="font-mono text-muted-foreground">${l.time}</span></div>
+    <div class="mt-0.5 text-muted-foreground">${esc(l.frame)} · model said ${esc(l.cause)}${l.gcode ? ` · <code class="font-mono text-foreground">${esc(l.gcode)}</code>` : ''}</div></li>`).join('');
+  toast(f.gcode ? `Sent ${f.gcode}` : 'Decision logged', f.gcode ? `Gate passed · verifier watching ${S.a.verify_s} s` : f.title, 'ok');
+}
+
+function toast(title, sub, kind) {
+  const el = document.createElement('div');
+  el.className = 'pointer-events-auto animate-in rounded-lg border bg-background p-4 shadow-lg';
+  el.innerHTML = `<div class="flex gap-3"><span class="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full ${kind === 'ok' ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}">${kind === 'ok' ? ICON.check : ICON.x}</span>
+    <div><div class="text-sm font-medium">${esc(title)}</div><div class="text-xs text-muted-foreground">${esc(sub)}</div></div></div>`;
+  $('#toasts').appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .2s'; el.style.opacity = 0; setTimeout(() => el.remove(), 200); }, 3200);
+}
+
+function go(i) { S.upload = null; S.idx = (i + S.samples.length) % S.samples.length; renderGrid(); analyse(); }
+
+$('#grid').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) go(+b.dataset.i); });
+$('#fixes').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { S.pick = +b.dataset.f; renderFixes(); } });
+$('#prev').onclick = () => go(S.idx - 1);
+$('#next').onclick = () => go(S.idx + 1);
+$('#shuffle').onclick = () => go(Math.floor(Math.random() * S.samples.length));
+document.querySelectorAll('.view').forEach(b => b.onclick = () => setView(b.dataset.view));
+$('#opacity').oninput = applyLayers;
+$('#outline').onchange = applyLayers;
+$('#review').onclick = openDialog;
+$('#send').onclick = send;
+document.querySelectorAll('[data-close]').forEach(el => el.onclick = closeDialog);
+$('#reveal').onclick = () => { S.reveal = !S.reveal; $('#reveal').setAttribute('aria-checked', S.reveal);
+  $('#reveal span').style.transform = S.reveal ? 'translateX(16px)' : 'none'; if (S.a) render(); };
+$('#probsToggle').onclick = () => { const open = $('#probs').classList.toggle('hidden'); $('#probsToggle').setAttribute('aria-expanded', !open); $('#chev').style.transform = open ? 'rotate(-90deg)' : 'none'; };
+
+function readFile(file) {
+  if (!file || !/image\/(png|jpe?g)/.test(file.type)) return toast('Unsupported file', 'Use a PNG or JPEG image.', 'err');
+  const r = new FileReader();
+  r.onload = () => { S.upload = { name: file.name, data: r.result }; renderGrid(); analyse(); };
+  r.readAsDataURL(file);
+}
+$('#file').onchange = e => readFile(e.target.files[0]);
+['dragover', 'drop'].forEach(t => $('#drop').addEventListener(t, e => { e.preventDefault(); if (t === 'drop') readFile(e.dataTransfer.files[0]); }));
+
+document.addEventListener('keydown', e => {
+  if (!$('#dlg').classList.contains('hidden')) { if (e.key === 'Escape') closeDialog(); return; }
+  if (e.target.closest('input, textarea')) return;
+  if (e.key === 'ArrowLeft') go(S.idx - 1);
+  else if (e.key === 'ArrowRight') go(S.idx + 1);
+  else if (/^[1-4]$/.test(e.key) && S.a && $('#skel').classList.contains('hidden') && S.a.fixes[+e.key - 1]) { S.pick = +e.key - 1; renderFixes(); }
+  else if (e.key === 'Enter' && S.pick != null && !e.target.closest('button')) openDialog();
+});
+
+(async () => {
+  setView('overlay');
+  S.samples = await (await fetch('/api/samples')).json();
+  renderGrid();
+  analyse();
+})();
+</script>
+</body>
+</html>

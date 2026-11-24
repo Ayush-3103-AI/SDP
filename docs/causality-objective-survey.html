@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Causality Objective Survey</title>
+<meta name="description" content="SDP causality objective mapped to what is built, what lags, prior art, and recommended next steps (2026-11-20).">
+<style>
+:root{--bg:#fbfaf7;--surface:#fff;--ink:#1b1b1a;--ink2:#55534e;--line:#e4e1da;--accent:#c2410c;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--chip:#f1efe9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--surface:#1a1a1a;--ink:#ecebe8;--ink2:#a8a59e;--line:#2c2b29;--accent:#fb923c;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--chip:#242321}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:40px 16px 80px}
+h1{font-size:2rem;line-height:1.2;margin:0 0 8px;letter-spacing:-.01em}
+h2{font-size:1.35rem;margin:48px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:1.05rem;margin:24px 0 8px}
+p,li{color:var(--ink)}
+.sub{color:var(--ink2);margin:0 0 24px}
+.callout{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:14px 18px;margin:16px 0}
+.callout.bad{border-left-color:var(--bad)}
+.tbl{overflow-x:auto;margin:12px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;background:var(--chip)}
+tr:last-child td{border-bottom:0}
+.s{display:inline-block;font-size:.75rem;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.s.ok{color:var(--ok);border:1px solid var(--ok)}.s.warn{color:var(--warn);border:1px solid var(--warn)}.s.bad{color:var(--bad);border:1px solid var(--bad)}
+code{font:.85em ui-monospace,Consolas,monospace;background:var(--chip);padding:1px 5px;border-radius:4px}
+a{color:var(--accent)}
+.lbl{font-size:.75rem;color:var(--ink2)}
+ol li,ul li{margin:4px 0}
+pre{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Causality objective: built, lagging, prior art, next steps</h1>
+<p class="sub">SDP · CARR 4.1.3 slice · 2026-11-20 · Sources: project reports, Krish's 11-19 GPU results, 3 internal research-note sets + 2 new prior-art strands (~45 sources, see <code>research_notes/</code>).</p>
+
+<div class="callout bad"><strong>K2 has fired on complete data.</strong> The fine-tuned cause model scores top-1 <strong>0.209</strong> vs the majority floor <strong>0.254</strong> (−4.5 pp, 95 % CI 0.179–0.244; balanced accuracy 0.177 vs chance 0.111; <code>reports/cause_eval_full.md</code>, commit <code>f12a8f1</code>). Per CLAUDE.md this is a stop-and-decide point. ADR-0002 pre-registers the fallback: <em>Option 1, hand-written cause probabilities (Bayesian scoring), re-scoped as the explanation method</em>. The prior art below points the same way.</div>
+
+<h2>1 · The objective, decomposed</h2>
+<p>"A causality model that explains why a defect happened, what went wrong, and gives an array of plausible fixes for a human to choose from" breaks into six testable jobs:</p>
+<ol>
+<li><strong>Why</strong>: name the cause (which process parameter, which direction).</li>
+<li><strong>How sure</strong>: say how confident, honestly, including "I don't know".</li>
+<li><strong>What went wrong</strong>: show the evidence on the image and in words.</li>
+<li><strong>Array of fixes</strong>: a short ranked list of concrete, bounded actions.</li>
+<li><strong>Safe choice</strong>: every option passes the safety gate; the human picks.</li>
+<li><strong>Learn</strong>: the pick and its outcome improve the next ranking.</li>
+</ol>
+
+<h2>2 · Mapped to what is built</h2>
+<div class="tbl"><table>
+<tr><th>Job</th><th>What is built (file)</th><th>Measured status</th><th>What lags</th></tr>
+<tr><td>1 Why</td><td>Image-only ResNet18, 9 causes (<code>xqi/explain/cause_model.py</code>), ADR-0002</td><td><span class="s bad">K2 FAIL</span> top-1 0.209 vs floor 0.254; recall 0.05–0.19 on actionable causes</td><td>The core. Per-print appearance dominates (random-image split 0.43 vs held-out 0.21).</td></tr>
+<tr><td>2 How sure</td><td>Split-conformal LAC, α = 0.10 (<code>conformal.py</code>)</td><td><span class="s warn">NFR-006 FAIL</span> coverage 0.914 ✓, mean set size 7.10 of 9 (need ≤ 2)</td><td>Honest but useless: the set says "almost anything". No abstain/"inspect manually" option on the card.</td></tr>
+<tr><td>3 What went wrong</td><td>EigenCAM on <code>backbone.layer4</code> (<code>attribution.py</code>); template sentence (<code>counterfactual.py</code>)</td><td><span class="s warn">Built, unvalidated</span></td><td>EigenCAM is not class-discriminative (same map for every cause). No sanity check, no example frames from other prints, no symptom wording ("under-extrusion").</td></tr>
+<tr><td>4 Array of fixes</td><td>One proposal per cause in the conformal set, ranked by probability (<code>xqi/explain/__init__.py:64-68</code>); severity-scaled Δ and G-code <code>M221/M220/M104</code>; z-offset as manual advice</td><td><span class="s warn">NFR-007 FAIL</span> direction fidelity 0.723 on only 137 confident events (0.7 %); 11-11 preds</td><td>The array exists but inherits the model: ~7 options, poorly ordered. Only one fix per cause; no grouping of causes that share a fix.</td></tr>
+<tr><td>5 Safe choice</td><td>4-layer fail-closed gate L2→L1→L3→L4 (<code>gate.py</code>); dashboard cards approve/modify/reject; timeout; outcome verifier</td><td><span class="s ok">PASS</span> 0 violations in 100,000 random cases; soak 2 h; latency p95 4.4 ms, 0.11 GB VRAM</td><td>Operator study still needs a real-person pilot (T-0043/44). End-to-end NFR-002 has no data until the T-0066 demo.</td></tr>
+<tr><td>Proactive</td><td>EWMA + hysteresis early warning (<code>proactive.py</code>)</td><td><span class="s bad">NFR-012 FAIL</span> recall 0.01; median 7.4 s ✓; 0.85 false/h ✓</td><td>Starved by the model: it almost never gets a confident cause.</td></tr>
+<tr><td>6 Learn</td><td>Decisions and outcomes are logged in SQLite; T-0048 (recalibrate qhat) is a COULD</td><td><span class="s warn">Not built</span></td><td>No per-fix success statistics feed back into the ranking.</td></tr>
+</table></div>
+<p><strong>Reading:</strong> jobs 4 and 5 (the ranked array and safe human choice) are architecturally done and tested. The project lags at job 1, and jobs 2, 3 and the proactive path fail only because job 1 does. Fixing the source of the ranking fixes most of the table.</p>
+
+<h2>3 · Prior art</h2>
+<p class="lbl">[V] = verified at source · [S] = snippet-inferred · maturity: Consensus / Emerging / Speculative. Full notes: <code>research_notes/causality objective survey/</code> and <code>research_notes/FFF cause model build plan/</code>.</p>
+<div class="tbl"><table>
+<tr><th>Work</th><th>What it does</th><th>Key evidence</th><th>Take for SDP</th></tr>
+<tr><td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9378646/">CAXTON</a>, Brion &amp; Pattinson, Nat. Comms 2022 [V]</td><td>4 per-parameter heads, closed-loop correction</td><td>84.3 % on a <em>random-image</em> split; no held-out-print number published. Emerging.</td><td>Our 0.21 is the first honest held-out number on this data; report it as a finding.</td></tr>
+<tr><td><a href="https://cemag1.github.io/assets/papers/Iterative_learning%20for_efficient_additive_mass_production.pdf">Iterative learning for mass production</a>, Margadji et al., Addit. Manuf. 2024 [V]</td><td>Flow regression (RegNet, ~1.1 M images)</td><td>MAE 12.31 random split → <strong>38.24 on unseen parts</strong> (3.1×); Grad-CAM++ shows attention on part geometry. Fine-tuning on 1/5/10 parts cuts error by 8.6/10.1/12.5. Emerging.</td><td>The same group hit our wall. Regression is not the escape hatch; per-part calibration is their fix.</td></tr>
+<tr><td><a href="https://arxiv.org/abs/2506.08462">CIPHER</a>, Margadji &amp; Pattinson 2025 (MIT code) [V]</td><td>VLM + LLM agent for print correction</td><td>~2.3 s per decision; accuracy comes from a trained ResNet-152 under the LLM; commits to one plan. Emerging.</td><td>LLM only for wording, never in the actuation path.</td></tr>
+<tr><td><a href="https://arxiv.org/abs/2408.14307">LLM-3D Print</a>, Jadhav et al. 2024/25 [V]</td><td>Multi-agent LLM diagnoses defect → cause → G-code fix</td><td>15–45 s per layer; qualitative evaluation; context overflow caused unintended shutdowns. Speculative.</td><td>Defect → cause reasoning is the right shape; the LLM is the wrong executor.</td></tr>
+<tr><td><a href="https://data.mendeley.com/datasets/88pcwt65yp/1">FFF troubleshooting dataset</a> (CC BY 4.0) + <a href="https://academic.oup.com/jcde/article/13/6/68/8696400">Kang &amp; Kim, JCDE 2026</a> [V]</td><td>Defect → causes → remedies from Simplify3D / Prusa / All3DP guides; RAG over it</td><td>RAG context recall only 0.728. Emerging.</td><td>Seed a fixed defect → cause → fix prior table; a lookup beats RAG for 9 closed causes.</td></tr>
+<tr><td><a href="https://trepo.tuni.fi/bitstream/10024/129531/1/2019_CIRP_CMS_Conference_1.pdf">Bayesian-network AM diagnosis</a>, CIRP CMS 2019 [S]</td><td>Backward inference from observed defect to causes (metal PBF)</td><td>No training data needed. Emerging.</td><td>The exact form of ADR-0002 Option 1.</td></tr>
+<tr><td><a href="https://www.arxiv.org/pdf/2111.02703">Petsiuk &amp; Pearce</a> 2021 [V]; <a href="https://researchportal.bath.ac.uk/en/publications/in-situ-measurement-of-extrusion-width-for-fused-filament-fabrica/">Shabani &amp; Martinez-Hernandez</a>, IROS 2023 [S]</td><td>Compare against a G-code-rendered reference; measure bead width (~90 µm)</td><td>Measurement and reference comparison reduce dependence on part appearance. Emerging.</td><td>Reference-crop input (same print, early nominal frames) to cancel per-print look.</td></tr>
+<tr><td>Obico, Bambu Lab AI, PrintPal, PrintGuard [V/S]</td><td>Commercial failure detection</td><td>Detect gross failures, pause/notify; <strong>none recommends fixes</strong>.</td><td>"Ranked, explained, human-picked fixes" is unclaimed whitespace.</td></tr>
+<tr><td><a href="https://www.ijcai.org/proceedings/2022/341">Babbar et al., IJCAI 2022</a>; <a href="https://arxiv.org/abs/2401.08876">Zhang et al., CHI 2024</a> [S]</td><td>Set-valued / top-k advice to humans</td><td>Small sets help on hard or out-of-distribution cases; large sets don't. Emerging.</td><td>Cap the card at ~3 fixes plus "inspect manually".</td></tr>
+<tr><td><a href="https://arxiv.org/pdf/2406.08271">Senoner et al. 2024</a>; <a href="https://arxiv.org/abs/2006.14779v2">Bansal et al. 2021</a> [V]</td><td>Human studies of AI explanations</td><td>Heatmaps +7.7 pp inspection quality (Siemens); explanations raise acceptance regardless of correctness. Consensus-leaning.</td><td>Always show calibrated confidence and abstain next to any heatmap.</td></tr>
+<tr><td>LP-FT, SWAD/EoA, DINOv2-reg (build-plan notes) [V]</td><td>Domain-generalisation recipes</td><td>+3–10 % OOD on benchmarks; nothing on FFF. Emerging.</td><td>Second-order once the formulation is fixed.</td></tr>
+</table></div>
+<p><strong>Leakage note:</strong> fusing CAXTON's logged setpoints or telemetry into the model (ADR-0002 Option 3) would score high and learn nothing; the commanded setpoint <em>is</em> the label. Keep telemetry in the deterministic sensor checks only.</p>
+
+<h2>4 · A quick test we ran today</h2>
+<p>To check whether a symptom-first model is worth pursuing, the 9-way predictions from Krish's complete-data fine-tune were summed into three physical symptom groups chosen from extrusion physics before looking at results: <em>none</em> · <em>under-extrusion</em> (flow_low, speed_high, z_offset_high, nozzle_temp_low) · <em>over-extrusion</em> (flow_high, speed_low, z_offset_low, nozzle_temp_high).</p>
+<div class="tbl"><table>
+<tr><th></th><th>9 causes</th><th>3 symptom groups</th></tr>
+<tr><td>Top-1 vs floor</td><td>0.209 vs 0.254 (−4.5 pp)</td><td>0.499 vs 0.475 (<strong>+2.4 pp</strong>; 4 of 5 folds above)</td></tr>
+<tr><td>Balanced accuracy vs chance</td><td>0.177 vs 0.111</td><td><strong>0.471 vs 0.333</strong></td></tr>
+</table></div>
+<p>This is exploratory, on test folds, with a model not trained for symptoms. It does not pass any gate. It does say the image carries a symptom signal that the 9-way split smears out; a model trained on symptoms is the cheapest next experiment.</p>
+
+<h2>5 · Recommendation</h2>
+<div class="callout"><strong>Take the pre-registered K2 fallback and upgrade it into a two-stage, symptom-first causality model.</strong> The image says <em>what went wrong</em>; a transparent Bayesian table says <em>why</em> and <em>what to try</em>; the existing gate and card let the human choose.</div>
+<pre>crop ──► Stage A: symptom model (image-only, ADR-0002 intact)
+           none / under-extrusion / over-extrusion (+ severity), conformal set, Grad-CAM per symptom
+     ──► Stage B: Bayesian cause ranking (ADR-0002 Option 1)
+           P(cause | symptom) from the CC BY troubleshooting table + CAXTON physics
+           × weak 9-way cause probabilities, flattened when the set is large
+           + deterministic sensor flags (telemetry stays out of the model)
+     ──► Stage C: top-3 fixes + "inspect manually"   (causes sharing a fix are merged)
+     ──► existing gate L2→L1→L3→L4 ──► card ──► operator pick ──► verifier ──► success stats per fix</pre>
+<ul>
+<li><strong>Why this one:</strong> it uses what passed (gate, card, verifier, latency); it is the fallback the project already committed to; it matches the only form prior art uses for defect → cause → remedy; and the symptom signal is above chance where the 9-way signal is not.</li>
+<li><strong>How it is measured:</strong> on the same frozen LOGO folds — symptom balanced accuracy vs floor (print bootstrap), and for the array: "true cause's fix ranked #1" and "in top-3" vs the floor ranking. ADR-0002 already says Option 1's accuracy is reported on those folds.</li>
+<li><strong>Contrarian view:</strong> per-print calibration (Margadji) — fine-tune on the first minutes of each new print — would likely lift the 9-way model the most, but it changes the evaluation protocol and assumes labelled frames per print. Keep it as the "with calibration" variant, reported separately.</li>
+</ul>
+
+<h2>6 · Next steps</h2>
+<div class="tbl"><table>
+<tr><th>#</th><th>Step</th><th>Who</th><th>Gate / cost</th></tr>
+<tr><td>0</td><td>Decide on K2: accept the Option 1 fallback (recommended) and approve a DESCEND to specs 06–09 for the symptom-first design (cause-model output contract, NFR-005 metric)</td><td>You (+ Dr. Meti)</td><td>Required by CLAUDE.md before any build</td></tr>
+<tr><td>1</td><td>Log K2 FAIL: update BOARD/STATE/LOGBOOK for T-0013 (closes #13 as FAILED → DESCEND)</td><td>Dev session</td><td>Minutes</td></tr>
+<tr><td>2</td><td>Train a 3-class symptom head on the existing crops (CPU frozen probe now; GPU fine-tune via runbook)</td><td>Dev + Krish</td><td>Selection on calibration prints only; test once</td></tr>
+<tr><td>3</td><td>Build Stage B: <code>config/cause_priors.yaml</code> from the troubleshooting dataset + CAXTON physics; Bayesian ranking in the explainer; top-3 + "inspect manually" on the card</td><td>Dev</td><td>CPU; pytest; no model retrain</td></tr>
+<tr><td>4</td><td>Swap EigenCAM → per-symptom Grad-CAM; add the Adebayo randomisation sanity test; add 3 nearest example frames from other prints</td><td>Dev</td><td>CPU</td></tr>
+<tr><td>5</td><td>Re-run T-0015/17/63 on the new outputs; re-run the operator pilot with a real person on the new card</td><td>Krish + a participant</td><td>Existing scripts</td></tr>
+<tr><td>6</td><td>Log operator pick + outcome per fix; show success counts on the card (T-0048 scope)</td><td>Dev</td><td>COULD</td></tr>
+<tr><td>7</td><td>Optional: reference-crop input (same print, early nominal frames) as a model improvement</td><td>Dev</td><td>Needs a second DESCEND (changes <code>CauseModel.predict</code>)</td></tr>
+<tr><td>8</td><td>Report: present K2 as a finding (first held-out-print number on CAXTON; same gap as Margadji 2024) and the pivot as pre-registered</td><td>Team</td><td>T-0047</td></tr>
+</table></div>
+
+<h2>7 · ADR stub</h2>
+<pre>ADR-0010 — Symptom-first causality model with Bayesian cause ranking (K2 fallback)
+STATUS:   PROPOSED (needs user + Dr. Meti approval; DESCEND on 06–09)
+CONTEXT:  K2 fired on complete data (top-1 0.209 vs floor 0.254). Per-print appearance
+          dominates image-only cause classification; Margadji 2024 reports the same gap.
+          The ranked fix array, gate and HITL card are built and pass their tests.
+OPTIONS:  (a) keep tuning the 9-way model (LP-FT, DINOv2, 4-head) — DG evidence says ≤ a few pts;
+          (b) ADR-0002 Option 1 alone (hand-written priors);
+          (c) symptom model + Option 1 Bayesian ranking (this);
+          (d) per-print calibration; (e) telemetry fusion — rejected, leaks the label.
+DECISION: (c), with (d) reported as a separate "with calibration" variant.
+RATIONALE: symptom signal above chance (bal. acc 0.471 vs 0.333, exploratory); matches prior art's
+          defect → cause → remedy form; reuses gate/card/verifier; pre-registered fallback.
+CONSEQUENCES: CauseModel output contract changes (SCHEMA_VERSION bump); NFR-005 re-stated as
+          symptom accuracy + fix-rank metrics; priors are hand-set and must be labelled as such.
+REVISIT:  if the trained symptom model does not beat its floor with a print-bootstrap CI.</pre>
+</main>
+</body>
+</html>

@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="arth:project" content="SDP">
+<meta name="arth:module" content="SDP">
+<meta name="arth:kind" content="end-product-vision">
+<meta name="arth:source" content="D:/6_sem/7th sem/SDP">
+<meta name="description" content="Serendipity, finished: the product that remembers everything you save and taps you on the shoulder the moment it matters.">
+<title>SDP, finished</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='%23e8401f' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23e8401f'/%3E%3C/svg%3E">
+<script>
+// Theme and motion are app settings (this machine has OS animations off, so the OS query alone would show nothing).
+(function(){try{var t=localStorage.getItem("arth-theme");if(!t)t=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.dataset.theme=t;
+document.documentElement.dataset.motion=localStorage.getItem("arth-motion")||"on";}catch(e){document.documentElement.dataset.theme="light";document.documentElement.dataset.motion="on";}})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Built to be read in one sitting as a story in four acts: plain paper, high contrast, a reading measure,
+   no texture or blur. One accent (coral) marks what matters. Content renders from VISION; no per-project edits here. */
+:root{
+  --paper:#fcfbf8; --surface:#ffffff; --sunk:#f3f0ea;
+  --ink:#15120f; --ink-2:#45403a; --ink-3:#6b655d; --line:#e4dfd6; --line-2:#c9c2b7;
+  --coral:#e8401f; --red:#c4301a; --coral-wash:#fcefe9; --ok:#1d7a4b; --amber:#9b6708; --blue:#2457c5;
+  --ease:cubic-bezier(.16,1,.3,1); --r:14px; --r-sm:10px;
+  --display:"Bricolage Grotesque",Arial,sans-serif; --body:Geist,system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,Consolas,monospace; --serif:"Instrument Serif",Georgia,serif;
+  color-scheme:light;
+}
+html[data-theme="dark"]{
+  --paper:#121110; --surface:#1a1816; --sunk:#221f1c;
+  --ink:#f1ece3; --ink-2:#cbc4b8; --ink-3:#9c958a; --line:#2c2925; --line-2:#433f39;
+  --coral:#ff6a4f; --red:#ff7b66; --coral-wash:#2b1c17; --ok:#4ade80; --amber:#eab308; --blue:#8ab0ff;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:24px;-webkit-text-size-adjust:100%}
+html[data-motion="off"]{scroll-behavior:auto}
+body{margin:0;color:var(--ink);background:var(--paper);font:19px/1.6 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:rgba(232,64,31,.2)}
+a{color:inherit}
+h1,h2,h3,h4{font-family:var(--display);margin:0;line-height:1.05;letter-spacing:-.02em;text-wrap:balance}
+h1{font-size:clamp(44px,6.5vw,84px);font-weight:800;letter-spacing:-.035em}
+h2{font-size:clamp(32px,4vw,52px);font-weight:800}
+h3{font-size:clamp(22px,2.6vw,30px);font-weight:700}
+h4{font-size:21px;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+ul,ol{margin:0}
+em.ac{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:0;font-size:1.06em;color:var(--red)}
+.k{display:block;font:600 14px/1.3 var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+.mono{font-family:var(--mono)}
+.big{font-family:var(--display);font-size:clamp(26px,3.2vw,40px);line-height:1.18;font-weight:700;letter-spacing:-.025em;text-wrap:balance}
+.inv{display:inline-flex;align-items:center;gap:5px;font:600 14px/1 var(--body);color:var(--amber);border:1.5px solid var(--amber);border-radius:999px;padding:4px 9px;vertical-align:middle;white-space:nowrap;font-style:normal;letter-spacing:0}
+.inv::before{content:"✦"}
+.chip{display:inline-flex;align-items:center;font:600 15px/1 var(--body);padding:7px 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);white-space:nowrap;color:var(--ink-2)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px 24px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+
+/* shell: sticky section list on wide screens, scroll strip above */
+.shell{max-width:80rem;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left)) 0 max(16px,env(safe-area-inset-right))}
+@media(min-width:88rem){.shell{display:grid;grid-template-columns:232px minmax(0,1fr);gap:56px;align-items:start}}
+aside.side{display:none}
+@media(min-width:88rem){aside.side{display:block;position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:28px 0 28px;scrollbar-width:thin}}
+aside.side .brand{display:block;text-decoration:none;margin-bottom:18px}
+.brand b{font-family:var(--display);font-size:20px;letter-spacing:-.02em;display:block;line-height:1.1}
+.brand span{font:500 14px/1.4 var(--body);color:var(--ink-3);display:block;margin-top:4px}
+aside.side nav{display:grid;gap:1px}
+aside.side nav .act-h{font:700 14px/1.2 var(--body);color:var(--ink);margin:16px 0 4px;padding:0 8px;display:flex;gap:8px;align-items:baseline}
+aside.side nav .act-h i{font:500 14px var(--mono);color:var(--red);font-style:normal}
+aside.side nav a{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:baseline;font:500 15px/1.3 var(--body);color:var(--ink-2);text-decoration:none;padding:5px 8px;border-radius:8px}
+aside.side nav a .n{font:500 14px var(--mono);color:var(--ink-3)}
+aside.side nav a:hover{background:var(--sunk);color:var(--ink)}
+aside.side nav a.on{background:var(--coral-wash);color:var(--ink);font-weight:600}
+aside.side nav a.on .n{color:var(--red)}
+header.top{position:sticky;top:0;z-index:20;background:var(--paper);box-shadow:0 1px 0 var(--line);margin:0 -16px;padding:0 16px}
+@media(min-width:88rem){header.top{display:none}}
+header.top .row{display:flex;align-items:center;gap:16px;padding:10px 0}
+header.top .brand b{font-size:17px;white-space:nowrap}
+header.top .brand span{display:none}
+.toc{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.toc::-webkit-scrollbar{display:none}
+.toc a{flex:none;font:500 15px/1 var(--body);padding:9px 11px;border-radius:999px;text-decoration:none;color:var(--ink-2);white-space:nowrap}
+.toc a.on{background:var(--coral-wash);color:var(--ink);font-weight:600}
+main{min-width:0;padding-bottom:40px}
+.ctl{position:fixed;right:16px;bottom:16px;z-index:30;display:flex;gap:4px;padding:5px;border-radius:999px;background:var(--surface);border:1px solid var(--line-2);box-shadow:0 8px 24px -12px rgba(0,0,0,.25)}
+.ctl button{all:unset;cursor:pointer;min-width:44px;min-height:40px;padding:0 14px;border-radius:999px;font:500 14px var(--body);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center}
+.ctl button[aria-pressed="true"]{background:var(--sunk);color:var(--ink)}
+.ctl button:hover{color:var(--ink)}
+:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+
+/* acts and sections */
+.act{margin-top:88px;padding-top:28px;border-top:3px solid var(--ink);display:grid;gap:10px;scroll-margin-top:24px}
+.act .n{font:600 15px/1 var(--body);color:var(--red);text-transform:uppercase;letter-spacing:.06em}
+.act h2{font-size:clamp(36px,5vw,66px);letter-spacing:-.03em}
+.act p{font-size:20px;line-height:1.5;color:var(--ink-2);max-width:62ch}
+section.s{padding:56px 0 8px;scroll-margin-top:24px;border-top:1px solid var(--line);margin-top:40px}
+.act+section.s{border-top:0;margin-top:0;padding-top:44px}
+.sec-head{display:grid;gap:10px;margin-bottom:26px}
+.sec-head .eyebrow{display:flex;gap:12px;align-items:baseline;font:600 15px/1 var(--body);color:var(--ink-3)}
+.sec-head .eyebrow .n{font:500 15px var(--mono);color:var(--red)}
+.sec-head .lede{font-size:18px;line-height:1.5;color:var(--ink-3);max-width:68ch}
+
+/* hero + at a glance */
+.hero{padding:40px 0 8px}
+@media(min-width:64rem){.hero{padding:64px 0 8px}}
+.hero .eyebrow{font:600 15px/1 var(--body);color:var(--ink-3);display:flex;gap:10px;align-items:center}
+.hero .eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--coral);display:inline-block}
+.hero h1{margin-top:16px}
+.hero .line{margin-top:20px;max-width:30ch}
+.two-years{margin-top:22px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:baseline;font-size:20px;line-height:1.5;color:var(--ink-2);max-width:72ch}
+.two-years .k{color:var(--red)}
+.glance{margin-top:40px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.glance .cell{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;display:grid;gap:8px;align-content:start}
+.glance .cell.wide{grid-column:1/-1}
+.glance .cell p{font-size:18px;line-height:1.45}
+.glance .cell .v{font-family:var(--display);font-size:clamp(32px,4vw,48px);font-weight:800;letter-spacing:-.03em;line-height:1}
+.glance .cell.hot{background:var(--coral-wash);border-color:rgba(232,64,31,.3)}
+.glance .cell.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.glance .cell.dark .k{color:var(--paper);opacity:.75}
+.glance .cell ul{padding:0;list-style:none;display:grid;gap:6px;font-size:17px}
+.glance .cell li::before{content:"·";color:var(--red);margin-right:8px;font-weight:700}
+.glance-title{margin-top:44px;display:flex;align-items:baseline;gap:12px}
+.glance-title h3{font-size:22px}
+.glance-title span{font-size:16px;color:var(--ink-3)}
+.isnot{display:grid;gap:14px;margin-top:14px}
+@media(min-width:48rem){.isnot{grid-template-columns:1fr 1fr}}
+.isnot div{padding:18px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.isnot ul{padding:0;list-style:none;display:grid;gap:8px;font-size:18px;margin-top:8px}
+.isnot li{padding-left:24px;position:relative}
+.isnot li::before{content:"✓";position:absolute;left:0;color:var(--ok);font-weight:700}
+.isnot .no li::before{content:"✕";color:var(--red)}
+
+/* H problem, atomised */
+.prob .bigp{padding:26px 28px;border-radius:var(--r);background:var(--ink);color:var(--paper)}
+.prob .bigp .k{color:var(--paper);opacity:.75}
+.prob .bigp p{margin-top:8px}
+.prob .tally{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:18px 0 14px;font-size:16px;color:var(--ink-2)}
+.prob .tally b{font-family:var(--display);font-size:26px;letter-spacing:-.02em;color:var(--ink)}
+.units{display:grid;gap:10px}
+.unit{display:grid;gap:12px;padding:18px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);grid-template-columns:auto minmax(0,1fr)}
+@media(min-width:64rem){.unit{grid-template-columns:auto minmax(0,1fr) minmax(0,1.2fr) 190px}}
+.unit .num{font-family:var(--display);font-size:28px;font-weight:800;color:var(--red);line-height:1;letter-spacing:-.03em}
+.unit h4{font-size:20px}
+.unit .today{font-size:16.5px;color:var(--ink-3);margin-top:6px;line-height:1.45}
+.unit .sol{font-size:17.5px;line-height:1.5}
+.unit .why{font-size:16px;color:var(--ink-2);margin-top:6px;line-height:1.45}
+.unit .sol-wrap{grid-column:2}
+@media(min-width:64rem){.unit .sol-wrap{grid-column:auto}}
+.unit.new{border-color:rgba(232,64,31,.35)}
+.nov{display:grid;gap:6px;align-content:start;grid-column:2}
+@media(min-width:64rem){.nov{grid-column:auto}}
+.nov .dots{display:flex;gap:4px}
+.nov .dots i{width:24px;height:9px;border-radius:5px;background:var(--line)}
+.nov.standard .dots i:nth-child(1){background:var(--ink-3)}
+.nov.adapted .dots i:nth-child(-n+2){background:var(--amber)}
+.nov.new .dots i{background:var(--coral)}
+.nov .lbl{font:600 14px/1.3 var(--body);color:var(--ink-2)}
+.nov.new .lbl{color:var(--red)}
+
+/* 2 press release */
+.pr{display:grid;gap:22px}
+@media(min-width:64rem){.pr{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}}
+.pr .paper{padding:30px 32px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.pr .date{font:500 15px var(--mono);color:var(--ink-3)}
+.pr h3{margin-top:10px;font-size:clamp(26px,3.2vw,38px)}
+.pr .sub{margin-top:12px;font-size:20px;color:var(--ink-2);line-height:1.45}
+.pr .body{margin-top:22px;display:grid;gap:14px;font-size:18.5px;line-height:1.6;max-width:68ch}
+.pr .body p:first-child::first-letter{font-family:var(--display);font-size:3.2em;line-height:.8;float:left;padding:6px 10px 0 0;color:var(--red);font-weight:800}
+.quotes{display:grid;gap:14px;align-content:start}
+.quote{padding:22px 24px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface)}
+.quote p{font-family:var(--serif);font-size:clamp(21px,2.2vw,26px);line-height:1.3;font-style:italic}
+.quote .k{margin-top:12px}
+
+/* 3 magic + loop + ladder */
+.magic{display:grid;gap:18px}
+@media(min-width:64rem){.magic{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}}
+.magic .moment{padding:26px 28px;background:var(--coral-wash);border:1px solid rgba(232,64,31,.3);border-radius:var(--r)}
+.magic .moment .big{margin-top:10px}
+.loop{display:grid;place-items:center}
+.loop svg{width:100%;max-width:320px;height:auto}
+.loop text{font:600 15px var(--body);fill:var(--ink)}
+.loop .ring{fill:none;stroke:var(--coral);stroke-width:3;stroke-dasharray:10 8;animation:flow 1.05s linear infinite}
+.loop .node{fill:var(--surface);stroke:var(--line-2);stroke-width:1.5}
+@keyframes flow{to{stroke-dashoffset:-36}}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:.8}}
+html[data-motion="off"] *{animation:none!important}
+.ladder{margin-top:22px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+@media(max-width:60rem){.ladder{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}}
+.ladder div{padding:14px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);font-size:16px;line-height:1.4;min-height:140px;display:flex;flex-direction:column;gap:8px}
+.ladder .star{font-family:var(--display);font-size:22px;font-weight:700;color:var(--ink-3)}
+.ladder .target{border:2px solid var(--coral);background:var(--coral-wash)}
+.ladder .target .star{color:var(--red)}
+.ladder .target .star::after{content:"build this";display:block;font:600 14px/1.2 var(--body);margin-top:2px}
+
+/* 4 personas, A ideal user, G people */
+.persona,.person{display:grid;gap:10px;align-content:start}
+.persona.anti{border:2px dashed var(--red)}
+.role{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.persona h4,.person h4{font-size:22px}
+.persona dl,.person dl{margin:0;display:grid;gap:6px}
+.persona dt,.person dt{font:600 14px/1.3 var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);margin-top:4px}
+.persona dd,.person dd{margin:0;font-size:17px;line-height:1.5}
+.person .why{font-size:17px;color:var(--ink-2);line-height:1.5}
+.person dd ul{padding-left:18px;display:grid;gap:4px}
+.ideal{display:grid;gap:14px}
+@media(min-width:64rem){.ideal{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr)}}
+.ideal .portrait{display:grid;gap:12px;align-content:start}
+.ideal .says{font-family:var(--serif);font-style:italic;font-size:clamp(21px,2.3vw,27px);color:var(--red);line-height:1.3}
+.ideal ul{padding:0;list-style:none;display:grid;gap:9px;font-size:17.5px;margin-top:8px}
+.ideal li{padding-left:26px;position:relative;line-height:1.45}
+.ideal .was li{color:var(--ink-2)}
+.ideal .was li::before{content:"–";position:absolute;left:0;color:var(--ink-3);font-weight:700}
+.ideal .now li::before{content:"✓";position:absolute;left:0;color:var(--ok);font-weight:700}
+
+/* 5 jobs */
+.jobs{display:grid;gap:10px}
+.job{display:grid;gap:10px;padding:18px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.job .row{display:grid;grid-template-columns:auto 1fr auto;align-items:baseline;gap:14px}
+.job .rank{font-family:var(--display);font-size:30px;font-weight:800;color:var(--red);line-height:1}
+.job .story{font-size:clamp(18px,1.9vw,21px);line-height:1.4}
+.bar{height:10px;border-radius:999px;background:var(--sunk);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--coral);transform-origin:left}
+.job.emotional .bar i{background:var(--amber)}.job.social .bar i{background:var(--blue)}
+.job .type{font:600 14px var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+
+/* 6 day (today in act I, finished in act II) */
+.strip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px;scrollbar-width:thin}
+.frame{scroll-snap-align:start;padding:16px 18px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:170px}
+.frame .t{font:500 15px var(--mono);color:var(--ink-3);display:flex;justify-content:space-between;align-items:center}
+.frame svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.frame p{font-size:17px;line-height:1.45}
+.strip.before .frame{background:var(--sunk);border-color:transparent}
+.strip.after .frame .t{color:var(--red)}
+.strip.after .frame.hit{background:var(--coral-wash);border-color:rgba(232,64,31,.3)}
+.strip-note{font-size:16px;color:var(--ink-3);margin-top:6px}
+
+/* C first minutes */
+.fm{display:grid;max-width:68ch}
+.fm .step{display:grid;grid-template-columns:84px 1fr;gap:16px;align-items:baseline;padding:12px 0;border-top:1px solid var(--line)}
+.fm .step:first-child{border-top:0}
+.fm .t{font:500 22px var(--mono);color:var(--ink-3)}
+.fm .step p{font-size:19px;line-height:1.45}
+.fm .step.magic{background:var(--coral-wash);border-radius:var(--r);padding:16px 18px;margin:6px -18px;border-top:0}
+.fm .step.magic .t{color:var(--red)}
+.fm .step.magic p::after{content:" ← the magic moment";font:600 14px var(--body);color:var(--red);white-space:nowrap}
+
+/* 7 use cases */
+details.uc{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin-bottom:10px}
+details.uc>summary{cursor:pointer;list-style:none;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:baseline;padding:18px 22px}
+details.uc>summary::-webkit-details-marker{display:none}
+details.uc>summary .id{font:500 15px var(--mono);color:var(--red)}
+details.uc>summary .st{font:600 19px/1.35 var(--display);letter-spacing:-.01em}
+details.uc>summary::after{content:"+";font:700 22px var(--mono);color:var(--red)}
+details.uc[open]>summary::after{content:"−"}
+.uc-body{display:grid;gap:18px;padding:0 22px 22px}
+@media(min-width:48rem){.uc-body{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}}
+.uc-body p{font-size:17.5px;line-height:1.5}
+.uc-body ol{margin-top:6px;padding-left:22px;display:grid;gap:5px;font-size:17.5px}
+.uc-body .k{margin-top:12px;margin-bottom:4px}
+.uc-body .fail{border-left:4px solid var(--red);padding:10px 14px;background:var(--coral-wash);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:16.5px}
+.uc-body .fail ul{margin-top:6px;padding-left:18px}
+
+/* 8 surfaces */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button{all:unset;cursor:pointer;font:600 15px var(--body);padding:10px 16px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);min-height:42px;display:inline-flex;align-items:center;gap:8px;color:var(--ink-2)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tabs .kind{font:500 14px var(--body);opacity:.7;text-transform:uppercase;letter-spacing:.05em}
+.screens{display:grid;gap:14px}
+.screens[hidden]{display:none}
+@media(min-width:48rem){.screens{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}}
+.screen{padding:18px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.screen h4{margin-bottom:12px}
+.bb{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;padding:8px;border-radius:var(--r-sm);background:var(--sunk)}
+.bb div{border:2px dashed var(--line-2);border-radius:6px;padding:10px 9px;min-height:52px;font:500 15px/1.3 var(--body);color:var(--ink-2);display:flex;align-items:flex-end;background:var(--surface)}
+@media(max-width:40rem){.bb div{grid-column:span 12!important}}
+.screen .note{margin-top:10px;font-size:16px;color:var(--ink-3)}
+
+/* F physical */
+.phys{display:grid;gap:14px}
+@media(min-width:48rem){.phys{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}}
+.phys .cell{padding:20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);display:grid;gap:8px;align-content:start}
+.phys .cell p,.phys .cell li{font-size:17px;line-height:1.5}
+.phys ul{padding-left:18px;display:grid;gap:5px}
+.phys .dims{font-family:var(--display);font-size:clamp(26px,3vw,40px);font-weight:800;letter-spacing:-.03em;line-height:1.05}
+
+/* 9 features */
+.mods{display:grid;gap:14px}
+@media(min-width:48rem){.mods{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}}
+.mod{padding:20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.mod h4{margin-bottom:12px}
+.mod ul{list-style:none;padding:0;display:grid;gap:8px}
+.feat{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;font-size:17px;line-height:1.35}
+.tier{font:600 14px var(--body);letter-spacing:.04em;padding:4px 8px;border-radius:999px;text-transform:uppercase;white-space:nowrap}
+.tier.core{background:var(--ink);color:var(--paper)}
+.tier.complete{border:1.5px solid var(--ink-3);color:var(--ink-2)}
+.tier.delight{border:1.5px dashed var(--coral);color:var(--red)}
+.badge{font:600 14px var(--mono);color:var(--red)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center;font-size:15px;color:var(--ink-3)}
+
+/* E decision rights */
+.dr{display:grid;gap:12px}
+@media(min-width:48rem){.dr{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.dr .col{padding:20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);display:grid;gap:10px;align-content:start}
+.dr h4{display:flex;align-items:center;gap:10px}
+.dr h4::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--ok);flex:none}
+.dr .ask h4::before{background:var(--amber)}.dr .never h4::before{background:var(--red)}
+.dr .never{border:2px dashed var(--red)}
+.dr ul{padding:0;list-style:none;display:grid;gap:6px;font-size:17px;line-height:1.4}
+.dr li{padding:9px 12px;border-radius:var(--r-sm);background:var(--sunk)}
+
+/* 10 no-gos */
+.nogo{list-style:none;padding:0;display:grid;gap:14px;max-width:68ch}
+.nogo li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:baseline;font-family:var(--display);font-size:clamp(22px,2.6vw,30px);font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.nogo li::before{content:"✕";color:var(--red);font-size:.9em}
+.nogo li small{display:block;font:400 17px/1.5 var(--body);color:var(--ink-2);margin-top:4px;letter-spacing:0}
+
+/* 11 qualities */
+.feels{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.feels span{font-family:var(--display);font-size:clamp(20px,2.2vw,26px);font-weight:700;padding:8px 18px;border-radius:999px;background:var(--surface);border:1px solid var(--line-2)}
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.tile{padding:20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);display:grid;gap:6px}
+.tile .v{font-family:var(--display);font-size:clamp(34px,4vw,52px);font-weight:800;letter-spacing:-.035em;line-height:1}
+
+/* B situation */
+.sit{display:grid;gap:14px}
+@media(min-width:48rem){.sit{grid-template-columns:1fr 1fr}}
+.sit .col{padding:20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);display:grid;gap:4px;align-content:start}
+.sit .col.shine{background:var(--coral-wash);border-color:rgba(232,64,31,.3)}
+.sit .col.survive{border:2px dashed var(--line-2)}
+.sit h4{margin-bottom:8px}
+.sit .row{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.7fr);gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:17px;line-height:1.45}
+.sit .row .k{align-self:baseline}
+
+/* 12 business */
+.shape{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.shape div{padding:20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);display:grid;gap:8px;align-content:start}
+.shape p,.shape li{font-size:17px;line-height:1.5}
+.shape ul{padding-left:18px;display:grid;gap:5px}
+.shape .win{background:var(--coral-wash);border-color:rgba(232,64,31,.3)}
+
+/* 13 success */
+.ns{display:grid;gap:12px}
+@media(min-width:64rem){.ns{grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,1fr))}}
+.ns .tile.north{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.ns .north .v{font-size:clamp(48px,7vw,104px);color:var(--coral)}
+.ns .north .k{color:var(--paper);opacity:.8}
+.ns .by{font:500 14px var(--mono);color:var(--ink-3)}
+
+/* 14 FAQ */
+.faq{display:grid;gap:24px}
+@media(min-width:64rem){.faq{grid-template-columns:1fr 1fr}}
+details.q{border-bottom:1px solid var(--line);padding:2px 0}
+details.q>summary{cursor:pointer;list-style:none;display:flex;gap:12px;align-items:baseline;padding:14px 0;font:600 18.5px/1.35 var(--display);letter-spacing:-.01em}
+details.q>summary::-webkit-details-marker{display:none}
+details.q>summary::after{content:"+";margin-left:auto;font:700 20px var(--mono);color:var(--red);flex:none}
+details.q[open]>summary::after{content:"−"}
+details.q p{padding:0 0 16px;font-size:17.5px;line-height:1.55;color:var(--ink-2);max-width:60ch}
+.risk{width:10px;height:10px;border-radius:50%;flex:none;align-self:center;background:var(--ok)}
+.risk.med{background:var(--amber)}.risk.high{background:var(--red);animation:pulse 2.6s ease-in-out infinite}
+
+/* 15 enablers */
+.en{overflow-x:auto;padding-bottom:8px}
+.en svg{display:block;min-width:760px;width:100%;height:auto}
+.en text{font:500 15px var(--body);fill:var(--ink)}
+.en .lane{font:600 14px var(--body);fill:var(--ink-3);letter-spacing:.05em}
+.en .f{fill:var(--surface);stroke:var(--ink);stroke-width:1.5}
+.en .e{fill:var(--sunk);stroke:var(--line-2);stroke-width:1}
+.en .edge{fill:none;stroke:var(--coral);stroke-width:2;stroke-dasharray:8 6;animation:flow 1.05s linear infinite;opacity:.75}
+.en-list{display:grid;gap:10px;margin-top:18px}
+.en-row{display:grid;gap:10px;padding:16px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.lanes{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));font-size:16px;line-height:1.45}
+.lanes div{padding:10px 12px;border-radius:var(--r-sm);background:var(--sunk)}
+.lanes .k{margin-bottom:4px}
+.lanes .none{opacity:.5}
+
+/* 16 assumptions */
+.asm{display:grid;gap:10px}
+.as{display:grid;gap:14px;padding:20px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);grid-template-columns:auto 1fr;align-items:start}
+.as.first{border:2px solid var(--coral);background:var(--coral-wash)}
+.as .rank{font-family:var(--display);font-size:36px;font-weight:800;color:var(--red);line-height:1;letter-spacing:-.03em}
+.as .claim{font:700 clamp(19px,2.1vw,24px)/1.25 var(--display);letter-spacing:-.015em}
+.as .if{font-size:17px;color:var(--ink-2);margin-top:6px;line-height:1.5}
+.as .test{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:16px;color:var(--ink-2)}
+
+/* D pre-mortem */
+.pm{display:grid;gap:18px}
+@media(min-width:64rem){.pm{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}}
+.pm .obit{padding:28px 32px;border-radius:var(--r);background:var(--ink);color:var(--paper)}
+.pm .obit .date{font:500 15px var(--mono);opacity:.65}
+.pm .obit h3{margin-top:8px;color:var(--paper)}
+.pm .obit p{margin-top:16px;font-size:18.5px;line-height:1.6;opacity:.92;max-width:60ch}
+.pm .obit .inv{color:var(--amber);border-color:var(--amber)}
+.causes{display:grid;gap:10px;align-content:start}
+.cause{padding:16px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--red)}
+.cause b{font:700 19px/1.3 var(--display);letter-spacing:-.01em;display:block}
+.cause p{margin-top:5px;font-size:17px;color:var(--ink-2);line-height:1.5}
+.drift{margin-top:22px;font:700 clamp(20px,2.4vw,28px)/1.3 var(--display);letter-spacing:-.02em;color:var(--ink-2);max-width:68ch}
+.drift em{font-style:normal;color:var(--red)}
+
+/* 17 path */
+.path{position:relative;padding-left:40px;max-width:60rem}
+.path::before{content:"";position:absolute;left:14px;top:14px;bottom:14px;width:4px;border-radius:2px;background:linear-gradient(var(--coral),var(--line-2))}
+.rung{position:relative;padding:14px 20px 24px 0}
+.rung::before{content:"";position:absolute;left:-33px;top:22px;width:18px;height:18px;border-radius:50%;background:var(--paper);border:4px solid var(--coral)}
+.rung:first-child::before{background:var(--coral)}
+.rung .top{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.rung h4{font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.025em}
+.rung .when{font:500 15px var(--mono);color:var(--ink-3)}
+.rung p{margin-top:6px;font-size:18px;color:var(--ink-2);line-height:1.5;max-width:68ch}
+.rung p b{color:var(--ink);font-weight:600}
+
+footer{padding:56px 0 calc(40px + env(safe-area-inset-bottom));font-size:15px;color:var(--ink-3);display:grid;gap:6px;border-top:1px solid var(--line);margin-top:48px}
+
+/* motion gates: nothing is hidden when motion is off */
+.gs,.stg>*{opacity:1}
+html[data-motion="off"] .gs,html[data-motion="off"] .stg>*{opacity:1!important;transform:none!important}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side"><a class="brand" href="#top"><b id="side-title"></b><span id="side-mod"></span></a><nav id="side-nav" aria-label="Sections"></nav></aside>
+<div>
+<header class="top"><div class="row"><a class="brand" href="#top"><b id="brand-title"></b><span id="brand-mod"></span></a><nav class="toc" id="toc" aria-label="Sections"></nav></div></header>
+<main id="top"></main>
+<footer id="foot"></footer>
+</div>
+</div>
+
+<div class="ctl" role="group" aria-label="Page settings">
+  <button id="btn-theme" type="button" aria-pressed="false">theme</button>
+  <button id="btn-motion" type="button" aria-pressed="true">motion</button>
+</div>
+
+<script>
+/* ======== REPLACE THIS OBJECT */
+const VISION = {
+  meta: {
+    project: "SDP",
+    module: "SDP",
+    title: "SDP, finished",
+    kind: "end-product-vision",
+    source: "D:/6_sem/7th sem/SDP",
+    date: "2026-10-27",
+    sources: ["CLAUDE.md", "project-context/STATE.md", "project-context/00-charter.md", "project-context/03-landscape.md", "project-context/04-patterns.md", "project-context/05-decisions/ADR-0009.md", "project-context/06-requirements.md", "project-context/10-done.md", "docs/gpu-runs/T-0037.md", "pyproject.toml"],
+    twoYears: "In two years, a failing print tells the lab which setting caused it, how sure it is and what it would change, nothing changes until a person says yes, and a peer-reviewed paper shows this holds on prints the model never saw."
+  },
+
+  oneLiner: {
+    line: "A printer that warns you why it is about to fail, and asks before it fixes anything.",
+    is: [
+      "An explanation layer: the cause in printer settings, a set of likely causes, a bounded fix",
+      "A safety gate that every command must pass, proved on 100 000 random cases",
+      "A research artifact: one command regenerates every number in the paper"
+    ],
+    isNot: [
+      "A black-box autopilot that changes settings without showing why",
+      "A cloud service: it runs on the lab's own laptop and images stay there",
+      "Another defect detector: detection belongs to the integrating team"
+    ]
+  },
+
+  problem: {
+    big: "When an FFF print starts to fail, today's loops say what the defect is, but never why, how sure they are, or whether the fix is safe, and they act without asking.",
+    costs: "Operators cannot audit or trust the correction. The CARR deck rates the current loop \"Explainable: Absent; Recommendations: Absent; Safe: Partial\", and reviewers reject accuracy numbers from random frame splits.",
+    units: [
+      { unit: "Name the cause in printer settings, not the defect class", today: "Detectors output \"under-extrusion\"; the REU loop then fires a fixed recipe. CAXTON (Brion & Pattinson 2022) predicts parameter classes from images.", solution: "An image-only cause model on CAXTON nozzle crops (flow, speed, nozzle temperature, z-offset: low/high/none). Setpoints are never an input, scored against a majority-cause floor with leave-parts-out folds.", novelty: "adapted", why: "The model idea is CAXTON's. The contribution is the honest protocol: a floor to beat, a split by print, and a leakage guard. Spend no novelty on the backbone." },
+      { unit: "Say how sure it is, with a guarantee", today: "Softmax scores that nobody calibrates, or a heatmap that looks confident.", solution: "Split-conformal LAC at α = 0.10 turns the probabilities into a set of likely causes. Coverage is reported empirically on unseen prints (target ≥ 0.85, mean set size ≤ 2.0).", novelty: "adapted", why: "Conformal prediction comes from statistics. Using it as the operator's options menu comes from 04-patterns." },
+      { unit: "Let the uncertainty decide who decides", today: "Automation is either fully on or fully off.", solution: "The set size and the gate decide authority per event. One confident, gate-passed cause can be proposed or auto-applied in auto mode; several plausible causes go to a human choice; a manual cause becomes advice only.", novelty: "new", why: "We know of no FFF system that ties a coverage-guaranteed set to decision rights. A related-work check is still needed before the paper claims it.", inv: true },
+      { unit: "Warn before the defect is visible", today: "Correction starts only after a defect box is confirmed.", solution: "Every n frames the cause model reads the nozzle region of interest (ROI). An EWMA with hysteresis raises an early-warning card. CAXTON's logged parameter changes (every ~150 images) are the onset ground truth, scored as time-to-warning, recall within 30 s and false warnings per print-hour.", novelty: "new", why: "Using dataset parameter change points as onset labels gives a proactive-warning benchmark without a rig. Claim it only after the lit check.", inv: true },
+      { unit: "Turn the explanation into a fix you could actually apply", today: "XAI in visual QA is mostly heatmaps that nobody can act on (Ahangar et al. 2026).", solution: "A counterfactual proposal names the variable, the sign and a bounded Δ (e.g. flow 62 → 72 %). It is scored on whether the top-1 has the right variable and sign (target ≥ 0.85 of confident events).", novelty: "adapted", why: "Counterfactual explanations come from XAI. Scoring them by direction against logged setpoints is cheap and convincing." },
+      { unit: "Make an unsafe command impossible", today: "Fixed absolute recipes cause reversals and overshoot; M112 is the only safety response.", solution: "A pure, fail-closed 4-layer gate (allowed at all, envelope, rate and cooldown, confidence) sits in front of every command. A property test checks 100 000 random cases; the target is 0 violations.", novelty: "adapted", why: "Runtime assurance and safety shields come from robotics and safe RL. Here the setpoints are box-bounded, so the proof is trivial and complete." },
+      { unit: "Show where the model looked", today: "Heatmaps on the detector, unrelated to the cause.", solution: "EigenCAM on the cause backbone's layer4, rendered on the card, off the action path so it never slows a decision.", novelty: "standard", why: "Deliberately no novelty here: the heatmap is supporting evidence, not the explanation." },
+      { unit: "Prove the explanation helps a person decide", today: "Explanations ship without anyone measuring whether decisions improve.", solution: "A within-subject study on replay cards, explanation ON vs OFF, measures correct-decision rate with a CI. The reference effect is Senoner et al. 2024, +7.7 pp.", novelty: "adapted", why: "HCI method borrowed straight from decision-support studies. It earns its place because reviewers ask \"does it help a human?\"" }
+    ]
+  },
+
+  pressRelease: {
+    headline: "A 3D printer that tells you why it is failing, and asks before it fixes anything",
+    sub: "CARR's SDP team shows explainable, safety-gated, human-approved correction for FFF printing, tested on prints the model never saw.",
+    date: "IEEE CASE 2027 · demo session",
+    body: [
+      "Vision systems for 3D printing have become good at spotting defects. They still cannot say why one happens, how sure they are, or whether the fix they fire is safe, and they rarely ask the operator first.",
+      "SDP adds the missing layer. From the nozzle camera alone it names the setting that drifted (flow, speed, nozzle temperature or Z offset) and lists the other causes still plausible, with a statistical coverage guarantee. It proposes a bounded fix and passes it through a four-layer safety gate that has never let an unsafe command through in 100 000 randomised tests.",
+      "It warns early. On held-out CAXTON prints the warning arrives seconds after a setting drifts, often before the defect is visible. Early warnings are never applied automatically: the operator sees the cause, the heatmap and the gated proposal, and taps Apply or Reject.",
+      "Every number in the paper comes from one command on a public dataset, split by print so no frame of a test print was ever seen in training. Labs can connect their own printer through a single Python interface."
+    ],
+    quoteFounder: "We stopped asking whether the model is accurate and started asking whether a person can trust what it does next. Every action has a reason, a confidence and a gate.",
+    quoteUser: "When a reviewer asks why the controller changed the flow, I can now point to the cause set, the gate log and a split that never leaked. That used to take a rebuttal page.",
+    inv: true
+  },
+
+  magic: {
+    moment: "Image 450 of a held-out print: flow drops to 62 %. Five seconds later, before anything looks wrong, a card says \"flow too low (0.71); also plausible: speed too high\" with a gated +10 pp fix. Only then does the visitor see the thin line appear.",
+    loop: ["Warning", "Approve", "Recovered", "Trust"],
+    ladder: [
+      { star: 5, text: "It detects the defect and names its class." },
+      { star: 6, text: "It names the cause in printer settings, with the other plausible causes and their odds." },
+      { star: 7, text: "It warns before the defect is visible, with a bounded fix the gate has already checked, and waits for a yes.", target: true },
+      { star: 8, text: "It learns from each Apply and Reject which fixes this lab trusts, and says so on the card.", inv: true },
+      { star: 9, text: "It moves to a new printer and camera with twenty labelled images and keeps its coverage guarantee.", inv: true },
+      { star: 10, text: "Every printer in the building explains itself, and the lab's failed-print rate halves in a term.", inv: true },
+      { star: 11, text: "The printer never needs a human, because it never fails.", inv: true }
+    ]
+  },
+
+  ideal: {
+    name: "The researcher who can defend every number",
+    becomes: "Someone whose claims about automated correction survive reviewer two, because each one has a cause, a confidence, a safety proof and a split that did not leak.",
+    was: ["Explained failures with heatmaps nobody trusted", "Fixed prints by trial and error on one knob at a time", "Reported accuracy on random frame splits", "Needed the printer to behave on demo day"],
+    now: ["Names the drifting setting and its odds before the defect shows", "Leaves a proposal to the gate without worrying about overshoot", "Regenerates every table and figure with one command", "Demos from a replay that cannot fail on stage"],
+    says: "I stopped arguing about leakage. The split argues for me.",
+    inv: true
+  },
+
+  situation: {
+    shines: [
+      { k: "data", v: "a held-out CAXTON print, nozzle close-up, good light" },
+      { k: "cause", v: "one setting drifts at a time" },
+      { k: "compute", v: "RTX 3050 laptop with the trained cause model" },
+      { k: "person", v: "a researcher who knows what flow and Z offset do" },
+      { k: "venue", v: "a demo booth with a large monitor and two minutes per visitor", inv: true }
+    ],
+    survives: [
+      { k: "data", v: "the integrating team's camera: a new angle, the domain gap" },
+      { k: "cause", v: "two settings wrong at once, so the set grows and a human chooses" },
+      { k: "compute", v: "a CPU-only laptop, or no model: the loop runs and every non-critical event escalates" },
+      { k: "person", v: "a visitor who has never printed: the card must read in 5 s", inv: true },
+      { k: "venue", v: "no Wi-Fi, projector glare: everything runs offline from replay", inv: true }
+    ]
+  },
+
+  premortem: {
+    date: "October 2028",
+    headline: "SDP paper rejected a second time; the repo goes quiet",
+    obituary: "Reviewers called the cause model \"CAXTON with extra steps\". The early-warning numbers came from synthetic frames because the real images arrived too late. The user study had six classmates and no confidence interval. At the one demo it got, the laptop needed a GPU that was not there.",
+    causes: [
+      { c: "We built the demo before securing the data", why: "T-0065 Part 1, the CAXTON download, waited behind code tickets. K1′ fired in slow motion." },
+      { c: "Related work stopped at the deck's survey", why: "Nobody ran the lit check on \"conformal + decision rights\" or \"change points as onsets\", so the novelty claims were soft." },
+      { c: "K2 was written around instead of reported", why: "Top-1 came in at floor + 6 pp, and the paper buried it rather than pivoting as ADR-0002 says." },
+      { c: "The study was an afterthought", why: "S7 was a SHOULD, so it ran last week with whoever was free." },
+      { c: "The demo depended on hardware", why: "The booth build needed CUDA, although the replay and random-init fallback already existed." }
+    ],
+    drift: "Another YOLO defect detector with heatmaps on top.",
+    inv: true
+  },
+
+  decisions: {
+    auto: [
+      "Compute the cause set, the heatmap and the counterfactual for every event, and log all of it",
+      "Clip any proposal to the step limit and cooldown (L2/L3)",
+      "Pause or emergency-stop on a critical class (ADR-0006)",
+      "In auto mode only: apply a confident, single-cause, gate-passed reactive fix"
+    ],
+    ask: [
+      "Apply any fix that comes from an early warning (never automatic)",
+      "Choose among several plausible causes when the set holds more than one",
+      "Accept or reject a proposal after its response timeout falls back to the configured default"
+    ],
+    never: [
+      "Send a printer command outside gate()",
+      "Change the Z offset: z_offset and misalignment causes give advice only",
+      "Let the dashboard talk to the printer",
+      "Feed setpoints or telemetry into the cause model"
+    ]
+  },
+
+  personas: [
+    { role: "primary", name: "Priya, CARR research student", situation: "Writing the paper and preparing the demo, with a GPU laptop and the public CAXTON data, but no printer of their own.", today: "A detector plus fixed recipes, or CAXTON's black-box correction. Explanations are heatmaps.", trigger: "A reviewer asks \"why did your controller change the flow, and how do you know the split did not leak?\"", inv: true },
+    { role: "secondary", name: "The integrating team's rig operator", situation: "Runs the real printer, OctoPrint and camera; plugs SDP in through the Printer protocol.", today: "The REU loop: YOLO detection, fixed G-code recipes, M112.", trigger: "An advisory card they can approve or reject, instead of a recipe that fires blind." },
+    { role: "buyer", name: "Dr. Meti, project guide (CARR 4.1.3)", situation: "Signs off scope and thresholds (ADR-0009 Q5) and judges the semester and the paper.", today: "The CARR deck's gap: explainable absent, recommendations absent, safe partial.", trigger: "S1–S7 reported PASS/FAIL with evidence in one acceptance report." },
+    { role: "anti", name: "The hobbyist who wants a full autopilot", situation: "One printer at home, wants prints fixed with no questions asked.", today: "Slicer defaults, or a cloud failure detector that pauses the print.", trigger: "Not for them: SDP asks before acting, and that friction is the point.", inv: true }
+  ],
+
+  jobs: [
+    { rank: 1, type: "functional", story: "When a print starts to drift, I want to know which setting caused it and how sure the system is, so I can turn the right knob, by the right amount.", weight: 95 },
+    { rank: 2, type: "functional", story: "When I submit the paper, I want every claim to come from one command on prints the model never saw, so reviewers cannot say the split leaked.", weight: 90 },
+    { rank: 3, type: "emotional", story: "When the system proposes a change, I want proof it cannot send anything unsafe, so I can leave it running without watching every frame.", weight: 80 },
+    { rank: 4, type: "social", story: "When a visitor stops at the booth, I want them to see the warning arrive before the defect, so our lab is known for trustworthy AM correction.", weight: 70, inv: true },
+    { rank: 5, type: "functional", story: "When another team connects their printer, I want one interface to implement, so the method leaves our lab.", weight: 55 }
+  ],
+
+  day: {
+    before: [
+      { t: "09:00", frame: "Starts a print series on the lab printer, hoping it misbehaves in the right way.", icon: "factory" },
+      { t: "10:40", frame: "The detector flags under-extrusion; the fixed recipe fires. No one can say why it chose that recipe.", icon: "alert" },
+      { t: "11:30", frame: "Tries flow, then temperature, then speed, one at a time, by eye.", icon: "coffee" },
+      { t: "14:00", frame: "Accuracy looks great, but the train and test frames come from the same print.", icon: "chart" },
+      { t: "16:00", frame: "The advisor asks how sure the model was. All there is to show is a softmax score.", icon: "chat" },
+      { t: "19:00", frame: "Rehearses the demo. The printer clogs, and the demo is gone.", icon: "alert" },
+      { t: "23:30", frame: "Writes the related work section and finds that CAXTON already did most of the model.", icon: "moon" }
+    ],
+    after: [
+      { t: "09:00", frame: "One command replays a held-out CAXTON print in advisory mode. No printer needed.", icon: "check", hit: true },
+      { t: "09:05", frame: "Five seconds after flow drops, the card arrives: the cause set, the heatmap and a gated +10 pp fix. Priya taps Apply.", icon: "bell", hit: true },
+      { t: "11:00", frame: "Reads papers on conformal decision rights for the related work section.", icon: "coffee" },
+      { t: "13:00", frame: "acceptance.py prints 38 rows of PASS or FAIL with evidence. Two FAILs become the limitations paragraph.", icon: "chart", hit: true },
+      { t: "15:00", frame: "Runs a study session: eight participants decide on replay cards, with the explanation on and off.", icon: "chat", hit: true },
+      { t: "17:30", frame: "Sends Dr. Meti the draft: five contributions, five numbers, all with confidence intervals.", icon: "home" },
+      { t: "19:00", frame: "Demo rehearsal runs from replay on the laptop, offline. It cannot clog.", icon: "check" }
+    ]
+  },
+
+  useCases: [
+    { id: "UC1", story: "When a booth visitor stops, I want them to see the warning arrive before the defect, so they understand the claim in two minutes.", trigger: "A visitor at the demo table.", steps: ["Start replay of held-out print p142 (caxton_demo.yaml)", "Point at the live nozzle frame and the 100 % flow readout", "Flow drops to 62 % at image 450; the early-warning card slides in", "Visitor taps Apply; the gate log shows the clip from 14 to 10 pp", "Show the same print with the explanation turned off"], payoff: "They have seen the cause, the confidence, the gate and the human in one loop.", fails: ["No GPU at the venue: CPU replay, with the cause model on CPU (slower, still under a second)", "Model file missing: the loop still runs and escalates every non-critical event, and the presenter says so"], jobs: [4, 1] },
+    { id: "UC2", story: "When a reviewer doubts a number, I want them to regenerate it with one command, so the argument ends.", trigger: "Artifact evaluation, or rebuttal week.", steps: ["git clone; uv sync", "Download CAXTON with the documented script (data is not redistributed)", "uv run python scripts/acceptance.py", "Compare the table with the paper"], payoff: "Every claim traces to a test or a report file.", fails: ["CAXTON licence blocks reuse: the paper ships the protocol plus the synthetic fixture, and says so", "GPU differs: tolerances are set in the acceptance rows"], jobs: [2] },
+    { id: "UC3", story: "When two causes are equally likely, I want the system to show both and let me choose, so it never guesses on my behalf.", trigger: "A conformal set with more than one cause.", steps: ["The card lists the set: flow_low 0.44 · speed_high 0.39", "Each cause has its own gated proposal", "Operator picks one, or rejects both"], payoff: "The operator decides; the system's uncertainty is visible, not hidden.", fails: ["No proposal passes L4 (confidence too low): ESCALATE with a card and no command"], jobs: [1, 3] },
+    { id: "UC4", story: "When the model blames the Z offset, I want advice rather than a command, so nothing touches motion without me.", trigger: "z_offset_low or z_offset_high is in the cause set.", steps: ["Gate row 7 sees a manual cause", "The card shows \"raise the Z offset (~0.05 mm)\" and no setpoint proposal", "The operator adjusts it by hand"], payoff: "The riskiest correction stays human-only, by design.", fails: ["The integrating team's detector emits misalignment: same manual path"], jobs: [3] },
+    { id: "UC5", story: "When a participant is shown a card, I want to record whether the explanation changed their decision, so S7 has evidence.", trigger: "A study session on replay cards.", steps: ["Randomise explanation ON or OFF per card", "Record decision and time", "analyze_study.py reports the correct-decision rate with a CI"], payoff: "A measured answer to \"does the explanation help a human?\"", fails: ["Too few participants: report the CI honestly and call it a pilot"], jobs: [2, 1] },
+    { id: "UC6", story: "When the integrating team connects the real printer, I want them to implement one protocol, so our tests prove their adapter.", trigger: "Hand-off (docs/HANDOFF.md).", steps: ["Implement the Printer protocol", "Set XQI_PRINTER_IMPL and run tests/test_printer_contract.py", "Run in advisory mode on their rig"], payoff: "Same gate, same cards, on real hardware the other team owns.", fails: ["Camera domain gap: a cause set that grows is the visible symptom; the hand-off doc says how to recalibrate"], jobs: [5] }
+  ],
+
+  surfaces: [
+    { name: "The paper", kind: "8 pages, two-column", screens: [
+      { name: "Page 1: title, teaser, abstract", blocks: [["Title: Why is my print failing? Explainable, safety-gated, human-approved correction for FFF", 12], ["Fig. 1 teaser: nozzle frame → early-warning card (cause set, fix, gate ticks) → Apply → print recovers", 8], ["Abstract: 5 claims, 5 numbers", 4], ["I. Introduction: detectors say what, not why; fixes are unbounded; nobody asks", 6], ["Contributions C1–C5 (one line each)", 6]], note: "The teaser figure is the magic moment. If Fig. 1 does not make sense alone, rewrite it.", inv: true },
+      { name: "Pages 2–4: related work and method", blocks: [["II. Related work: CAXTON, XAI heatmaps, conformal prediction, runtime assurance, HITL decision support", 12], ["Fig. 2 pipeline: ROI → image-only cause net → conformal set → counterfactual → 4-layer gate → card", 12], ["III-A Cause model, no setpoint input", 4], ["III-B Conformal set → decision rights", 4], ["III-C Early warning: EWMA + hysteresis", 4], ["III-D Gate L1–L4, fail-closed", 6], ["III-E HITL card and study design", 6]], note: "One subsection per contribution. The equations come from 07-math.md." },
+      { name: "Pages 5–8: evaluation, limits", blocks: [["IV. Setup: CAXTON subset, 5-fold leave-parts-out, majority floor, calibration prints", 12], ["Table I: top-1 vs floor, 95 % CI (S1)", 4], ["Table II: coverage and set size (S2)", 4], ["Fig. 3: time-to-warning CDF (S5)", 4], ["Table III: 0 / 100k gate cases; p95 latency ≤ 30 ms (S3, S4)", 6], ["Fig. 4: study, explanation ON vs OFF (S7); counterfactual direction (S6)", 6], ["V. Limitations: domain gap, single-cause data, open-loop replay", 8], ["VI. Conclusion + artifact link", 4]], note: "Each table maps to one acceptance row, so the paper and acceptance.py never disagree." }
+    ] },
+    { name: "Demo booth", kind: "laptop + monitor", screens: [
+      { name: "Live replay dashboard", blocks: [["Nozzle close-up, live frame", 8], ["Nozzle 205 °C · flow 100 % · speed 100 % · ADVISORY", 4], ["Early-warning card slides in: flow too low, p̄ 0.71", 8], ["Apply · Reject", 4], ["Last 50 events, with gate verdicts", 12]], note: "Streamlit over SQLite; the UI never talks to the printer." },
+      { name: "The warning card", blocks: [["ROI crop", 3], ["EigenCAM heatmap", 3], ["Cause set: flow_low 0.71 · speed_high 0.18", 6], ["Proposal: flow 62 → 72 % (clipped 14 → 10)", 8], ["Gate: L1 ✓ L2 ✓ L3 ✓ L4 ✓", 4], ["Why it is not automatic: early warnings need a human", 12]], note: "This card is the paper's Fig. 1, live." }
+    ] },
+    { name: "A0 poster", kind: "poster", screens: [
+      { name: "Poster", blocks: [["Title + one-line claim: it warns you why, then asks", 12], ["The problem: what vs why", 4], ["Pipeline figure", 8], ["Five numbers, big: top-1 vs floor · coverage · 0 violations · time-to-warning · study Δ", 12], ["The card, life-size", 6], ["QR codes: repo and 60 s video", 3], ["Limitations", 3]], note: "Readable from 2 m. The five numbers are the poster.", inv: true }
+    ] },
+    { name: "The artifact", kind: "GitHub repo", screens: [
+      { name: "README", blocks: [["uv sync · uv run python scripts/acceptance.py", 12], ["Acceptance matrix: 38 rows PASS / FAIL with evidence", 8], ["Printer protocol: plug in your printer", 4], ["Runbooks for each GPU run", 6], ["CAXTON download (not redistributed)", 6]], note: "The reviewer's surface. It must work on a clean laptop." }
+    ] }
+  ],
+
+  features: [
+    { module: "Explain", items: [
+      { name: "Image-only cause model", job: 1, tier: "core" },
+      { name: "Conformal cause set", job: 1, tier: "core" },
+      { name: "Counterfactual fix", job: 1, tier: "core" },
+      { name: "EigenCAM heatmap on the cause backbone", job: 1, tier: "complete" }
+    ] },
+    { module: "Warn", items: [
+      { name: "Proactive early warning", job: 1, tier: "core" },
+      { name: "θ_on chosen per fold on calibration prints only", job: 2, tier: "complete" },
+      { name: "Warning p̄ trend line on the card", job: 4, tier: "delight", inv: true }
+    ] },
+    { module: "Gate", items: [
+      { name: "4-layer fail-closed gate", job: 3, tier: "core" },
+      { name: "Manual-cause advice (Z offset, misalignment)", job: 3, tier: "complete" },
+      { name: "Critical class → pause or M112", job: 3, tier: "complete" }
+    ] },
+    { module: "Human in the loop", items: [
+      { name: "Approve-or-reject card", job: 3, tier: "core" },
+      { name: "Response timeout with configured default", job: 3, tier: "complete" },
+      { name: "Study mode, explanation ON or OFF", job: 2, tier: "complete" },
+      { name: "Per-lab trust memory from Apply/Reject history", job: 1, tier: "delight", inv: true }
+    ] },
+    { module: "Evidence", items: [
+      { name: "One-command acceptance report", job: 2, tier: "core" },
+      { name: "Frozen leave-parts-out splits", job: 2, tier: "complete" },
+      { name: "Latency bench on the RTX 3050", job: 2, tier: "complete" }
+    ] },
+    { module: "Run anywhere", items: [
+      { name: "CAXTON replay with FakePrinter", job: 4, tier: "core" },
+      { name: "Printer protocol + contract test", job: 5, tier: "complete" },
+      { name: "Twenty-image camera adaptation", job: 5, tier: "delight", inv: true }
+    ] }
+  ],
+
+  noGos: [
+    { t: "Will never change a setting without showing why", why: "because a correction nobody can audit is the problem we set out to fix." },
+    { t: "Will never apply an early warning on its own", why: "because a warning is a forecast; acting on forecasts needs a human (FR-030)." },
+    { t: "Will never read setpoints or telemetry in the cause model", why: "because a cause model that sees the answer scores ~100 % and explains nothing (ADR-0002)." },
+    { t: "Will never send a command outside the gate", why: "because the gate is the safety proof, and one side door breaks the proof." },
+    { t: "Will never need the cloud", why: "because the lab's images stay on the lab's laptop, and the booth has no Wi-Fi." },
+    { t: "Will never tune on a test fold", why: "because the paper's only real asset is numbers that did not leak." }
+  ],
+
+  qualities: {
+    feels: ["honest", "calm", "auditable", "quick"],
+    hard: [
+      { k: "action path p95 (cause + set + gate)", v: "≤ 30 ms" },
+      { k: "gate violations in 100 000 cases", v: "0" },
+      { k: "cause-set coverage at α = 0.10", v: "≥ 0.85" },
+      { k: "median time to warning", v: "≤ 10 s" },
+      { k: "false warnings per print-hour", v: "≤ 1" },
+      { k: "GPU it must fit", v: "4 GB" }
+    ]
+  },
+
+  business: {
+    payer: "CARR and the university: the semester, the advisor's time and one RTX 3050 laptop. The return is a paper and a reusable artifact.",
+    pricing: "Open source, free to other labs. CAXTON stays under its own licence and is never redistributed.",
+    distribution: "A peer-reviewed paper, a live booth demo, the GitHub artifact, and HANDOFF.md for the integrating team.",
+    alternatives: ["CAXTON's multi-head correction (Brion & Pattinson 2022)", "Detector + fixed recipes (the REU loop)", "Heatmap-only XAI", "The operator's own judgment"],
+    whyWin: ["Explanation in printer settings, with a coverage guarantee", "A gate with a proof, not a promise", "Warns before the defect, then asks", "Every number reproducible from public data with one command"],
+    inv: true
+  },
+
+  success: {
+    northStar: { name: "cause top-1 above the majority floor on prints never seen (S1)", target: "+10 pp" },
+    metrics: [
+      { name: "gate violations in 100 000 random cases (S3)", target: "0", by: "the semester report" },
+      { name: "onset recall within 30 s on held-out prints (S5)", target: "≥ 0.70", by: "the paper submission", inv: true },
+      { name: "peer-reviewed paper with a live demo", target: "1", by: "2027", inv: true }
+    ]
+  },
+
+  faq: {
+    external: [
+      { q: "How is this different from CAXTON?", a: "CAXTON predicts parameter classes and corrects automatically. We add a calibrated set of causes, an early-warning benchmark, a proved safety gate and human approval, all evaluated with splits by print." },
+      { q: "Does the heatmap explain the cause?", a: "No. The explanation is the setting, its direction and the bounded fix. The heatmap only shows where the model looked." },
+      { q: "Is the conformal guarantee valid on new parts?", a: "It is guaranteed only for exchangeable data. On held-out prints we report empirical coverage and say so." },
+      { q: "Why not let it fix things automatically?", a: "Auto mode exists for confident, single-cause reactive events. Early warnings and manual causes always wait for a person; that is the design." },
+      { q: "Can I use it on my printer?", a: "Implement the Printer protocol and pass tests/test_printer_contract.py. The camera domain gap is the open risk." },
+      { q: "Can I reproduce the tables?", a: "Yes: clone, uv sync, download CAXTON, run scripts/acceptance.py." }
+    ],
+    internal: [
+      { q: "What if the CAXTON images cannot be downloaded in time (K1′)?", a: "The demo runs on synthetic replay with a random-init model. The paper's S1/S2/S5/S6 wait until the data arrives.", risk: "high" },
+      { q: "What if top-1 is at most floor + 5 pp (K2)?", a: "Report it and pivot as ADR-0002 option 1 says. Do not write around it.", risk: "high" },
+      { q: "Does the early warning see the defect rather than predict it?", a: "Check: compare warning times to visible-defect onset on a hand-labelled sample.", risk: "med", inv: true },
+      { q: "Will the nozzle close-up model transfer to the integrating team's camera?", a: "Unknown. Make it a limitation, plus a small transfer test if they send frames.", risk: "high" },
+      { q: "Is \"conformal set → decision rights\" really new?", a: "Not checked beyond the deck's survey. Run lit-survey before claiming it.", risk: "med", inv: true },
+      { q: "Will enough people take the study for a real CI?", a: "Aim for ≥ 12 participants; below that, call it a pilot.", risk: "med", inv: true }
+    ]
+  },
+
+  enablers: [
+    { feature: "Image-only cause model", data: ["CAXTON nozzle crops", "*_class labels", "logo.json leave-parts-out folds"], tech: ["ResNet-style backbone", "train_cause (AMP, OOM halving)", "eval_cause floor + K2"], hardware: ["RTX 3050 4 GB"], integrations: [], partners: ["CAXTON authors (licence)"], people: ["Teammate running G2/G3"], regulation: ["CAXTON licence terms"] },
+    { feature: "Conformal cause set", data: ["20 % calibration prints"], tech: ["Split-conformal LAC α = 0.10", "eval_conformal"], hardware: [], integrations: [], partners: [], people: [], regulation: [] },
+    { feature: "Counterfactual fix", data: ["Setpoint window (l3_window p1–p99)"], tech: ["counterfactual.py", "eval_counterfactual"], hardware: [], integrations: [], partners: [], people: ["User reads l3_window.md before the config edit"], regulation: [] },
+    { feature: "Proactive early warning", data: ["CAXTON parameter change points as onsets"], tech: ["EWMA + hysteresis", "eval_proactive", "θ_on on calibration prints"], hardware: [], integrations: [], partners: [], people: [], regulation: [] },
+    { feature: "4-layer fail-closed gate", data: ["Envelope in config/default.yaml"], tech: ["gate.py (pure)", "100 000-case property test"], hardware: [], integrations: ["Printer protocol"], partners: ["Integrating team signs the real envelope"], people: [], regulation: ["Lab printer safety rules"] },
+    { feature: "Approve-or-reject card", data: ["Event store (SQLite)"], tech: ["Streamlit dashboard", "ui_data"], hardware: [], integrations: [], partners: [], people: ["Study participants"], regulation: ["Informed consent for the study"], inv: true },
+    { feature: "One-command acceptance report", data: ["All reports/*.md", "pytest junit"], tech: ["scripts/acceptance.py"], hardware: [], integrations: ["GitHub"], partners: [], people: [], regulation: [] },
+    { feature: "CAXTON replay with FakePrinter", data: ["crops.csv in timestamp order"], tech: ["caxton:<crops.csv>#<trial> source", "FakePrinter.set_process"], hardware: ["Any laptop; CPU is enough"], integrations: [], partners: [], people: [], regulation: [] }
+  ],
+
+  assumptions: [
+    { rank: 1, claim: "The CAXTON images can be downloaded and used for a paper.", ifWrong: "S1, S2, S5 and S6 have no data; K1′ fires and the paper becomes a protocol paper.", pretotype: "one-night stand", cost: "1 day: try the archive link and email the authors (T-0065 Part 1)" },
+    { rank: 2, claim: "An image-only model beats the majority floor by 10 pp on prints it never saw.", ifWrong: "K2 fires; the explanation falls back to priors (ADR-0002 option 1).", pretotype: "pinocchio", cost: "35 min: the G2 single-fold run" },
+    { rank: 3, claim: "Reviewers see the contributions as new beyond CAXTON.", ifWrong: "The paper reads as an incremental re-implementation and gets rejected.", pretotype: "fake door", cost: "2 days: send the abstract and Fig. 1 to Dr. Meti and one outside AM researcher; ask \"what is new?\"", inv: true },
+    { rank: 4, claim: "The warning arrives before the defect is visible, not after.", ifWrong: "\"Proactive\" becomes \"reactive with extra steps\", and S5 loses its meaning.", pretotype: "mechanical turk", cost: "1 day: hand-mark visible onset on 20 held-out prints, compare with warning times", inv: true },
+    { rank: 5, claim: "The explanation measurably improves human decisions.", ifWrong: "S7 shows no effect, which weakens the HITL story.", pretotype: "one-night stand", cost: "2 h: pilot with 3 classmates on 20 replay cards", inv: true },
+    { rank: 6, claim: "The model transfers to the integrating team's camera.", ifWrong: "Lab numbers do not hold on the real rig.", pretotype: "pinocchio", cost: "1 day: run 20 of their frames through the model and check the set size", inv: true }
+  ],
+
+  path: [
+    { rung: "End product", when: "2027", proves: "A peer-reviewed paper and a live booth demo: explainable, gated, human-approved correction holds on unseen prints, and others can reproduce it.", inv: true },
+    { rung: "Mature", when: "early 2027", proves: "Real CAXTON numbers for S1–S7, the related-work check done, and an arXiv preprint other labs can read.", inv: true },
+    { rung: "v1", when: "semester end", proves: "The acceptance report shows S1–S7 PASS or FAIL with evidence, and the T-0047 report is written." },
+    { rung: "First demo", when: "~2026-11-03", proves: "The full loop runs offline for Dr. Meti: warning, cause set, EigenCAM, card, gate. It uses real CAXTON replay if the data is ready, otherwise synthetic frames." }
+  ]
+};
+/* ======== END OF DATA ======== */
+
+/* ---------- motion config: tuned from ui-ux-pro-max motion.csv presets ---------- */
+const MOTION = {
+  reveal:  { y: 12, duration: 0.35, ease: "power1.out", start: "top 90%" },           // Scroll Reveal, subtle
+  stagger: { y: 10, duration: 0.3, each: 0.04, ease: "power1.out" }                   // Stagger List, subtle
+};
+
+/* ---------- renderer ---------- */
+const V = VISION, M = V.meta;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const txt = x => typeof x === "object" && x ? x.t : x;
+const flag = x => (x && typeof x === "object" && x.inv) ? ' <i class="inv" title="Invented by the skill, not given by the user or the files">invented</i>' : "";
+const li = (arr, cls = "") => (arr || []).map(x => `<li class="${cls}">${esc(txt(x))}${flag(x)}</li>`).join("");
+const acc = h => { const i = h.indexOf(" "); return i < 0 ? `<em class="ac">${esc(h)}</em>` : `${esc(h.slice(0, i))} <em class="ac">${esc(h.slice(i + 1))}</em>`; };
+const ICONS = {
+  sun: "M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4M12 8a4 4 0 100 8 4 4 0 000-8z",
+  moon: "M21 13A8 8 0 1111 3a6 6 0 0010 10z", phone: "M7 2h10a1 1 0 011 1v18a1 1 0 01-1 1H7a1 1 0 01-1-1V3a1 1 0 011-1zM11 18h2",
+  bolt: "M13 2L4 14h7l-1 8 9-12h-7l1-8z", chart: "M4 20V10M10 20V4M16 20v-7M22 20H2", bell: "M6 16V11a6 6 0 1112 0v5l2 2H4l2-2M10 21h4",
+  truck: "M2 7h11v9H2zM13 11h5l3 3v2h-8zM6 19a2 2 0 100-4 2 2 0 000 4zM17 19a2 2 0 100-4 2 2 0 000 4z",
+  coffee: "M4 8h12v6a4 4 0 01-4 4H8a4 4 0 01-4-4zM16 9h2a2 2 0 010 4h-2M6 2v2M10 2v2", factory: "M2 21V9l6 4V9l6 4V3h8v18z",
+  home: "M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7h-6v7H4a1 1 0 01-1-1z", chat: "M4 4h16v11H8l-4 4z", check: "M4 12l5 5L20 7",
+  alert: "M12 3l10 18H2zM12 10v4M12 18h.01"
+};
+const icon = n => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[n] || ICONS.check}"/></svg>`;
+
+// The story: four acts. Optional "ideal" sections render only when their data key is present.
+const ACTS = [
+  { n: "Act I", name: "The world today", q: "What is broken, for whom, and what it costs them.", ids: ["problem", "who", "jobs", "today"] },
+  { n: "Act II", name: "The finished product", q: "What it is when it is done, and what a day with it feels like.", ids: ["press", "magic", "finished", "first", "uses", "surfaces", "physical", "features", "decisions", "nogos", "feel", "ideal", "situation"] },
+  { n: "Act III", name: "Why it wins", q: "Who pays, what success looks like, and who stands around it.", ids: ["business", "success", "people", "faq"] },
+  { n: "Act IV", name: "The way back", q: "What must exist first, what could kill it, and the first step from here.", ids: ["enablers", "risks", "premortem", "path"] }
+];
+const NAMES = { problem: "The problem, atomised", who: "Who", jobs: "Jobs", today: "A day today", press: "Press release", magic: "Magic moment", finished: "The same day, finished", first: "First 5 minutes", uses: "Use cases", surfaces: "Surfaces", physical: "Physical form", features: "Features", decisions: "Decision rights", nogos: "Never", feel: "Feel", ideal: "Who they become", situation: "Where it shines", business: "Business", success: "Success", people: "Ideal people", faq: "FAQ", enablers: "Enablers", risks: "Risks", premortem: "Pre-mortem", path: "Path back" };
+const OPT = { ideal: "ideal", first: "firstMinutes", physical: "physical", decisions: "decisions", situation: "situation", premortem: "premortem", people: "people" };
+const on = id => !(id in OPT) || !!V[OPT[id]];
+const ON = ACTS.flatMap(a => a.ids.filter(on));
+const num = id => ON.indexOf(id) + 1;
+const head = (id, title, lede, k) => `<div class="sec-head gs"><span class="eyebrow"><span class="n">${String(num(id)).padStart(2, "0")}</span>${esc(k)}</span><h2>${acc(title)}</h2>${lede ? `<p class="lede">${lede}</p>` : ""}</div>`;
+const NOV = { standard: "standard practice", adapted: "adapted from elsewhere", new: "new: nobody does this" };
+
+function render() {
+  document.title = M.title;
+  for (const [a, b] of [["brand-title", M.title], ["side-title", M.title], ["brand-mod", `${M.project} · ${M.module}`], ["side-mod", `${M.project} · ${M.module}`]]) document.getElementById(a).textContent = b;
+  document.getElementById("toc").innerHTML = ON.map(id => `<a href="#${id}">${esc(NAMES[id])}</a>`).join("");
+  document.getElementById("side-nav").innerHTML = ACTS.map(a => `<div class="act-h"><i>${esc(a.n.replace("Act ", ""))}</i>${esc(a.name)}</div>` + a.ids.filter(on).map(id => `<a href="#${id}"><span class="n">${String(num(id)).padStart(2, "0")}</span>${esc(NAMES[id])}</a>`).join("")).join("");
+
+  const frames = (arr, after) => `<div class="strip ${after ? "after" : "before"} stg">${arr.map(f => `<div class="frame${f.hit ? " hit" : ""}"><span class="t"><span>${esc(f.t)}</span>${icon(f.icon)}</span><p>${esc(f.frame)}${flag(f)}</p></div>`).join("")}</div>`;
+  const bb = s => `<div class="bb">${s.blocks.map(([l, n]) => `<div style="grid-column:span ${Math.min(12, Math.max(1, n | 0))}">${esc(l)}</div>`).join("")}</div>`;
+  const lane = (k, a) => `<div class="${a && a.length ? "" : "none"}"><span class="k">${k}</span>${a && a.length ? esc(a.join(" · ")) : "—"}</div>`;
+
+  // enabler diagram geometry
+  const EN = V.enablers || [], LANES = ["data", "tech", "hardware", "integrations", "partners", "people", "regulation"];
+  const rowH = 60, H = Math.max(EN.length, LANES.length) * rowH + 40, fx = 20, fw = 400, lx = 680, lw = 180;
+  const edges = EN.flatMap((e, i) => LANES.map((k, j) => (e[k] && e[k].length) ? `<path class="edge" d="M${fx + fw} ${40 + i * rowH + 20} C ${lx - 90} ${40 + i * rowH + 20}, ${lx - 90} ${40 + j * rowH + 20}, ${lx} ${40 + j * rowH + 20}"/>` : "").filter(Boolean));
+  const enSvg = `<svg viewBox="0 0 ${lx + lw + 20} ${H}" role="img" aria-label="Which enablers each core feature needs">
+    ${edges.join("")}
+    ${EN.map((e, i) => `<rect class="f" x="${fx}" y="${40 + i * rowH}" width="${fw}" height="40" rx="10"/><text x="${fx + 14}" y="${40 + i * rowH + 25}">${esc(e.feature.length > 46 ? e.feature.slice(0, 45) + "…" : e.feature)}</text>`).join("")}
+    ${LANES.map((k, j) => `<rect class="e" x="${lx}" y="${40 + j * rowH}" width="${lw}" height="40" rx="10"/><text class="lane" x="${lx + 14}" y="${40 + j * rowH + 25}">${k.toUpperCase()}</text>`).join("")}
+    <text class="lane" x="${fx}" y="22">CORE FEATURES</text><text class="lane" x="${lx}" y="22">MUST EXIST FIRST</text></svg>`;
+
+  // at a glance: the whole vision on one screen
+  const north = V.success.northStar, primary = V.personas.find(p => p.role === "primary") || V.personas[0] || {};
+  const core = (V.features || []).flatMap(m => (m.items || []).filter(f => f.tier === "core").map(f => f.name));
+  const top = (V.assumptions || [])[0] || {}, first = (V.path || []).at(-1) || {}, target = (V.magic.ladder || []).find(r => r.target);
+  const P = V.problem || { units: [] }, newUnits = P.units.filter(u => u.novelty === "new").length;
+  const glance = `
+    <div class="glance-title gs"><h3>At a glance</h3><span>the whole vision on one screen</span></div>
+    <div class="glance stg">
+      <div class="cell dark wide"><span class="k">the problem</span><p class="big" style="font-size:clamp(20px,2.2vw,27px)">${esc(P.big || "")}</p><p style="opacity:.8">${P.units.length} atomic units · ${newUnits} solved with something nobody does</p></div>
+      <div class="cell hot wide"><span class="k">the magic moment</span><p class="big" style="font-size:clamp(22px,2.4vw,30px)">${esc(V.magic.moment)}</p></div>
+      <div class="cell"><span class="k">for</span><p><b>${esc(primary.name || "")}</b></p><p style="color:var(--ink-2)">${esc(primary.situation || "")}</p></div>
+      <div class="cell"><span class="k">north star</span><span class="v">${esc(north.target)}</span><p>${esc(north.name)}</p></div>
+      <div class="cell"><span class="k">core, ${core.length} features</span><ul>${core.slice(0, 6).map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>
+      <div class="cell"><span class="k">lives in</span><ul>${(V.surfaces || []).map(s => `<li>${esc(s.name)} <span style="color:var(--ink-3)">· ${esc(s.kind)}</span></li>`).join("")}</ul></div>
+      <div class="cell"><span class="k">who pays</span><p>${esc(V.business.payer)}</p><p style="color:var(--ink-2)">${esc(V.business.pricing)}</p></div>
+      <div class="cell"><span class="k">riskiest assumption</span><p>${esc(top.claim || "")}</p><p style="color:var(--ink-2)">test: ${esc(top.pretotype || "")}, ${esc(top.cost || "")}</p></div>
+      <div class="cell"><span class="k">we build the ${target ? target.star + "★" : ""} rung</span><p>${esc(target ? target.text : "")}</p></div>
+      <div class="cell"><span class="k">first step: ${esc(first.rung || "")} · ${esc(first.when || "")}</span><p>${esc(first.proves || "")}</p></div>
+    </div>`;
+
+  // every section, keyed by id; the acts decide the order
+  const S = {};
+  S.problem = `<section class="s" id="problem">${head("problem", "The problem, atomised", "The exact problem first, then broken into tangible units. Each unit gets the most novel solution we can defend; the novelty budget goes where it changes the outcome.", "problem")}
+    <div class="prob">
+      <div class="bigp gs"><span class="k">the problem, exactly</span><p class="big">${esc(P.big || "")}</p>${P.costs ? `<p style="margin-top:12px;font-size:18px;opacity:.85">What it costs: ${esc(P.costs)}</p>` : ""}${flag(P)}</div>
+      <div class="tally gs"><span><b>${P.units.length}</b> atomic units</span><span><b style="color:var(--red)">${newUnits}</b> solved with something new</span><span><b style="color:var(--amber)">${P.units.filter(u => u.novelty === "adapted").length}</b> adapted from elsewhere</span><span><b style="color:var(--ink-3)">${P.units.filter(u => u.novelty === "standard").length}</b> standard practice</span></div>
+      <div class="units stg">${P.units.map((u, i) => `<div class="unit ${esc(u.novelty)}"><span class="num">${i + 1}</span><div><h4>${esc(u.unit)}${flag(u)}</h4><p class="today">Today: ${esc(u.today)}</p></div><div class="sol-wrap"><p class="sol">${esc(u.solution)}</p>${u.why ? `<p class="why">${esc(u.why)}</p>` : ""}</div><div class="nov ${esc(u.novelty)}"><span class="k">novelty</span><span class="dots"><i></i><i></i><i></i></span><span class="lbl">${esc(NOV[u.novelty] || u.novelty)}</span></div></div>`).join("")}</div>
+    </div>
+  </section>`;
+  S.who = `<section class="s" id="who">${head("who", "Who it is for", "The user, the second user, the buyer, and the one we turn away.", "personas")}
+    <div class="grid g4 stg">${(V.personas || []).map(p => `<div class="card persona ${p.role}"><div class="role"><span class="chip">${esc(p.role)}</span>${flag(p)}</div><h4>${esc(p.name)}</h4>
+      <dl><dt>situation</dt><dd>${esc(p.situation)}</dd><dt>today</dt><dd>${esc(p.today)}</dd><dt>${p.role === "anti" ? "why not" : "switch trigger"}</dt><dd>${esc(p.trigger)}</dd></dl></div>`).join("")}</div>
+  </section>`;
+  S.jobs = `<section class="s" id="jobs">${head("jobs", "Jobs to be done", "“When …, I want …, so I can …”. The bar is how much the job matters.", "jobs")}
+    <div class="jobs stg">${(V.jobs || []).map(j => `<div class="job ${j.type}"><div class="row"><span class="rank">${j.rank}</span><p class="story">${esc(j.story)}${flag(j)}</p><span class="type">${esc(j.type)}</span></div><div class="bar"><i style="width:${Math.max(2, Math.min(100, j.weight | 0))}%"></i></div></div>`).join("")}</div>
+  </section>`;
+  S.today = `<section class="s" id="today">${head("today", "A day today", "The primary user's day as it is now, frame by frame. This is the day the product has to change.", "storyboard · before")}
+    ${frames(V.day.before, false)}<p class="strip-note">Scroll sideways. The same day, with the finished product, opens Act II.</p>
+  </section>`;
+  S.press = `<section class="s" id="press">${head("press", "Launch day, written first", "If this release would not make the primary user want it, the idea is not ready.", "press release")}
+    <div class="pr">
+      <article class="paper gs"><span class="date">${esc(V.pressRelease.date)}${flag(V.pressRelease)}</span><h3>${esc(V.pressRelease.headline)}</h3><p class="sub">${esc(V.pressRelease.sub)}</p>
+        <div class="body">${(V.pressRelease.body || []).map(p => `<p>${esc(txt(p))}${flag(p)}</p>`).join("")}</div></article>
+      <div class="quotes stg">
+        <div class="quote"><p>“${esc(V.pressRelease.quoteFounder)}”</p><span class="k">founder</span></div>
+        <div class="quote"><p>“${esc(V.pressRelease.quoteUser)}”</p><span class="k">${esc(primary.name || "user")}</span></div>
+      </div>
+    </div>
+  </section>`;
+  S.magic = `<section class="s" id="magic">${head("magic", "The magic moment", "The first “oh, this is good”, the loop that brings them back, and the 11-star ladder: pushed to absurd, then the rung we build.", "magic moment")}
+    <div class="magic">
+      <div class="moment gs"><span class="k">the moment</span><p class="big">${esc(V.magic.moment)}${flag(V.magic)}</p></div>
+      <div class="loop gs"><svg viewBox="0 0 360 360" role="img" aria-label="Core loop: ${esc(V.magic.loop.join(', '))}">
+        <circle class="ring" cx="180" cy="180" r="120"/>
+        ${V.magic.loop.map((l, i) => { const a = -Math.PI / 2 + i * Math.PI / 2, x = 180 + 120 * Math.cos(a), y = 180 + 120 * Math.sin(a); return `<circle class="node" cx="${x}" cy="${y}" r="44"/><text x="${x}" y="${y + 5}" text-anchor="middle">${esc(l)}</text>`; }).join("")}
+      </svg></div>
+    </div>
+    <div class="ladder stg">${(V.magic.ladder || []).map(r => `<div class="${r.target ? "target" : ""}"><span class="star">${r.star}★</span><span>${esc(r.text)}${flag(r)}</span></div>`).join("")}</div>
+  </section>`;
+  S.finished = `<section class="s" id="finished">${head("finished", "The same day, finished", "The day from Act I again, with the product in it. Highlighted frames are where it appears; the rest is the person's life.", "storyboard · after")}
+    ${frames(V.day.after, true)}
+  </section>`;
+  S.first = V.firstMinutes ? `<section class="s" id="first">${head("first", "The first five minutes", "From the first touch to the magic moment, with the clock running.", "time to magic")}
+    <div class="fm gs">${V.firstMinutes.map(s => `<div class="step${s.magic ? " magic" : ""}"><span class="t">${esc(s.t)}</span><p>${esc(s.step)}${flag(s)}</p></div>`).join("")}</div>
+  </section>` : "";
+  S.uses = `<section class="s" id="uses">${head("uses", "Use cases", "Each one walked in slow motion: what starts it, the steps, the payoff, and what happens when it goes wrong.", "use cases")}
+    <div class="gs">${(V.useCases || []).map(u => `<details class="uc"><summary><span class="id">${esc(u.id)}</span><span class="st">${esc(u.story)}${flag(u)}</span></summary>
+      <div class="uc-body"><div><span class="k">trigger</span><p>${esc(u.trigger)}</p><span class="k">steps</span><ol>${li(u.steps)}</ol><span class="k">payoff</span><p>${esc(u.payoff)}</p></div>
+      <div><div class="fail"><b>When it goes wrong</b><ul>${li(u.fails)}</ul></div><p style="margin-top:12px"><span class="k">serves jobs</span> ${(u.jobs || []).map(n => `<span class="badge">#${n}</span>`).join(" ")}</p></div></div></details>`).join("")}</div>
+  </section>`;
+  S.surfaces = `<section class="s" id="surfaces">${head("surfaces", "Surfaces and screens", "What is on each screen and how much room it takes, drawn too thick to argue about pixels.", "surfaces")}
+    <div class="tabs" role="tablist">${(V.surfaces || []).map((s, i) => `<button role="tab" aria-selected="${i === 0}" aria-controls="surf-${i}" id="tab-${i}">${esc(s.name)} <span class="kind">${esc(s.kind)}</span></button>`).join("")}</div>
+    ${(V.surfaces || []).map((s, i) => `<div class="screens" role="tabpanel" id="surf-${i}" aria-labelledby="tab-${i}" ${i ? "hidden" : ""}>${(s.screens || []).map(sc => `<div class="screen"><h4>${esc(sc.name)}${flag(sc)}</h4>${bb(sc)}${sc.note ? `<p class="note">${esc(sc.note)}</p>` : ""}</div>`).join("")}</div>`).join("")}
+  </section>`;
+  S.physical = V.physical ? `<section class="s" id="physical">${head("physical", "The physical form", "The box, the install, and the site with it in.", "physical form")}
+    <div class="phys stg">
+      <div class="cell"><span class="k">form</span><p class="dims">${esc(V.physical.dims || "")}</p><p>${esc(V.physical.form)}${flag(V.physical)}</p></div>
+      <div class="cell"><span class="k">install</span><ul>${li(V.physical.install)}</ul></div>
+      <div class="cell"><span class="k">the site with it in</span><p>${esc(V.physical.site)}</p></div>
+      <div class="cell"><span class="k">senses</span><ul>${li(V.physical.senses)}</ul></div>
+    </div>
+  </section>` : "";
+  S.features = `<section class="s" id="features">${head("features", "The feature map", "Grouped by module, each tied to a job. Core cannot be cut; Complete is the mature product; Delight is the 7★ rung.", "features")}
+    <div class="legend gs"><span class="tier core">core</span><span class="tier complete">complete</span><span class="tier delight">delight</span><span><span class="badge">#n</span> = job served</span></div>
+    <div class="mods stg">${(V.features || []).map(m => `<div class="mod"><h4>${esc(m.module)}</h4><ul>${(m.items || []).map(f => `<li class="feat"><span class="tier ${f.tier}">${esc(f.tier)}</span><span>${esc(f.name)}${flag(f)}</span><span class="badge">#${f.job}</span></li>`).join("")}</ul></div>`).join("")}</div>
+  </section>`;
+  S.decisions = V.decisions ? `<section class="s" id="decisions">${head("decisions", "Decision rights", "What it does on its own, what it asks first, and what it never does without a human.", "decision rights")}
+    <div class="dr stg">
+      <div class="col auto"><h4>Does on its own</h4><ul>${li(V.decisions.auto)}</ul></div>
+      <div class="col ask"><h4>Asks first</h4><ul>${li(V.decisions.ask)}</ul></div>
+      <div class="col never"><h4>Never without a human</h4><ul>${li(V.decisions.never)}</ul>${flag(V.decisions)}</div>
+    </div>
+  </section>` : "";
+  S.nogos = `<section class="s" id="nogos">${head("nogos", "What it will never do", "The fence. Each no-go has a reason, so the next feature request meets an argument, not a mood.", "no-gos")}
+    <ul class="nogo stg">${(V.noGos || []).map(n => `<li><span>${esc(txt(n))}${n.why ? `<small>${esc(n.why)}${flag(n)}</small>` : flag(n)}</span></li>`).join("")}</ul>
+  </section>`;
+  S.feel = `<section class="s" id="feel">${head("feel", "How it feels, and the hard numbers", "Qualities in words; constraints as numbers, because numbers decide the architecture.", "qualities")}
+    <div class="feels stg">${(V.qualities.feels || []).map(f => `<span>${esc(txt(f))}${flag(f)}</span>`).join("")}</div>
+    <div class="tiles stg">${(V.qualities.hard || []).map(h => `<div class="tile"><span class="v">${esc(h.v)}</span><span class="k">${esc(h.k)}</span>${flag(h)}</div>`).join("")}</div>
+  </section>`;
+  S.ideal = V.ideal ? `<section class="s" id="ideal">${head("ideal", "Who they become", "The same person, with the product fully absorbed. The product wins by making them better at the thing, not by being admired.", "ideal user")}
+    <div class="ideal stg">
+      <div class="card was"><span class="k">was</span><ul>${li(V.ideal.was)}</ul></div>
+      <div class="card portrait"><span class="k">${esc(V.ideal.name)}${flag(V.ideal)}</span><p class="big">${esc(V.ideal.becomes)}</p><p class="says">“${esc(V.ideal.says)}”</p></div>
+      <div class="card now"><span class="k">now</span><ul>${li(V.ideal.now)}</ul></div>
+    </div>
+  </section>` : "";
+  S.situation = V.situation ? `<section class="s" id="situation">${head("situation", "Where it shines, what it survives", "The ideal situation, where the product is most itself, next to the worst realistic one it still has to work in.", "situation")}
+    <div class="sit stg">
+      <div class="col shine"><h4>Where it shines</h4>${(V.situation.shines || []).map(r => `<div class="row"><span class="k">${esc(r.k)}</span><span>${esc(r.v)}${flag(r)}</span></div>`).join("")}</div>
+      <div class="col survive"><h4>What it must survive</h4>${(V.situation.survives || []).map(r => `<div class="row"><span class="k">${esc(r.k)}</span><span>${esc(r.v)}${flag(r)}</span></div>`).join("")}</div>
+    </div>
+  </section>` : "";
+  S.business = `<section class="s" id="business">${head("business", "The business shape", "Who pays, how, how it spreads, what it replaces, and why it wins.", "business")}
+    <div class="shape stg">
+      <div><span class="k">who pays</span><p>${esc(V.business.payer)}</p>${flag(V.business)}</div>
+      <div><span class="k">pricing</span><p>${esc(V.business.pricing)}</p></div>
+      <div><span class="k">distribution</span><p>${esc(V.business.distribution)}</p></div>
+      <div><span class="k">alternatives</span><ul>${li(V.business.alternatives)}</ul></div>
+      <div class="win"><span class="k">why we win</span><ul>${li(V.business.whyWin)}</ul></div>
+    </div>
+  </section>`;
+  S.success = `<section class="s" id="success">${head("success", "What success looks like", "One north star, two or three supporting numbers, each with a date.", "metrics")}
+    <div class="ns stg">
+      <div class="tile north"><span class="v num">${esc(north.target)}</span><span class="k">${esc(north.name)}</span>${flag(north)}</div>
+      ${(V.success.metrics || []).map(m => `<div class="tile"><span class="v num">${esc(m.target)}</span><span class="k">${esc(m.name)}</span><span class="by">by ${esc(m.by)}</span>${flag(m)}</div>`).join("")}
+    </div>
+  </section>`;
+  S.people = V.people ? `<section class="s" id="people">${head("people", "The ideal people", "Not users: the people the product needs around it. Who they are, what they bring, who is not a fit, and where to find them.", "ideal people")}
+    <div class="grid g3 stg">${V.people.map(p => `<div class="card person"><div class="role"><span class="chip">${esc(p.role)}</span>${flag(p)}</div><h4>${esc(p.title)}</h4>
+      <p class="why">${esc(p.why)}</p>
+      <dl><dt>brings</dt><dd><ul>${li(p.brings)}</ul></dd><dt>not a fit</dt><dd>${esc(p.notFit)}</dd><dt>where to find them</dt><dd>${esc(p.where)}</dd></dl></div>`).join("")}</div>
+  </section>` : "";
+  S.faq = `<section class="s" id="faq">${head("faq", "Questions, outside and inside", "Outside: what a customer would ask. Inside: what we are assuming without proof, with a risk dot.", "faq")}
+    <div class="faq gs">
+      <div><span class="k" style="margin-bottom:6px">external</span>${(V.faq.external || []).map(q => `<details class="q"><summary>${esc(q.q)}${flag(q)}</summary><p>${esc(q.a)}</p></details>`).join("")}</div>
+      <div><span class="k" style="margin-bottom:6px">internal</span>${(V.faq.internal || []).map(q => `<details class="q"><summary><span class="risk ${q.risk || "low"}" title="risk ${esc(q.risk || "low")}"></span>${esc(q.q)}${flag(q)}</summary><p>${esc(q.a)}</p></details>`).join("")}</div>
+    </div>
+  </section>`;
+  S.enablers = `<section class="s" id="enablers">${head("enablers", "What must exist first", "For every Core feature: the data, tech, hardware, integrations, partners, people and regulation it stands on. The start of the engineering plan.", "enabler map")}
+    <div class="en gs">${enSvg}</div>
+    <div class="en-list stg">${EN.map(e => `<div class="en-row"><h4>${esc(e.feature)}${flag(e)}</h4><div class="lanes">${LANES.map(k => lane(k, e[k])).join("")}</div></div>`).join("")}</div>
+  </section>`;
+  S.risks = `<section class="s" id="risks">${head("risks", "The riskiest assumptions", "Ranked. Each with what breaks if it is wrong and the cheapest test that could prove it wrong.", "assumptions")}
+    <div class="asm stg">${(V.assumptions || []).map((a, i) => `<div class="as ${i === 0 ? "first" : ""}"><span class="rank">${a.rank}</span><div><p class="claim">${esc(a.claim)}${flag(a)}</p><p class="if"><b>If wrong:</b> ${esc(a.ifWrong)}</p><div class="test"><span class="chip">${esc(a.pretotype)}</span><span>${esc(a.cost)}</span></div></div></div>`).join("")}</div>
+  </section>`;
+  S.premortem = V.premortem ? `<section class="s" id="premortem">${head("premortem", "The pre-mortem", "It is two years on and the product is dead. The obituary first, then the causes, then the version it drifted into.", "pre-mortem")}
+    <div class="pm">
+      <article class="obit gs"><span class="date">${esc(V.premortem.date)}</span><h3>${esc(V.premortem.headline)}${flag(V.premortem)}</h3><p>${esc(V.premortem.obituary)}</p></article>
+      <div class="causes stg">${(V.premortem.causes || []).map(c => `<div class="cause"><b>${esc(c.c)}${flag(c)}</b><p>${esc(c.why)}</p></div>`).join("")}</div>
+    </div>
+    <p class="drift gs">What it drifts into if nobody stops it: <em>${esc(V.premortem.drift)}</em></p>
+  </section>` : "";
+  S.path = `<section class="s" id="path">${head("path", "The path backwards", "The end product on top, the first demo at the bottom, and what each rung proves. Read upwards, it is the roadmap.", "path")}
+    <div class="path gs">${(V.path || []).map(r => `<div class="rung"><div class="top"><h4>${esc(r.rung)}</h4><span class="when">${esc(r.when || "")}</span>${flag(r)}</div><p><b>Proves:</b> ${esc(r.proves)}</p></div>`).join("")}</div>
+  </section>`;
+
+  document.getElementById("top").innerHTML = `
+  <section class="hero" id="what">
+    <span class="eyebrow gs"><i></i>${esc(M.project)} · ${esc(M.module)} · end-product vision · ${esc(M.date)}</span>
+    <h1 class="gs">${acc(M.title)}</h1>
+    <p class="line big gs">${esc(V.oneLiner.line)}</p>
+    <div class="two-years gs"><span class="k">In two years</span><p>${esc(M.twoYears.replace(/^In two years,?\s*/i, ""))}</p></div>
+    ${glance}
+    <div class="isnot stg" style="margin-top:12px">
+      <div><span class="k">It is</span><ul>${li(V.oneLiner.is)}</ul></div>
+      <div class="no"><span class="k">It is not</span><ul>${li(V.oneLiner.isNot)}</ul></div>
+    </div>
+  </section>
+  ${ACTS.map(a => `<div class="act gs" id="act-${a.n.split(" ")[1].toLowerCase()}"><span class="n">${esc(a.n)}</span><h2>${acc(a.name)}</h2><p>${esc(a.q)}</p></div>` + a.ids.filter(on).map(id => S[id]).join("")).join("")}`;
+
+  const inv = document.querySelectorAll(".inv").length;
+  document.getElementById("foot").innerHTML = `<span>${esc(M.project)} · ${esc(M.module)} · ${esc(M.date)}</span><span>${inv} invented fact${inv === 1 ? "" : "s"} flagged ✦ · sources read: ${esc((M.sources || []).join(", ") || "none")}</span><span>source folder ${esc(M.source)}</span>`;
+
+  // tabs
+  document.querySelectorAll('[role="tab"]').forEach(t => t.addEventListener("click", () => {
+    document.querySelectorAll('[role="tab"]').forEach(x => x.setAttribute("aria-selected", x === t));
+    document.querySelectorAll(".screens").forEach(p => p.hidden = p.id !== t.getAttribute("aria-controls"));
+  }));
+  // section highlight in both navs
+  const links = [...document.querySelectorAll("#toc a, #side-nav a")];
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) links.forEach(l => l.classList.toggle("on", l.getAttribute("href") === "#" + e.target.id)); }), { rootMargin: "-30% 0px -60% 0px" });
+  ON.forEach(id => { const el = document.getElementById(id); if (el) io.observe(el); });
+}
+
+/* ---------- settings ---------- */
+const root = document.documentElement;
+const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+function syncButtons() {
+  document.getElementById("btn-theme").setAttribute("aria-pressed", root.dataset.theme === "dark");
+  document.getElementById("btn-theme").textContent = root.dataset.theme === "dark" ? "dark" : "light";
+  document.getElementById("btn-motion").setAttribute("aria-pressed", root.dataset.motion !== "off");
+  document.getElementById("btn-motion").textContent = root.dataset.motion === "off" ? "motion off" : "motion on";
+}
+document.getElementById("btn-theme").addEventListener("click", () => { root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark"; save("arth-theme", root.dataset.theme); syncButtons(); });
+document.getElementById("btn-motion").addEventListener("click", () => { root.dataset.motion = root.dataset.motion === "off" ? "on" : "off"; save("arth-motion", root.dataset.motion); location.reload(); });
+
+/* ---------- motion (GSAP), only when data-motion="on"; subtle fades that never hide content ---------- */
+function animate() {
+  if (root.dataset.motion === "off" || !window.gsap) return;
+  gsap.registerPlugin(ScrollTrigger);
+  gsap.utils.toArray(".gs").forEach(el => gsap.from(el, { opacity: 0, y: MOTION.reveal.y, duration: MOTION.reveal.duration, ease: MOTION.reveal.ease, scrollTrigger: { trigger: el, start: MOTION.reveal.start, toggleActions: "play none none none" } }));
+  gsap.utils.toArray(".stg").forEach(el => gsap.from(el.children, { opacity: 0, y: MOTION.stagger.y, duration: MOTION.stagger.duration, ease: MOTION.stagger.ease, stagger: MOTION.stagger.each, scrollTrigger: { trigger: el, start: "top 88%" } }));
+  // counter tween on big numbers that contain a plain integer
+  gsap.utils.toArray(".num").forEach(el => { const m = el.textContent.match(/^(\D*)(\d+)(.*)$/); if (!m || m[2].length > 4) return; const o = { n: 0 }; gsap.to(o, { n: +m[2], duration: 1, ease: "power2.out", scrollTrigger: { trigger: el, start: "top 90%" }, onUpdate: () => el.textContent = m[1] + Math.round(o.n) + m[3] }); });
+}
+render(); syncButtons(); addEventListener("load", animate);
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+</body>
+</html>
