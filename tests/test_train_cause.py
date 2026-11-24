@@ -137,7 +137,7 @@ def test_lp_epochs_keep_the_backbone_fixed(tmp_path):
     assert train_cause.main(["--fold", "0", "--epochs", "1", "--batch", "8", "--out", str(out), "--lp-epochs", "1",
                              "--report", str(tmp_path / "r.md"),
                              *args]) == 0
-    trained = torch.load(out / "fold0.pt", weights_only=True)["state_dict"]
+    trained = torch.load(out / "fold0.pt", map_location="cpu", weights_only=True)["state_dict"]
     torch.manual_seed(0)
     init = train_cause.make_model(len(CAUSES), False, False).state_dict()
     assert torch.equal(trained["backbone.conv1.weight"], init["backbone.conv1.weight"])
