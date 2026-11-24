@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XQI pipeline architecture</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#0e0f0f; --surface:#161717; --surface-2:#1e1f1f; --line:rgba(255,255,255,.12); --line-2:rgba(255,255,255,.22);
+  --ink:#f0efec; --ink-2:#c3c2b7; --muted:#97958d;
+  --perceive:#3987e5; --explain:#9085e9; --gate:#ff8a3d; --act:#3cc23c; --bad:#ef7a7a; --state:#fab219;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    color-scheme: light;
+    --bg:#f6f6f3; --surface:#fcfcfb; --surface-2:#efeeea; --line:rgba(0,0,0,.14); --line-2:rgba(0,0,0,.28);
+    --ink:#0b0b0b; --ink-2:#3a3936; --muted:#64635e;
+    --perceive:#1f6fd1; --explain:#6b5fd6; --gate:#d9620f; --act:#14871a; --bad:#c22f2f; --state:#a87300;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Geist",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1480px;margin:0 auto;padding:32px 20px 48px}
+h1{font-size:26px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:18px;font-weight:600;margin:40px 0 6px}
+p.lede{color:var(--ink-2);margin:0 0 18px;max-width:900px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;color:var(--ink-2);margin:0 0 14px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.sw{width:14px;height:14px;border-radius:4px;border:2px solid}
+.sw.dash{border-style:dashed}
+.sw.p{border-color:var(--perceive)}.sw.e{border-color:var(--explain)}.sw.g{border-color:var(--gate)}.sw.a{border-color:var(--act)}.sw.r{border-color:var(--bad)}.sw.st{border-color:var(--state)}.sw.n{border-color:var(--line-2)}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;overflow-x:auto}
+svg{display:block;width:100%;min-width:1100px;height:auto}
+svg text{fill:var(--ink);font-family:"Geist",system-ui,sans-serif;font-size:13px}
+svg .t{font-weight:600;font-size:14.5px}
+svg .s{fill:var(--ink-2);font-size:12.5px}
+svg .m{fill:var(--muted);font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px}
+svg .h{fill:var(--muted);font-size:12px;font-weight:600;letter-spacing:.08em}
+svg .box{fill:var(--surface-2);stroke-width:1.5}
+svg .ext{stroke-dasharray:6 4}
+svg .async{stroke-dasharray:2 4}
+.ar{fill:none;stroke-width:1.6}
+.p{stroke:var(--perceive)} .e{stroke:var(--explain)} .g{stroke:var(--gate)} .a{stroke:var(--act)} .n{stroke:var(--line-2)} .r{stroke:var(--bad)} .st{stroke:var(--state)}
+svg .red{fill:var(--bad)} svg .yel{fill:var(--state)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:16px}
+.notes div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px;color:var(--ink-2)}
+.notes b{color:var(--ink)}
+code{font-family:"Geist Mono",ui-monospace,monospace;font-size:12.5px}
+</style>
+</head>
+<body>
+<main>
+<h1>XQI pipeline architecture</h1>
+<p class="lede">One camera frame, from the printer to a gated action and back. The cause model explains, the gate decides what is safe, and the human approves anything the system is not sure about. Package <code>xqi/</code>; loop in <code>xqi/orchestrator.py</code>.</p>
+
+<div class="legend">
+  <span><i class="sw p"></i>Perceive</span>
+  <span><i class="sw e"></i>Explain</span>
+  <span><i class="sw g"></i>Gate</span>
+  <span><i class="sw a"></i>Act &amp; verify</span>
+  <span><i class="sw r"></i>Critical bypass</span>
+  <span><i class="sw st"></i>● uses printer state</span>
+  <span><i class="sw n dash"></i>Supplied by the integrating team (docs/HANDOFF.md)</span>
+</div>
+
+<h2 style="margin-top:8px">Runtime loop</h2>
+<div class="fig">
+<svg viewBox="0 0 1440 960" role="img" aria-label="Runtime pipeline: camera and printer at the top, then perceive, explain, gate, act columns, then operator loop and run store at the bottom.">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>.ar{marker-end:url(#ah)}</style>
+
+  <!-- ===== Machine side ===== -->
+  <rect class="box n ext" x="20" y="20" width="220" height="80" rx="10"/>
+  <text class="t" x="34" y="45">Camera</text>
+  <text class="s" x="34" y="65">webcam · image-folder replay</text>
+  <text class="s" x="34" y="82">CAXTON replay · <tspan class="m">camera.py</tspan></text>
+
+  <rect class="box n ext" x="290" y="20" width="1130" height="80" rx="10"/>
+  <text class="t" x="306" y="45">Printer protocol: the hand-off boundary</text>
+  <text class="s" x="306" y="65">OctoPrintClient (REST, API key from env) · FakePrinter (simulated, used in tests and demo)</text>
+  <text class="m" x="306" y="85">get_state() · send_gcode(lines) · pause() · estop()   — xqi/printer.py</text>
+
+  <!-- telemetry band -->
+  <rect class="box st" x="470" y="128" width="550" height="40" rx="8"/>
+  <text class="t" x="484" y="146" style="font-size:13px">● Telemetry history</text>
+  <text class="s" x="484" y="161">PrinterState every poll_s, last 300 · read by sensor flags, proposals, gate</text>
+  <path class="ar st" d="M520,100 V126"/>
+  <text class="m" x="528" y="117">get_state()</text>
+
+  <!-- column headers -->
+  <text class="h" x="20" y="198">1 · PERCEIVE</text>
+  <text class="h" x="470" y="198">2 · EXPLAIN  (Explainer)</text>
+  <text class="h" x="770" y="198">3 · GATE  (pure, fail-closed)</text>
+  <text class="h" x="1070" y="198">4 · ACT &amp; VERIFY</text>
+
+  <!-- ===== 1 Perceive ===== -->
+  <text class="m" x="20" y="218">reactive</text>
+  <rect class="box n ext" x="20" y="225" width="170" height="95" rx="10"/>
+  <text class="t" x="32" y="249">Detector</text>
+  <text class="s" x="32" y="268">YOLO, optional</text>
+  <text class="s" x="32" y="285">team's weights</text>
+  <text class="m" x="32" y="305">weights: null → off</text>
+  <path class="ar n" d="M170,100 V223"/>
+
+  <rect class="box p" x="240" y="225" width="180" height="95" rx="10"/>
+  <text class="t" x="252" y="249">ConfirmationTracker</text>
+  <text class="s" x="252" y="268">k hits in a row per class</text>
+  <text class="s" x="252" y="285">re-arm after 50 frames</text>
+  <text class="m" x="252" y="305">→ ConfirmedDefect</text>
+  <path class="ar p" d="M190,272 H238"/>
+  <text class="m" x="194" y="265">dets</text>
+
+  <!-- critical bypass -->
+  <path class="ar r" d="M390,225 V102"/>
+  <text class="red" x="382" y="128" text-anchor="end" style="font-weight:600;font-size:12.5px">critical class</text>
+  <text class="red" x="382" y="145" text-anchor="end" style="font-size:12px">clog · layer_shift</text>
+  <text class="red" x="382" y="161" text-anchor="end" style="font-size:12px">spaghetti</text>
+  <text class="red" x="382" y="177" text-anchor="end" style="font-size:12px">→ estop (M112) / pause</text>
+  <text class="red" x="382" y="193" text-anchor="end" style="font-size:12px">first; explain after</text>
+
+  <text class="m" x="20" y="363">proactive</text>
+  <rect class="box p" x="20" y="370" width="170" height="110" rx="10"/>
+  <text class="t" x="32" y="394">Nozzle ROI</text>
+  <text class="s" x="32" y="413">every n-th frame</text>
+  <text class="s" x="32" y="430">→ cause model p(c)</text>
+  <text class="s" x="32" y="447">(same net as ②)</text>
+  <text class="m" x="32" y="467">proactive.roi</text>
+  <path class="ar n" d="M20,60 H8 V425 H18"/>
+
+  <rect class="box p" x="240" y="370" width="180" height="110" rx="10"/>
+  <text class="t" x="252" y="394">EarlyWarning</text>
+  <text class="s" x="252" y="413">EWMA p̄ per cause</text>
+  <text class="s" x="252" y="430">θ_on / θ_off hysteresis</text>
+  <text class="s" x="252" y="447">m-frame run, cooldown</text>
+  <text class="m" x="252" y="467">→ early_warning event</text>
+  <path class="ar p" d="M190,425 H238"/>
+
+  <!-- ===== 2 Explain ===== -->
+  <rect class="box e" x="470" y="210" width="250" height="52" rx="10"/>
+  <text class="t" x="484" y="232">Crop</text>
+  <text class="s" x="484" y="250">defect box + pad, saved for the card</text>
+  <path class="ar p" d="M420,250 H445 V236 H468"/>
+
+  <rect class="box e" x="470" y="277" width="250" height="105" rx="10"/>
+  <text class="t" x="484" y="300">Cause model</text>
+  <text class="s" x="484" y="319">ResNet18, ImageNet init</text>
+  <text class="s" x="484" y="336">image only: no setpoints, no</text>
+  <text class="s" x="484" y="353">telemetry (ADR-0002) · opt. T-scaling</text>
+  <text class="m" x="484" y="372">→ p(c) over 9 causes</text>
+  <path class="ar e" d="M595,262 V275"/>
+
+  <rect class="box e" x="470" y="397" width="250" height="78" rx="10"/>
+  <text class="t" x="484" y="420">Conformal set C</text>
+  <text class="s" x="484" y="439">split-conformal LAC, α = 0.10</text>
+  <text class="m" x="484" y="459">C = {c : p(c) ≥ 1 − q̂}</text>
+  <path class="ar e" d="M595,382 V395"/>
+  <path class="ar p" d="M420,436 H468"/>
+
+  <rect class="box e" x="470" y="490" width="250" height="60" rx="10"/>
+  <text class="t" x="484" y="513"><tspan class="yel">●</tspan> Sensor flags</text>
+  <text class="s" x="484" y="532">heater off target, recent setpoint change</text>
+  <path class="ar e" d="M595,475 V488"/>
+
+  <rect class="box e" x="470" y="565" width="250" height="95" rx="10"/>
+  <text class="t" x="484" y="588"><tspan class="yel">●</tspan> Counterfactual proposal</text>
+  <text class="s" x="484" y="607">per actionable cause in C: the smallest</text>
+  <text class="s" x="484" y="624">change that undoes it; Δ ∝ severity</text>
+  <text class="m" x="484" y="645">z_offset → manual advice only</text>
+  <path class="ar e" d="M595,550 V563"/>
+
+  <!-- ===== 3 Gate ===== -->
+  <path class="ar e" d="M720,612 H745 V320 H768"/>
+
+  <rect class="box g" x="770" y="210" width="250" height="240" rx="10"/>
+  <text class="t" x="784" y="233"><tspan class="yel">●</tspan> gate()  per proposal</text>
+  <rect class="box g" x="784" y="245" width="222" height="52" rx="7" style="stroke-width:1"/>
+  <text class="t" x="796" y="266" style="font-size:13px">L2 · rate</text>
+  <text class="s" x="796" y="284">cooldown, then clip Δ to max step</text>
+  <rect class="box g" x="784" y="305" width="222" height="52" rx="7" style="stroke-width:1"/>
+  <text class="t" x="796" y="326" style="font-size:13px">L1 · hard limits</text>
+  <text class="s" x="796" y="344">round half-up, then check [lo, hi]</text>
+  <rect class="box g" x="784" y="365" width="222" height="52" rx="7" style="stroke-width:1"/>
+  <text class="t" x="796" y="386" style="font-size:13px">L3 · known-good window</text>
+  <text class="s" x="796" y="404">land in, or move toward, p1–p99</text>
+  <text class="m" x="784" y="437">→ G-code: M104/M140/M221/M220</text>
+
+  <rect class="box g" x="770" y="465" width="250" height="195" rx="10"/>
+  <text class="t" x="784" y="488">event_verdict(): first row wins</text>
+  <text class="m" x="784" y="508">baseline mode      → APPLY_RAW</text>
+  <text class="m" x="784" y="525">no state / C = ∅   → ESCALATE</text>
+  <text class="m" x="784" y="542">C = {none}         → NOOP</text>
+  <text class="m" x="784" y="559">manual cause in C  → ESCALATE</text>
+  <text class="m" x="784" y="576">nothing passed     → ESCALATE</text>
+  <text class="m" x="784" y="593">early warning      → PROPOSE</text>
+  <text class="m" x="784" y="610">auto + L4 pass     → APPLY</text>
+  <text class="m" x="784" y="627">otherwise          → PROPOSE</text>
+  <text class="s" x="784" y="649" style="font-size:11.5px">L4: |C| = 1, p_top ≥ τ, no sensor flags</text>
+  <path class="ar g" d="M895,450 V463"/>
+
+  <!-- ===== 4 Act ===== -->
+  <path class="ar g" d="M1020,560 H1045 V250 H1068"/>
+  <path class="ar g" d="M1045,445 H1068"/>
+  <path class="ar g" d="M1045,543 H1068"/>
+
+  <rect class="box a" x="1070" y="210" width="350" height="80" rx="10"/>
+  <text class="t" x="1084" y="233">APPLY → dispatch</text>
+  <text class="s" x="1084" y="252">send_gcode(final G-code), one retry</text>
+  <text class="s" x="1084" y="270">only lines the gate passed</text>
+  <path class="ar a" d="M1300,210 V102"/>
+  <text class="m" x="1308" y="160">G-code</text>
+
+  <rect class="box a" x="1070" y="305" width="350" height="75" rx="10"/>
+  <text class="t" x="1084" y="328">Verifier</text>
+  <text class="s" x="1084" y="347">defect rate before vs after (settle + window)</text>
+  <text class="m" x="1084" y="367">→ resolved · unchanged · worse · unknown</text>
+  <path class="ar a" d="M1245,290 V303"/>
+
+  <rect class="box a" x="1070" y="397" width="350" height="95" rx="10"/>
+  <text class="t" x="1084" y="420">PROPOSE / ESCALATE → card</text>
+  <text class="s" x="1084" y="439">pending, with a deadline</text>
+  <text class="s" x="1084" y="456">ESCALATE also pauses (not for warnings)</text>
+  <text class="s" x="1084" y="473">no answer by deadline → pause</text>
+
+  <rect class="box a async" x="1070" y="508" width="290" height="72" rx="10"/>
+  <text class="t" x="1084" y="531">Heatmap worker (own thread)</text>
+  <text class="s" x="1084" y="550">Grad-CAM for the card's top cause,</text>
+  <text class="s" x="1084" y="567">on a copy of the cause net</text>
+
+  <path class="ar a" d="M1390,492 V698"/>
+  <text class="m" x="1384" y="612" text-anchor="end">card</text>
+
+  <!-- ===== Bottom: modes, operator loop, dashboard, store ===== -->
+  <rect class="box n" x="20" y="700" width="700" height="130" rx="10"/>
+  <text class="t" x="34" y="724">Run modes  <tspan class="m">(config: mode)</tspan></text>
+  <text class="m" x="34" y="747">baseline      deck recipe as absolute setpoints, no gate, no cause model</text>
+  <text class="m" x="34" y="767">gated-recipe  deck recipe through L1–L3, no cause model, no L4</text>
+  <text class="m" x="34" y="787">advisory      full pipeline; every surviving proposal goes to the operator</text>
+  <text class="m" x="34" y="807">auto          full pipeline; APPLY when L4 passes and one proposal survives</text>
+
+  <rect class="box g" x="770" y="700" width="250" height="130" rx="10"/>
+  <text class="t" x="784" y="723">Operator decision loop</text>
+  <text class="s" x="784" y="742">UI is untrusted: every apply /</text>
+  <text class="s" x="784" y="759">modify is re-gated with gate()</text>
+  <text class="s" x="784" y="776">on the current state, then</text>
+  <text class="s" x="784" y="793">dispatched; blocked → alert</text>
+  <text class="m" x="784" y="815">process_operator_decisions()</text>
+  <path class="ar g" d="M895,700 V662"/>
+  <text class="m" x="903" y="687">re-gate</text>
+
+  <rect class="box a" x="1070" y="700" width="350" height="130" rx="10"/>
+  <text class="t" x="1084" y="723">Dashboard  <tspan class="m">(Streamlit, ui.py)</tspan></text>
+  <text class="s" x="1084" y="742">live frame; card with cause, set, heatmap,</text>
+  <text class="s" x="1084" y="759">and the counterfactual sentence</text>
+  <text class="s" x="1084" y="776">apply · modify · reject · pause · stop</text>
+  <text class="s" x="1084" y="796">reads the store read-only, writes decisions only,</text>
+  <text class="s" x="1084" y="813">never talks to the printer</text>
+
+  <path class="ar n" d="M1150,830 V858"/>
+  <text class="m" x="1158" y="849">decision row</text>
+  <path class="ar n" d="M1340,860 V832"/>
+  <text class="m" x="1332" y="849" text-anchor="end">read-only</text>
+  <path class="ar n" d="M895,860 V832"/>
+  <text class="m" x="903" y="849">new decisions</text>
+
+  <rect class="box n" x="20" y="860" width="1400" height="80" rx="10"/>
+  <text class="t" x="34" y="884">Run store: SQLite + runs/&lt;id&gt;/  <tspan class="m">(store.py; every stage writes here)</tspan></text>
+  <text class="m" x="34" y="906">runs · detections · telemetry · defects · explanations · proposals · verdicts · actions · outcomes · decisions · alerts · timings</text>
+  <text class="m" x="34" y="925">files: frames/latest.jpg · crops/&lt;defect&gt;.jpg · heatmaps/&lt;defect&gt;.png</text>
+</svg>
+</div>
+
+<h2>Offline: how the runtime model files are made</h2>
+<p class="lede">CPU scripts run on the dev laptop; training and the fold evaluations run on the teammate's GPU laptop (<code>docs/gpu-runs/</code>). The three files on the right are what <code>config/default.yaml</code> points the runtime at.</p>
+<div class="fig">
+<svg viewBox="0 0 1440 330" role="img" aria-label="Offline pipeline: CAXTON data through adaptation, crops, splits, training, recalibration and conformal calibration into runtime files; evaluation scripts write reports.">
+  <defs>
+    <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>.ar2{fill:none;stroke-width:1.6;marker-end:url(#ah2)}</style>
+
+  <rect class="box n ext" x="20" y="30" width="150" height="100" rx="10"/>
+  <text class="t" x="32" y="54">CAXTON</text>
+  <text class="s" x="32" y="73">public label CSV</text>
+  <text class="s" x="32" y="90">+ print images</text>
+  <text class="m" x="32" y="114">D:\caxton</text>
+
+  <rect class="box p" x="200" y="30" width="160" height="100" rx="10"/>
+  <text class="t" x="212" y="54">adapt_caxton</text>
+  <text class="s" x="212" y="73">CSV → trials.csv,</text>
+  <text class="s" x="212" y="90">images.csv</text>
+  <text class="m" x="212" y="114">*_class → cause</text>
+
+  <rect class="box p" x="390" y="30" width="160" height="100" rx="10"/>
+  <text class="t" x="402" y="54">build_crops</text>
+  <text class="s" x="402" y="73">nozzle ROI crops</text>
+  <text class="s" x="402" y="90">+ clean_labels</text>
+  <text class="m" x="402" y="114">crops(_clean).csv</text>
+
+  <rect class="box p" x="580" y="30" width="170" height="100" rx="10"/>
+  <text class="t" x="592" y="54">make_splits</text>
+  <text class="s" x="592" y="73">5-fold GroupKFold by</text>
+  <text class="s" x="592" y="90">print; calib = 20 %</text>
+  <text class="m" x="592" y="114">logo.json (frozen)</text>
+
+  <rect class="box e" x="780" y="30" width="170" height="100" rx="10"/>
+  <text class="t" x="792" y="54">train_cause (GPU)</text>
+  <text class="s" x="792" y="73">ResNet18 per fold +</text>
+  <text class="s" x="792" y="90">runtime final.pt</text>
+  <text class="m" x="792" y="114">v2 recipe flags</text>
+
+  <rect class="box e" x="980" y="30" width="170" height="100" rx="10"/>
+  <text class="t" x="992" y="54">recalibrate</text>
+  <text class="s" x="992" y="73">temperature T fitted</text>
+  <text class="s" x="992" y="90">on calib prints only</text>
+  <text class="m" x="992" y="114">recal_t/</text>
+
+  <rect class="box e" x="1180" y="30" width="240" height="100" rx="10"/>
+  <text class="t" x="1192" y="54">eval_conformal</text>
+  <text class="s" x="1192" y="73">q̂ from the same recalibrated</text>
+  <text class="s" x="1192" y="90">probabilities; coverage per fold</text>
+  <text class="m" x="1192" y="114">qhat.json</text>
+
+  <g class="n">
+    <path class="ar2 n" d="M170,80 H198"/><path class="ar2 n" d="M360,80 H388"/><path class="ar2 n" d="M550,80 H578"/>
+    <path class="ar2 n" d="M750,80 H778"/><path class="ar2 n" d="M950,80 H978"/><path class="ar2 n" d="M1150,80 H1178"/>
+  </g>
+
+  <!-- runtime files -->
+  <rect class="box a" x="780" y="170" width="640" height="56" rx="10"/>
+  <text class="t" x="794" y="193">Runtime files (config/default.yaml)</text>
+  <text class="m" x="794" y="213">cause_model.weights: final.pt · cause_model.calibration · conformal.qhat_file: qhat.json</text>
+  <path class="ar2 a" d="M865,130 V168"/><path class="ar2 a" d="M1065,130 V168"/><path class="ar2 a" d="M1300,130 V168"/>
+
+  <rect class="box g" x="390" y="170" width="360" height="56" rx="10"/>
+  <text class="t" x="402" y="193">derive_window  → L3 window</text>
+  <text class="m" x="402" y="213">p1–p99 of setpoints on "good" images → envelope.L3</text>
+  <path class="ar2 g" d="M300,130 V198 H388"/>
+
+  <!-- eval row -->
+  <rect class="box n" x="20" y="256" width="1400" height="56" rx="10"/>
+  <text class="t" x="34" y="279">Evaluation → reports/</text>
+  <text class="m" x="34" y="299">eval_cause (floor, K2) · eval_proactive (θ_on per fold) · eval_counterfactual · eval_latency · gate_audit · run_demo · acceptance</text>
+</svg>
+</div>
+
+<div class="notes">
+  <div><b>Safety invariant.</b> Printer commands leave only through <code>gate()</code>, except the critical-class estop/pause and baseline mode. The dashboard never reaches the printer; its decisions are re-gated.</div>
+  <div><b>Explain ≠ decide.</b> The cause model sees only the image. Printer state enters later, in sensor flags, proposal sizing and the gate, so an explanation can't be biased by what the setpoints already are.</div>
+  <div><b>Off the latency path.</b> Heatmaps run on a worker thread with their own copy of the net and their own SQLite connection, after dispatch.</div>
+</div>
+</main>
+</body>
+</html>
